@@ -5,14 +5,14 @@ using System.Numerics;
 
 namespace web_test.Pages
 {
+    [IgnoreAntiforgeryToken]
     public class IndexModel : PageModel
     {
-        public string Message { get; private set; } = "";
-        public void OnGet(Person person)
-        {
-            Message = $"Person: {person.Name} и ему {person.Age} лет";
-        }
-    }
+        [BindProperty]
+        public string Name { get; set; } = "";
 
-    public record class Person(string Name, int Age);
+        [BindProperty]
+        public int Age { get; set; }
+
+    }
 }

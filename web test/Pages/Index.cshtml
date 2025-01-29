@@ -1,6 +1,36 @@
 ﻿@page
 
-@model web_test.Pages.IndexModel
+<h2>Ввeдите данные</h2>
+<form method="post">
+    <p>
+        Person1 Name:<br />
+        <input name="people[0].name" /><br />
+        Person1 Age:<br />
+        <input name="people[0].age" />
+    </p>
+    <p>
+        Person2 Name:<br />
+        <input name="people[1].name" /><br />
+        Person2 Age:<br />
+        <input name="people[1].age" />
+    </p>
+    <input type="submit" value="Отправить" />
+</form>
+<h3>Список сотрудников</h3>
+<ul>
+    @foreach (var person in People)
+    {
+        <li>@person.Name (@person.Age)</li>
+    }
+</ul>
 
-<h2>@Model.Message</h2>
+@functions {
+    Person[] People { get; set; } = { };
+    public void OnPost(Person[] people)
+    {
+        People = people;
+    }
+
+    public record class Person(string Name, int Age);
+}
 
