@@ -1,27 +1,147 @@
 ﻿@page
 @model web_test.Pages.IndexModel
-
-<h2>Введите данные</h2>
-<form method="post">
-    <p>
-        <label>Имя:</label><br />
-        <input type="text" name="name" />
-    </p>
-    <p>
-        <label>Возраст:</label><br />
-        <input type="number" name="age" />
-    </p>
-    <p>
-        <label>Ориентация:</label><br />
-        <input type="checkbox" name="orientacia" />
-    </p>
-    <input type="submit" value="Отправить" />
-</form>
-@if (Request.Method == "POST")
-{
-    <h3>Полученные данные</h3>
-    <p>Name: @Model.Person?.Name</p>
-    <p>Age: @Model.Person?.Age</p>
-    <p>Ориентация: @Model.Person?.Orientacia</p>
+@{
+    // Устанавливаем заголовок страницы
+    ViewData["Title"] = "Главная страница";
+    // Если вы используете Layout по умолчанию:
+    Layout = "_Layout.cshtml";
 }
 
+<!--
+    Основная разметка главной страницы
+    Здесь мы реализуем описанный функционал:
+
+    1. Шапка страницы с выбором дат, исполнителя, строкой поиска и прочим.
+    2. Большая таблица в центре с колонками:
+        (номер, наименование документа, наименование работы,
+         исполнитель, контролирующий, принимающий, плановая дата,
+         корректировка 1, корректировка 2, корректировка 3, фактическая дата)
+    3. Меньшая таблица "Уведомления" (столбцы: Напоминание, дата, кому)
+    4. Внизу кнопки "Сформировать сдаточный чек" и "Обновить".
+-->
+
+<div class="row mb-4">
+    <!-- Шапка: название подразделения, текущий пользователь, выбор даты, исполнителя, поиск -->
+    <div class="col-12">
+        <div class="d-flex flex-wrap align-items-center justify-content-between bg-light p-3 rounded">
+            <!-- Название подразделения -->
+            <div>
+                <h5 class="mb-0">Подразделение: @Model.DepartmentName</h5>
+                <!-- Вывод текущего авторизованного пользователя -->
+                <p class="text-muted mb-0">Текущий пользователь: @User?.Identity?.Name</p>
+            </div>
+
+            <!-- Форма с фильтрами: дата от и до, исполнитель из списка, строка поиска -->
+            <form class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Выбор периода (дата с ... по ...) -->
+                <div>
+                    <label for="startDate" class="form-label me-2">C даты:</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate" />
+                </div>
+                <div>
+                    <label for="endDate" class="form-label me-2">по дату:</label>
+                    <input type="date" class="form-control" id="endDate" name="endDate" />
+                </div>
+
+                <!-- Выбор исполнителя -->
+                <div>
+                    <label for="executor" class="form-label me-2">Исполнитель:</label>
+                    <select id="executor" name="executor" class="form-select">
+                        <option value="">Все исполнители</option>
+                        <!-- Пример заполнения, на практике – динамически из БД -->
+                        <option value="1">Исполнитель 1</option>
+                        <option value="2">Исполнитель 2</option>
+                        <option value="3">Исполнитель 3</option>
+                    </select>
+                </div>
+
+                <!-- Строка поиска -->
+                <div>
+                    <label for="search" class="form-label me-2">Поиск:</label>
+                    <input type="text" class="form-control" id="search" placeholder="Поиск по работам..." />
+                </div>
+
+                <!-- Кнопка фильтрации или поиска -->
+                <button type="submit" class="btn btn-primary">Применить</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Основная большая таблица -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">№</th>
+                        <th scope="col">Наименование документа</th>
+                        <th scope="col">Наименование работы</th>
+                        <th scope="col">Исполнитель</th>
+                        <th scope="col">Контролирующий</th>
+                        <th scope="col">Принимающий</th>
+                        <th scope="col">Плановая дата</th>
+                        <th scope="col">Корректировка 1</th>
+                        <th scope="col">Корректировка 2</th>
+                        <th scope="col">Корректировка 3</th>
+                        <th scope="col">Фактическая дата</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!--
+                        Пока таблица пустая. Позже вы будете динамически
+                        выводить строки из БД или другого источника.
+                    -->
+                    <tr>
+                        <td colspan="11" class="text-muted">Нет данных</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Таблица уведомлений (поменьше) -->
+<div class="row mb-4">
+    <div class="col-12 col-lg-6">
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead class="table-success">
+                    <tr>
+                        <th scope="col">Напоминание</th>
+                        <th scope="col">Дата</th>
+                        <th scope="col">Кому</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Аналогично: динамическое заполнение в будущем -->
+                    <tr>
+                        <td colspan="3" class="text-muted">Нет уведомлений</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Кнопки внизу страницы -->
+<div class="row mb-4">
+    <div class="col-12 d-flex gap-3">
+        <!-- Кнопка 1 -->
+        <button type="button" class="btn btn-success shadow-sm"
+                style="transition: transform 0.2s;"
+                onmousedown="this.style.transform='scale(0.95)'"
+                onmouseup="this.style.transform='scale(1)'">
+            Сформировать сдаточный чек
+        </button>
+
+        <!-- Кнопка 2 -->
+        <button type="button" class="btn btn-secondary shadow-sm"
+                style="transition: transform 0.2s;"
+                onmousedown="this.style.transform='scale(0.95)'"
+                onmouseup="this.style.transform='scale(1)'">
+            Обновить
+        </button>
+    </div>
+</div>

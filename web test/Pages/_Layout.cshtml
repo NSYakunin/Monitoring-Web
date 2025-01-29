@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] - Мониторинг web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Подключение Bootstrap (пример с CDN) -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+          integrity="sha384-..."
+          crossorigin="anonymous" />
+
+    <!-- Наш собственный файл стилей -->
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header>
+        <!-- Здесь может быть общая шапка для всего сайта -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">@System.Security.Principal.WindowsIdentity.GetCurrent().Name</a>
+                <!-- Кнопки, меню и пр. при необходимости -->
+            </div>
+        </nav>
+    </header>
+
+    <div class="container mt-4">
+        <!-- Здесь будет подставляться содержимое всех Razor Pages,
+             которые используют данный Layout -->
+        @RenderBody()
+    </div>
+
+    <!-- Подключение Bootstrap JS (пример с CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-..."
+            crossorigin="anonymous">
+    </script>
+</body>
+</html>

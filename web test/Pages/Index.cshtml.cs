@@ -5,13 +5,19 @@ using System.Numerics;
 
 namespace web_test.Pages
 {
-    [IgnoreAntiforgeryToken]
     public class IndexModel : PageModel
     {
-        [BindProperty]
-        public Person? Person { get; set; }
+        // ѕример: если хотите передавать название подразделени€ в View
+        public string DepartmentName { get; set; } = "ќтдел разработки";
 
+        // ≈сли нужно обрабатывать запросы (GET/POST), переопредел€ем методы:
+        public void OnGet()
+        {
+            // Ћогика, котора€ выполн€етс€ при загрузке страницы
+            // Ќапример, получение данных, заполнение ViewModel и т.д.
+        }
+
+        // public IActionResult OnPost...()
+        // ≈сли нужна обработка форм, можно создать соответствующие методы POST
     }
-
-    public record Person(string Name, int Age, bool Orientacia);
 }
