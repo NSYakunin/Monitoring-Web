@@ -9,10 +9,9 @@ namespace web_test.Pages
     public class IndexModel : PageModel
     {
         [BindProperty]
-        public string Name { get; set; } = "";
-
-        [BindProperty]
-        public int Age { get; set; }
+        public Person? Person { get; set; }
 
     }
+
+    public record Person(string Name, int Age, bool Orientacia);
 }
