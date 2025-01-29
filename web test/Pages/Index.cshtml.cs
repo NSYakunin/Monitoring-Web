@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System;
 using System.Numerics;
 
 namespace web_test.Pages
@@ -7,9 +8,11 @@ namespace web_test.Pages
     public class IndexModel : PageModel
     {
         public string Message { get; private set; } = "";
-        public void OnGet(string name = "Vasia", int age = 123)
+        public void OnGet(Person person)
         {
-            Message = $"Name: {name} и ему {age} лет";
+            Message = $"Person: {person.Name} и ему {person.Age} лет";
         }
     }
+
+    public record class Person(string Name, int Age);
 }
