@@ -25,22 +25,23 @@
                 </div>
 
                 <!-- Форма с фильтрами (здесь сделаем method="get", чтобы при обновлении сохранялись данные в URL) -->
-                <form method="get" class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Форма с фильтрами (здесь сделаем method="get") -->
+                <form method="get" class="d-flex flex-wrap align-items-end gap-2">
                     <!-- Выбор периода (дата с ... по ...) -->
-                    <div>
-                        <label for="startDate" class="form-label me-2">C даты:</label>
+                    <div class="d-flex flex-column">
+                        <label for="startDate" class="form-label">C даты:</label>
                         <input type="date" class="form-control" id="startDate" name="StartDate"
                                value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-dd") : null)" />
                     </div>
-                    <div>
-                        <label for="endDate" class="form-label me-2">по дату:</label>
+                    <div class="d-flex flex-column">
+                        <label for="endDate" class="form-label">по дату:</label>
                         <input type="date" class="form-control" id="endDate" name="EndDate"
                                value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-dd") : null)" />
                     </div>
 
                     <!-- Выбор исполнителя (пока статичный пример) -->
-                    <div>
-                        <label for="executor" class="form-label me-2">Исполнитель:</label>
+                    <div class="d-flex flex-column">
+                        <label for="executor" class="form-label">Исполнитель:</label>
                         <select id="executor" name="executor" class="form-select">
                             <option value="">Все исполнители</option>
                             <option value="1">Исполнитель 1</option>
@@ -50,13 +51,20 @@
                     </div>
 
                     <!-- Строка поиска (пока заглушка) -->
-                    <div>
-                        <label for="search" class="form-label me-2">Поиск:</label>
+                    <div class="d-flex flex-column">
+                        <label for="search" class="form-label">Поиск:</label>
                         <input type="text" class="form-control" id="search" placeholder="Поиск по работам..." />
                     </div>
 
                     <!-- Кнопка фильтрации или поиска -->
-                    <button type="submit" class="btn btn-primary">Применить</button>
+                    <button type="submit" class="btn btn-primary align-self-center">Применить</button>
+
+                    <!-- Кнопка &laquo;Выход&raquo; -->
+                    <a asp-page="./Index"
+                            asp-page-handler="Logout"
+                            class="btn btn-outline-danger align-self-center">
+                        Выход
+                    </a>
                 </form>
             </div>
         </div>

@@ -1,0 +1,84 @@
+﻿@page
+@model web_test.Pages.LoginModel
+@{
+    Layout = "_Layout.cshtml";  // Или другой ваш общий layout
+    ViewData["Title"] = "Авторизация";
+}
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Авторизация</h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Форма авторизации -->
+                    <form method="post" class="row g-3">
+
+                        <!-- Поле (или выпадающий список) для выбора пользователя -->
+                        <div class="col-12">
+                            <label for="userSearch" class="form-label">Поиск пользователя:</label>
+                            <input type="text" class="form-control" id="userSearch"
+                                   placeholder="Введите часть имени для фильтра..."
+                                   oninput="filterUsers()" />
+                        </div>
+
+                        <div class="col-12">
+                            <label for="SelectedUser" class="form-label">Пользователь:</label>
+                            <select id="SelectedUser" name="SelectedUser" class="form-select">
+                                <option value="">-- Выберите пользователя --</option>
+                                @foreach (var userName in Model.AllUsers)
+                                {
+                                    <option value="@userName">@userName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Поле для ввода пароля -->
+                        <div class="col-12">
+                            <label for="Password" class="form-label">Пароль:</label>
+                            <input type="password" class="form-control" id="Password" name="Password" />
+                        </div>
+
+                        <!-- Если есть ошибка авторизации, выводим её -->
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                        {
+                            <div class="col-12 text-danger">
+                                @Model.ErrorMessage
+                            </div>
+                        }
+
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">Войти</button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Скрипт для клиентской фильтрации выпадающего списка пользователей -->
+<script>
+    function filterUsers() {
+        var input = document.getElementById("userSearch");
+        var filter = input.value.toLowerCase();
+        var select = document.getElementById("SelectedUser");
+        var options = select.getElementsByTagName("option");
+
+        for (var i = 0; i < options.length; i++) {
+            var txt = options[i].textContent || options[i].innerText;
+            if (txt.toLowerCase().indexOf(filter) > -1 || i === 0) {
+                // i === 0 пропускаем первую опцию с "-- Выберите пользователя --"
+                options[i].style.display = "";
+            } else {
+                options[i].style.display = "none";
+            }
+        }
+    }
+</script>
