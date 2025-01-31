@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// добавляем в приложение сервисы Razor Pages
+
 builder.Services.AddRazorPages(options =>
 {
     // отключаем глобально Antiforgery-токен
@@ -11,7 +11,7 @@ builder.Services.AddRazorPages(options =>
 
 var app = builder.Build();
 
-// добавляем поддержку маршрутизации для Razor Pages
+
 app.MapRazorPages();
 
 app.Run();

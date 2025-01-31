@@ -34,7 +34,7 @@ namespace web_test.Pages
 
         public async Task OnPost()
         {
-            // При отправке формы (если сделаете <form method="post">) 
+            // При отправке формы (<form method="post">) 
             // данные из BindProperty уже будут в StartDate и EndDate
             await LoadDataAsync();
         }
@@ -42,7 +42,6 @@ namespace web_test.Pages
         [Obsolete]
         private async Task LoadDataAsync()
         {
-            // Пример подключения к БД (обязательно поменяйте строку подключения!)
             string connectionString = "Data Source = ASCON; Initial Catalog = DocumentControl; Persist Security Info = False; User ID = test;Password = test123456789";
 
             // Формируем даты в нужном формате. Например, в стиле 'yyyy-MM-dd HH:mm:ss'
