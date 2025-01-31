@@ -65,20 +65,38 @@
 
 <!-- Скрипт для клиентской фильтрации выпадающего списка пользователей -->
 <script>
-    function filterUsers() {
-        var input = document.getElementById("userSearch");
-        var filter = input.value.toLowerCase();
-        var select = document.getElementById("SelectedUser");
-        var options = select.getElementsByTagName("option");
+    async function filterUsers() {
+        let input = document.getElementById("userSearch").value;
 
-        for (var i = 0; i < options.length; i++) {
-            var txt = options[i].textContent || options[i].innerText;
-            if (txt.toLowerCase().indexOf(filter) > -1 || i === 0) {
-                // i === 0 пропускаем первую опцию с "-- Выберите пользователя --"
-                options[i].style.display = "";
-            } else {
-                options[i].style.display = "none";
-            }
+        // Делаем fetch на метод-хендлер ?handler=FilterUsers
+        // Например: /Login?handler=FilterUsers&query=...
+        // (т.к. страница называется Login, Razor Pages по умолчанию: /Login?handler=FilterUsers)
+        // Кодируем введённую строку на случай пробелов и спец.символов
+        let response = await fetch(`Login?handler=FilterUsers&query=${encodeURIComponent(input)}`);
+
+        if (!response.ok) {
+            console.error("Ошибка при загрузке списка пользователей:", response.status);
+            return;
         }
+
+        let users = await response.json(); // Считываем JSON-список пользователей
+
+        let select = document.getElementById("SelectedUser");
+        // Очищаем старые опции
+        select.innerHTML = "";
+
+        // Добавим опцию "по умолчанию"
+        let defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "-- Выберите пользователя --";
+        select.appendChild(defaultOption);
+
+        // Добавляем новые опции из массива
+        users.forEach(u => {
+            let opt = document.createElement("option");
+            opt.value = u;
+            opt.textContent = u;
+            select.appendChild(opt);
+        });
     }
 </script>

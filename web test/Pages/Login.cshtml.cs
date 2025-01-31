@@ -14,14 +14,17 @@ namespace web_test.Pages
 
         // Поле, куда биндим выбранного пользователя (значение select)
         [BindProperty]
-        public string SelectedUser { get; set; }
+        public string SelectedUser { get; set; } = string.Empty;
+
+        // Текущий пользователь
+        public string UserName { get; set; } = string.Empty;
 
         // Поле для пароля
         [BindProperty]
-        public string Password { get; set; }
+        public string Password { get; set; } = string.Empty;
 
         // Ошибка авторизации (если такая возникнет)
-        public string ErrorMessage { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
 
         // Подключаемся к БД
         private readonly string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
@@ -128,6 +131,44 @@ namespace web_test.Pages
                     }
                 }
             }
+        }
+
+        [IgnoreAntiforgeryToken(Order = 1001)] // Чтобы не ругался на отсутствие в GET запросах токена
+        public async Task<IActionResult> OnGetFilterUsers(string query)
+        {
+            // Простейшая защита от null
+            if (query == null) query = "";
+
+            List<string> matchedUsers = new List<string>();
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                // Пример фильтра: ищем в smallName, где LIKE '%query%'
+                // Важно добавить защиту от SQL-инъекций (параметры)
+                string sql = @"
+                        SELECT smallName 
+                        FROM [Users] 
+                        WHERE Isvalid = 1
+                          AND smallName LIKE '%' + @q + '%'
+                        ORDER BY smallName
+                    ";
+                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@q", query);
+
+                    await conn.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            matchedUsers.Add(reader.GetString(0));
+                        }
+                    }
+                }
+            }
+
+            // Возвращаем JSON-список
+            return new JsonResult(matchedUsers);
         }
     }
 }

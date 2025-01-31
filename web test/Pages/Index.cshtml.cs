@@ -20,18 +20,11 @@ namespace web_test.Pages
         // Пример: текущее название подразделения (заглушка)
         public string DepartmentName { get; set; } = "Отдел №17";
 
+        // Текущий пользователь
+        public string UserName { get; set; } = string.Empty;
+
         // Список данных для таблицы
         public List<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
-
-        public IActionResult OnGetLogout()
-        {
-            // Очищаем (или &laquo;истекаем&raquo;) куки
-            HttpContext.Response.Cookies.Delete("userName");
-            HttpContext.Response.Cookies.Delete("divisionId");
-
-            // Перенаправляем на страницу Login
-            return RedirectToPage("Login");
-        }
 
         public async Task OnGet()
         {
@@ -52,6 +45,8 @@ namespace web_test.Pages
                 return;
             }
 
+            UserName = HttpContext.Request.Cookies["userName"];
+
             // Теперь у нас есть idDivision
             // Можем его где-то сохранить в свойстве:
             int currentUserDivisionId = divisionId;
@@ -59,11 +54,9 @@ namespace web_test.Pages
             // Можно также почитать userName, если нужно
             var userName = HttpContext.Request.Cookies["userName"];
 
-            // Например, заполним ваше DepartmentName 
-            // (если вы берёте его из другого места, просто переопределите):
             DepartmentName = $"Отдел №{currentUserDivisionId}";
 
-            // Далее у вас идут проверки StartDate/EndDate
+            // Проверка StartDate/EndDate
             if (!StartDate.HasValue) StartDate = new DateTime(2014, 1, 1);
             if (!EndDate.HasValue) EndDate = new DateTime(2025, 1, 31, 8, 11, 31);
 
@@ -79,6 +72,16 @@ namespace web_test.Pages
         //    // данные из BindProperty уже будут в StartDate и EndDate
         //    await LoadDataAsync(currentUserDivisionId);
         //}
+
+        public IActionResult OnGetLogout()
+        {
+            // Очищаем куки
+            HttpContext.Response.Cookies.Delete("userName");
+            HttpContext.Response.Cookies.Delete("divisionId");
+
+            // Перенаправляем на страницу Login
+            return RedirectToPage("Login");
+        }
 
         [Obsolete]
         private async Task LoadDataAsync(int divisionId)
