@@ -3,82 +3,91 @@
 @model web_test.Pages.IndexModel
 
 @{
-    // Устанавливаем заголовок страницы
     ViewData["Title"] = "Главная страница";
-    // Используем Layout. Убедитесь, что в вашем _Layout.cshtml прописано .container-fluid или нет .container
-    Layout = "_Layout.cshtml";
+    Layout = "_Layout.cshtml"; // Указываем макет, где должен быть RenderSection("Scripts", false)
 }
 
-<!--
-  Можно дополнительно обернуть в container-fluid,
-  если в вашем Layout нет нужных классов:
--->
 <div class="container-fluid">
 
-    <!-- Шапка: название подразделения, текущий пользователь, выбор даты, исполнителя, поиск -->
+    <!-- Шапка: подразделение, пользователь, фильтры -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex flex-wrap align-items-center justify-content-between bg-light p-3 rounded">
-                <!-- Название подразделения -->
                 <div>
                     <h5 class="mb-0">Подразделение: @Model.DepartmentName</h5>
-                    <!-- Вывод текущего авторизованного пользователя -->
                     <p class="text-muted mb-0">Текущий пользователь: @Model.UserName</p>
                 </div>
 
-                <!-- Форма с фильтрами (здесь сделаем method="get", чтобы при обновлении сохранялись данные в URL) -->
-                <!-- Форма с фильтрами (здесь сделаем method="get") -->
+                <!-- Форма с фильтрами, отправляется методом GET -->
                 <form method="get" class="d-flex flex-wrap align-items-end gap-2">
-                    <!-- Выбор периода (дата с ... по ...) -->
+
+                    <!-- Поля выбора дат -->
                     <div class="d-flex flex-column">
                         <label for="startDate" class="form-label">C даты:</label>
-                        <input type="date" class="form-control" id="startDate" name="StartDate"
+                        <input type="date"
+                               class="form-control"
+                               id="startDate"
+                               name="StartDate"
                                value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-dd") : null)" />
                     </div>
                     <div class="d-flex flex-column">
                         <label for="endDate" class="form-label">по дату:</label>
-                        <input type="date" class="form-control" id="endDate" name="EndDate"
+                        <input type="date"
+                               class="form-control"
+                               id="endDate"
+                               name="EndDate"
                                value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-dd") : null)" />
                     </div>
 
-                    <!-- Выбор исполнителя (пока статичный пример) -->
+                    <!-- Выпадающий список для выбора исполнителя -->
                     <div class="d-flex flex-column">
                         <label for="executor" class="form-label">Исполнитель:</label>
                         <select id="executor" name="executor" class="form-select">
                             <option value="">Все исполнители</option>
-                            <option value="1">Исполнитель 1</option>
-                            <option value="2">Исполнитель 2</option>
-                            <option value="3">Исполнитель 3</option>
+                            @* 
+                              Перебираем Model.Executors и добавляем опции. 
+                              Проверяем, совпадает ли значение с выбранным (Model.executor),
+                              чтобы по возвращении из запроса сохранить выбранный пункт 
+                            *@
+                            @foreach (var item in Model.Executors)
+                            {
+                                <option value="@item.Value">
+                                    @item.Text
+                                </option>
+                            }
                         </select>
                     </div>
 
-                    <!-- Строка поиска (пока заглушка) -->
+                    <!-- Строка поиска для DocumentName и WorkName (клиентская фильтрация) -->
                     <div class="d-flex flex-column">
                         <label for="search" class="form-label">Поиск:</label>
-                        <input type="text" class="form-control" id="search" placeholder="Поиск по работам..." />
+                        <input type="text"
+                               class="form-control"
+                               id="search"
+                               placeholder="Поиск по документу/работе..." />
                     </div>
 
-                    <!-- Кнопка фильтрации или поиска -->
+                    <!-- Кнопка "Применить" отправляет форму на сервер для фильтрации по датам/исполнителю -->
                     <button type="submit" class="btn btn-primary align-self-bottom">Применить</button>
 
-                    <!-- Кнопка &laquo;Выход&raquo; -->
+                    <!-- Кнопка "Выход" с обработчиком OnGetLogout -->
                     <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-outline-danger align-self-end">Выход</a>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Основная большая таблица -->
+    <!-- Основная таблица работ -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle text-center">
+                <table class="table table-bordered table-hover align-middle text-center" id="worksTable">
                     <thead class="table-dark">
                         <tr>
                             <th scope="col">№</th>
                             <th scope="col">Наименование документа</th>
                             <th scope="col">Наименование работы</th>
-                            <th scope="col">Исполнитель</th>
+                            <th scope="col">Исполнители</th>
                             <th scope="col">Контролирующий</th>
                             <th scope="col">Принимающий</th>
                             <th scope="col">План</th>
@@ -104,6 +113,7 @@
                                     <td>@index</td>
                                     <td>@item.DocumentName</td>
                                     <td>@item.WorkName</td>
+                                    <!-- Здесь выводим всех исполнителей в одной ячейке, разделяя запятой -->
                                     <td>@item.Executor</td>
                                     <td>@item.Controller</td>
                                     <td>@item.Approver</td>
@@ -122,7 +132,7 @@
         </div>
     </div>
 
-    <!-- Таблица уведомлений (поменьше) -->
+    <!-- Пример второй таблицы (уведомления, если нужно) -->
     <div class="row mb-4">
         <div class="col-12 col-lg-6">
             <div class="table-responsive">
@@ -135,7 +145,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Аналогично: динамическое заполнение в будущем -->
                         <tr>
                             <td colspan="3" class="text-muted">Нет уведомлений</td>
                         </tr>
@@ -145,10 +154,9 @@
         </div>
     </div>
 
-    <!-- Кнопки внизу страницы -->
+    <!-- Кнопки внизу страницы (пример) -->
     <div class="row mb-4">
         <div class="col-12 d-flex gap-3">
-            <!-- Кнопка 1: Сформировать сдаточный чек -->
             <button type="button" class="btn btn-success shadow-sm"
                     style="transition: transform 0.2s;"
                     onmousedown="this.style.transform='scale(0.95)'"
@@ -157,7 +165,6 @@
                 Сформировать сдаточный чек
             </button>
 
-            <!-- Кнопка 2: Обновить (повторно загрузить страницу) -->
             <form method="get">
                 <button type="submit" class="btn btn-secondary shadow-sm"
                         style="transition: transform 0.2s;"
@@ -169,7 +176,7 @@
         </div>
     </div>
 
-    <!-- Скрытый блок для "Отчёта" (сдаточного чека) -->
+    <!-- Скрытый блок для отчёта (по необходимости) -->
     <div id="reportBlock" class="border p-3" style="display: none;">
         <h4>Сдаточный чек</h4>
         <p>Дата формирования: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</p>
@@ -187,11 +194,10 @@
 
         <hr />
 
-        <!-- Можно вывести ту же таблицу или какую-то сокращённую форму данных -->
         <table class="table table-sm table-bordered">
             <thead>
                 <tr>
-                    <th>Документ fsdfsdf</th>
+                    <th>Документ</th>
                     <th>Работа</th>
                     <th>Исполнитель</th>
                     <th>Плановая дата</th>
@@ -219,14 +225,33 @@
 
 </div> <!-- /container-fluid -->
 
+<!-- Скрипты -->
+@section Scripts {
+    <script>
+        // Функция показа блока отчёта и отправки на печать (пример)
+        function showReportAndPrint() {
+            const block = document.getElementById('reportBlock');
+            block.style.display = 'block';
+            window.print();
+        }
 
-@* @section Scripts { *@
-@*         <script> *@
-@*             // Показываем скрытый блок и отправляем на печать *@
-@*             function showReportAndPrint() { *@
-@*                 const reportBlock = document.getElementById("reportBlock"); *@
-@*                 reportBlock.style.display = "block"; *@
-@*                 window.print(); *@
-@*             } *@
-@*         </script> *@
-@* } *@
+        // Скрипт для динамического поиска по таблице worksTable (по DocumentName и WorkName)
+        // Реагируем на ввод текста в поле #search
+        document.getElementById('search').addEventListener('keyup', function () {
+            var filter = this.value.toLowerCase();
+            var rows = document.querySelectorAll('#worksTable tbody tr');
+            rows.forEach(function (row) {
+                // Индекс 1 в таблице - "Наименование документа", индекс 2 - "Наименование работы"
+                var docText = row.cells[1].textContent.toLowerCase();
+                var workText = row.cells[2].textContent.toLowerCase();
+
+                // Если строка содержит введённый текст в любом из этих столбцов - показываем, иначе скрываем
+                if (docText.indexOf(filter) > -1 || workText.indexOf(filter) > -1) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        });
+    </script>
+}

@@ -16,19 +16,20 @@
 </head>
 <body>
     <header>
-        <!-- Здесь может быть общая шапка для всего сайта -->
+        <!-- Общая шапка сайта -->
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container-fluid">
+                <!-- К примеру, выводим имя учетной записи текущего пользователя Windows -->
                 <a class="navbar-brand" href="/">@System.Security.Principal.WindowsIdentity.GetCurrent().Name</a>
-                <!-- Кнопки, меню и пр. при необходимости -->
             </div>
         </nav>
     </header>
 
     <div class="container-fluid">
-        <!-- Здесь будет подставляться содержимое всех Razor Pages,
-             которые используют данный Layout -->
         @RenderBody()
+
+        <!-- Важно: рендерим секцию Scripts, чтобы не было исключений -->
+        @RenderSection("Scripts", required: false)
     </div>
 
     <!-- Подключение Bootstrap JS (пример с CDN) -->
