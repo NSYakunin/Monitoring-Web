@@ -4,11 +4,10 @@
 
 @{
     ViewData["Title"] = "Главная страница";
-    Layout = "_Layout.cshtml"; // Указываем макет, где должен быть RenderSection("Scripts", false)
+    Layout = "_Layout.cshtml";
 }
 
 <div class="container-fluid">
-
     <!-- Шапка: подразделение, пользователь, фильтры -->
     <div class="row mb-4">
         <div class="col-12">
@@ -18,24 +17,17 @@
                     <p class="text-muted mb-0">Текущий пользователь: @Model.UserName</p>
                 </div>
 
-                <!-- Форма с фильтрами, отправляется методом GET -->
-                <form method="get" class="d-flex flex-wrap align-items-end gap-2">
-
-                    <!-- Поля выбора дат -->
+                <!-- Форма с фильтрами -->
+                <form method="get" id="filterForm" class="d-flex flex-wrap align-items-end gap-2">
+                    <!-- Фильтр по датам -->
                     <div class="d-flex flex-column">
                         <label for="startDate" class="form-label">C даты:</label>
-                        <input type="date"
-                               class="form-control"
-                               id="startDate"
-                               name="StartDate"
+                        <input type="date" class="form-control" id="startDate" name="StartDate"
                                value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-dd") : null)" />
                     </div>
                     <div class="d-flex flex-column">
                         <label for="endDate" class="form-label">по дату:</label>
-                        <input type="date"
-                               class="form-control"
-                               id="endDate"
-                               name="EndDate"
+                        <input type="date" class="form-control" id="endDate" name="EndDate"
                                value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-dd") : null)" />
                     </div>
 
@@ -44,33 +36,23 @@
                         <label for="executor" class="form-label">Исполнитель:</label>
                         <select id="executor" name="executor" class="form-select">
                             <option value="">Все исполнители</option>
-                            @* 
-                              Перебираем Model.Executors и добавляем опции. 
-                              Проверяем, совпадает ли значение с выбранным (Model.executor),
-                              чтобы по возвращении из запроса сохранить выбранный пункт 
-                            *@
                             @foreach (var item in Model.Executors)
                             {
-                                <option value="@item.Value">
-                                    @item.Text
-                                </option>
+                                <option value="@item.Value" selected="@(item.Value == Model.executor)">@item.Value</option>
                             }
                         </select>
                     </div>
 
-                    <!-- Строка поиска для DocumentName и WorkName (клиентская фильтрация) -->
+                    <!-- Строка поиска -->
                     <div class="d-flex flex-column">
                         <label for="search" class="form-label">Поиск:</label>
-                        <input type="text"
-                               class="form-control"
-                               id="search"
-                               placeholder="Поиск по документу/работе..." />
+                        <input type="text" class="form-control" id="search" placeholder="Поиск..." />
                     </div>
 
-                    <!-- Кнопка "Применить" отправляет форму на сервер для фильтрации по датам/исполнителю -->
+                    <!-- Кнопка для применения фильтров (даты + исполнитель) на сервере -->
                     <button type="submit" class="btn btn-primary align-self-bottom">Применить</button>
 
-                    <!-- Кнопка "Выход" с обработчиком OnGetLogout -->
+                    <!-- Кнопка для выхода (очистка куки) -->
                     <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-outline-danger align-self-end">Выход</a>
                 </form>
             </div>
@@ -81,58 +63,12 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle text-center" id="worksTable">
-                    <thead class="table-dark">
-                        <tr>
-                            <th scope="col">№</th>
-                            <th scope="col">Наименование документа</th>
-                            <th scope="col">Наименование работы</th>
-                            <th scope="col">Исполнители</th>
-                            <th scope="col">Контролирующий</th>
-                            <th scope="col">Принимающий</th>
-                            <th scope="col">План</th>
-                            <th scope="col">Корр1</th>
-                            <th scope="col">Корр2</th>
-                            <th scope="col">Корр3</th>
-                            <th scope="col">Факт</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.WorkItems == null || Model.WorkItems.Count == 0)
-                        {
-                            <tr>
-                                <td colspan="11" class="text-muted">Нет данных</td>
-                            </tr>
-                        }
-                        else
-                        {
-                            int index = 1;
-                            foreach (var item in Model.WorkItems)
-                            {
-                                <tr>
-                                    <td>@index</td>
-                                    <td>@item.DocumentName</td>
-                                    <td>@item.WorkName</td>
-                                    <!-- Здесь выводим всех исполнителей в одной ячейке, разделяя запятой -->
-                                    <td>@item.Executor</td>
-                                    <td>@item.Controller</td>
-                                    <td>@item.Approver</td>
-                                    <td>@item.PlanDate?.ToString("dd.MM.yyyy")</td>
-                                    <td>@item.Korrect1?.ToString("dd.MM.yyyy")</td>
-                                    <td>@item.Korrect2?.ToString("dd.MM.yyyy")</td>
-                                    <td>@item.Korrect3?.ToString("dd.MM.yyyy")</td>
-                                    <td>@item.FactDate?.ToString("dd.MM.yyyy")</td>
-                                </tr>
-                                index++;
-                            }
-                        }
-                    </tbody>
-                </table>
+                @await Html.PartialAsync("_WorkItemsTablePartial", Model)
             </div>
         </div>
     </div>
 
-    <!-- Пример второй таблицы (уведомления, если нужно) -->
+    <!-- Таблица уведомлений (пример) -->
     <div class="row mb-4">
         <div class="col-12 col-lg-6">
             <div class="table-responsive">
@@ -154,7 +90,7 @@
         </div>
     </div>
 
-    <!-- Кнопки внизу страницы (пример) -->
+    <!-- Кнопки внизу страницы -->
     <div class="row mb-4">
         <div class="col-12 d-flex gap-3">
             <button type="button" class="btn btn-success shadow-sm"
@@ -176,7 +112,7 @@
         </div>
     </div>
 
-    <!-- Скрытый блок для отчёта (по необходимости) -->
+    <!-- Скрытый блок для отчёта -->
     <div id="reportBlock" class="border p-3" style="display: none;">
         <h4>Сдаточный чек</h4>
         <p>Дата формирования: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</p>
@@ -222,30 +158,23 @@
             </tbody>
         </table>
     </div>
+</div>
 
-</div> <!-- /container-fluid -->
-
-<!-- Скрипты -->
 @section Scripts {
     <script>
-        // Функция показа блока отчёта и отправки на печать (пример)
-        function showReportAndPrint() {
-            const block = document.getElementById('reportBlock');
-            block.style.display = 'block';
-            window.print();
-        }
+        // Обработчик изменения выпадающего списка с исполнителями
+        document.getElementById('executor').addEventListener('change', function () {
+            // Автоматически отправляем форму при изменении выбора
+            document.getElementById('filterForm').submit();
+        });
 
-        // Скрипт для динамического поиска по таблице worksTable (по DocumentName и WorkName)
-        // Реагируем на ввод текста в поле #search
+        // Обработчик для поиска (динамическая фильтрация на стороне клиента)
         document.getElementById('search').addEventListener('keyup', function () {
             var filter = this.value.toLowerCase();
             var rows = document.querySelectorAll('#worksTable tbody tr');
             rows.forEach(function (row) {
-                // Индекс 1 в таблице - "Наименование документа", индекс 2 - "Наименование работы"
                 var docText = row.cells[1].textContent.toLowerCase();
                 var workText = row.cells[2].textContent.toLowerCase();
-
-                // Если строка содержит введённый текст в любом из этих столбцов - показываем, иначе скрываем
                 if (docText.indexOf(filter) > -1 || workText.indexOf(filter) > -1) {
                     row.style.display = "";
                 } else {
@@ -253,5 +182,12 @@
                 }
             });
         });
+
+        // Обработчик для отображения отчёта
+        function showReportAndPrint() {
+            var reportBlock = document.getElementById('reportBlock');
+            reportBlock.style.display = 'block';
+            window.print();
+        }
     </script>
 }

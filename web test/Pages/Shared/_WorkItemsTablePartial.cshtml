@@ -1,0 +1,48 @@
+﻿@model web_test.Pages.IndexModel
+
+<table class="table table-bordered table-hover align-middle text-center" id="worksTable">
+    <thead class="table-dark">
+        <tr>
+            <th scope="col">№</th>
+            <th scope="col">Наименование документа</th>
+            <th scope="col">Наименование работы</th>
+            <th scope="col">Исполнители</th>
+            <th scope="col">Контролирующий</th>
+            <th scope="col">Принимающий</th>
+            <th scope="col">План</th>
+            <th scope="col">Корр1</th>
+            <th scope="col">Корр2</th>
+            <th scope="col">Корр3</th>
+            <th scope="col">Факт</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model.WorkItems == null || Model.WorkItems.Count == 0)
+        {
+            <tr>
+                <td colspan="11" class="text-muted">Нет данных</td>
+            </tr>
+        }
+        else
+        {
+            int index = 1;
+            foreach (var item in Model.WorkItems)
+            {
+                <tr>
+                    <td>@index</td>
+                    <td>@item.DocumentName</td>
+                    <td>@item.WorkName</td>
+                    <td>@item.Executor</td>
+                    <td>@item.Controller</td>
+                    <td>@item.Approver</td>
+                    <td>@item.PlanDate?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Korrect1?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Korrect2?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Korrect3?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.FactDate?.ToString("dd.MM.yyyy")</td>
+                </tr>
+                index++;
+            }
+        }
+    </tbody>
+</table>

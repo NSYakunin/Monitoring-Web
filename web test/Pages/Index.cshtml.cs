@@ -54,7 +54,9 @@ namespace web_test.Pages
 
             // Если даты не заданы, задаём значения по умолчанию
             if (!StartDate.HasValue) StartDate = new DateTime(2014, 1, 1);
-            if (!EndDate.HasValue) EndDate = new DateTime(2025, 1, 31, 8, 11, 31);
+            // Получаем в EndDate последний день текущего месяца
+            DateTime now = DateTime.Now;
+            if (!EndDate.HasValue) EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
 
             // Получаем список уникальных исполнителей для выпадающего списка
             await LoadExecutorsAsync(divisionId);
@@ -212,6 +214,21 @@ namespace web_test.Pages
         /// <summary>
         /// Загрузка уникальных исполнителей для выпадающего списка.
         /// </summary>
+
+        public async Task<IActionResult> OnGetFilterAsync(string executor, DateTime? startDate, DateTime? endDate)
+        {
+            // Устанавливаем значения фильтров
+            this.executor = executor;
+            StartDate = startDate;
+            EndDate = endDate;
+
+            // Загружаем данные для таблицы
+            await LoadDataAsync(int.Parse(HttpContext.Request.Cookies["divisionId"]));
+
+            // Возвращаем Partial View с обновленной таблицей
+            return Partial("_WorkItemsTablePartial", this);
+        }
+
         private async Task LoadExecutorsAsync(int divisionId)
         {
             string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
