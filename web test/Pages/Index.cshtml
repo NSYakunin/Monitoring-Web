@@ -7,6 +7,12 @@
     Layout = "_Layout.cshtml";
 }
 
+<!-- Стили для DataTables и плагинов -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/rowreorder/1.4.1/css/rowReorder.dataTables.min.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.7.0/css/select.dataTables.min.css">
+
 <div class="container-fluid">
     <!-- Шапка: подразделение, пользователь, фильтры -->
     <div class="row mb-4">
@@ -113,26 +119,78 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        // Обработчик изменения выпадающего списка с исполнителями
-        document.getElementById('executor').addEventListener('change', function () {
-            // Автоматически отправляем форму при изменении выбора
-            document.getElementById('filterForm').submit();
-        });
+<!-- Скрипты -->
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/rowreorder/1.4.1/js/dataTables.rowReorder.min.js"></script>
+<script src="https://cdn.datatables.net/select/1.7.0/js/dataTables.select.min.js"></script>
 
-        // Обработчик для поиска (динамическая фильтрация на стороне клиента)
-        document.getElementById('search').addEventListener('keyup', function () {
-            var filter = this.value.toLowerCase();
-            var rows = document.querySelectorAll('#worksTable tbody tr');
-            rows.forEach(function (row) {
-                var docText = row.cells[1].textContent.toLowerCase();
-                var workText = row.cells[2].textContent.toLowerCase();
-                if (docText.indexOf(filter) > -1 || workText.indexOf(filter) > -1) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
+@section Scripts {
+    <style>
+        /* Стиль выделения строк */
+        .dataTables_wrapper .selected {
+            background-color: rgba(224, 247, 250, 0.5) !important;
+        }
+
+        /* Ширина колонок при печати */
+        @@media print {
+            .print-table th:nth-child(2), .print-table td:nth-child(3)
+
+        {
+            width: 40% !important;
+        }
+
+        }
+    </style>
+
+    <script>
+        $(document).ready(function () {
+            // Инициализация DataTables
+            var table = $('#worksTable').DataTable({
+         
+                dom: 'Bfrtip', // Убираем стандартный поиск
+                buttons: [{
+                    extend: 'print',
+                    text: 'Печать',
+                    customize: function (win) {
+                        $(win.document.body).prepend(
+                            '<h3 style="text-align:right;">Отчет по работам</h3>' +
+                            '<p style="text-align:right;">Дата: ' + new Date().toLocaleDateString() + '</p>'
+                        );
+                        $(win.document.body).find('table').addClass('print-table');
+                    }
+                }],
+                columnDefs: [
+                    {
+                        type: 'date-eu', // Формат даты DD.MM.YYYY
+                        targets: [6, 7, 8, 9, 10] // Колонки с датами
+                    },
+                    {
+                        orderable: false,
+                        targets: [1, 2] // Колонка "№" не сортируется
+                    }
+                ],
+                rowReorder: true, // Включить перетаскивание строк
+                select: {
+                    style: 'multi',
+                    selector: 'td:not(:first-child)'
+                },
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/ru.json' // Русский язык
+                },
+                paging: false,
+                stateSave: true
+            });
+
+            // Поиск через ваше поле
+            $('#search').on('keyup', function () {
+                table.search(this.value).draw();
+            });
+
+            // Отправка формы при выборе исполнителя
+            $('#executor').on('change', function () {
+                $('#filterForm').submit();
             });
         });
     </script>

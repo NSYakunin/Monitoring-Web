@@ -11,6 +11,12 @@
           integrity="sha384-..."
           crossorigin="anonymous" />
 
+    <!-- Подключение стилей -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/rowreorder/1.4.1/css/rowReorder.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.7.0/css/select.dataTables.min.css">
+
     <!-- Наш собственный файл стилей -->
     <link rel="stylesheet" href="~/css/site.css" />
 </head>
@@ -28,6 +34,13 @@
     <div class="container-fluid">
         @RenderBody()
 
+        <!-- Подключение скриптов -->
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.0.js"></script>
+        <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+        <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+        <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+        <script type="text/javascript" src="https://cdn.datatables.net/select/1.7.0/js/dataTables.select.min.js"></script>
+
         <!-- Важно: рендерим секцию Scripts, чтобы не было исключений -->
         @RenderSection("Scripts", required: false)
     </div>
@@ -37,5 +50,6 @@
             integrity="sha384-..."
             crossorigin="anonymous">
     </script>
+    <script src="https://cdn.datatables.net/rowreorder/1.4.1/js/dataTables.rowReorder.min.js"></script>
 </body>
 </html>
