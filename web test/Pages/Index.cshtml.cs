@@ -91,7 +91,7 @@ namespace web_test.Pages
             // Базовый запрос
             // Обратите внимание, что здесь wu.dateFact IS NULL (как условие), возможно, в вашем случае нужно по-другому
             string query = @"
-                SELECT 
+                SELECT d.Number, wu.idWork,
                     td.Name + ' ' + d.Name AS DocumentName,
                     w.Name AS WorkName,
                     u.smallName AS Executor,
@@ -151,6 +151,7 @@ namespace web_test.Pages
                     while (await reader.ReadAsync())
                     {
                         // Считываем данные
+                        string documentNumber = reader["Number"]?.ToString() + '/' + reader["idWork"]?.ToString();
                         string documentName = reader["DocumentName"]?.ToString();
                         string workName = reader["WorkName"]?.ToString();
                         string currentExec = reader["Executor"]?.ToString();
@@ -179,6 +180,7 @@ namespace web_test.Pages
                         {
                             workItemsDict[key] = new WorkItem
                             {
+                                DocumentNumber = documentNumber,
                                 DocumentName = documentName,
                                 WorkName = workName,
                                 Executor = currentExec, // Пишем первого исполнителя

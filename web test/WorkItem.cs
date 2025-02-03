@@ -2,6 +2,7 @@
 {
     public class WorkItem
     {
+        public string? DocumentNumber {  get; set; }      // reader["Number"]?.ToString() + '/' + reader["idWork"]?.ToString();
         public string? DocumentName { get; set; }        // td.Name + ' ' + d.Name
         public string? WorkName { get; set; }            // w.Name
         public string? Executor { get; set; }            // u.smallName

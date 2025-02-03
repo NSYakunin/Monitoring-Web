@@ -111,53 +111,6 @@
             </form>
         </div>
     </div>
-
-    <!-- Скрытый блок для отчёта -->
-    <div id="reportBlock" class="border p-3" style="display: none;">
-        <h4>Сдаточный чек</h4>
-        <p>Дата формирования: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</p>
-        <p>
-            Период:
-            @if (Model.StartDate.HasValue && Model.EndDate.HasValue)
-            {
-                @($"{Model.StartDate.Value:dd.MM.yyyy} - {Model.EndDate.Value:dd.MM.yyyy}")
-            }
-            else
-            {
-                <text>не задан</text>
-            }
-        </p>
-
-        <hr />
-
-        <table class="table table-sm table-bordered">
-            <thead>
-                <tr>
-                    <th>Документ</th>
-                    <th>Работа</th>
-                    <th>Исполнитель</th>
-                    <th>План</th>
-                    <th>Корр1</th>
-                    <th>Корр2</th>
-                    <th>Корр3</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model.WorkItems)
-                {
-                    <tr>
-                        <td>@item.DocumentName</td>
-                        <td>@item.WorkName</td>
-                        <td>@item.Executor</td>
-                        <td>@item.PlanDate?.ToString("dd.MM.yyyy")</td>
-                        <td>@item.Korrect1?.ToString("dd.MM.yyyy")</td>
-                        <td>@item.Korrect2?.ToString("dd.MM.yyyy")</td>
-                        <td>@item.Korrect3?.ToString("dd.MM.yyyy")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
 </div>
 
 @section Scripts {
@@ -182,12 +135,5 @@
                 }
             });
         });
-
-        // Обработчик для отображения отчёта
-        function showReportAndPrint() {
-            var reportBlock = document.getElementById('reportBlock');
-            reportBlock.style.display = 'block';
-            window.print();
-        }
     </script>
 }
