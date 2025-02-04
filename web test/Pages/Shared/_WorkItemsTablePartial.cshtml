@@ -1,23 +1,23 @@
 ﻿@model web_test.Pages.IndexModel
 
-<table class="table table-bordered table-hover align-middle text-center" id="worksTable">
+<table class="table table-bordered table-hover text-center">
     <thead class="table-dark">
         <tr>
-            <th scope="col">№</th>
-            <th scope="col">Наименование документа</th>
-            <th scope="col">Наименование работы</th>
-            <th scope="col">Исполнители</th>
-            <th scope="col">Контролирующий</th>
-            <th scope="col">Принимающий</th>
-            <th scope="col">План</th>
-            <th scope="col">Корр1</th>
-            <th scope="col">Корр2</th>
-            <th scope="col">Корр3</th>
-            <th scope="col">Факт</th>
+            <th>№</th>
+            <th>Наименование документа</th>
+            <th>Наименование работы</th>
+            <th>Исполнители</th>
+            <th>Контролирующий</th>
+            <th>Принимающий</th>
+            <th>План</th>
+            <th>Корр1</th>
+            <th>Корр2</th>
+            <th>Корр3</th>
+            <th>Факт</th>
         </tr>
     </thead>
     <tbody>
-        @if (Model.WorkItems == null || Model.WorkItems.Count == 0)
+        @if (Model.WorkItems == null || !Model.WorkItems.Any())
         {
             <tr>
                 <td colspan="11" class="text-muted">Нет данных</td>

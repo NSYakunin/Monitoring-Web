@@ -1,19 +1,15 @@
 ﻿@page
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @model web_test.Pages.IndexModel
-
 @{
     ViewData["Title"] = "Главная страница";
     Layout = "_Layout.cshtml";
 }
+<!-- Подключаем стили для Handsontable (редактора) и Bootstrap (модальное окно) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 
-<!-- Стили для DataTables и плагинов -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css">
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/rowreorder/1.4.1/css/rowReorder.dataTables.min.css">
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.7.0/css/select.dataTables.min.css">
-
-<div class="container-fluid">
+<div class="container-fluid mt-4">
     <!-- Шапка: подразделение, пользователь, фильтры -->
     <div class="row mb-4">
         <div class="col-12">
@@ -22,21 +18,17 @@
                     <h5 class="mb-0">Подразделение: @Model.DepartmentName</h5>
                     <p class="text-muted mb-0">Текущий пользователь: @Model.UserName</p>
                 </div>
-
                 <!-- Форма с фильтрами -->
                 <form method="get" id="filterForm" class="d-flex flex-wrap align-items-end gap-2">
                     <!-- Фильтр по датам -->
                     <div class="d-flex flex-column">
                         <label for="startDate" class="form-label">C даты:</label>
-                        <input type="date" class="form-control" id="startDate" name="StartDate"
-                               value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-dd") : null)" />
+                        <input type="date" class="form-control" id="startDate" name="StartDate" value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-dd") : "")" />
                     </div>
                     <div class="d-flex flex-column">
-                        <label for="endDate" class="form-label">по дату:</label>
-                        <input type="date" class="form-control" id="endDate" name="EndDate"
-                               value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-dd") : null)" />
+                        <label for="endDate" class="form-label">По дату:</label>
+                        <input type="date" class="form-control" id="endDate" name="EndDate" value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-dd") : "")" />
                     </div>
-
                     <!-- Выпадающий список для выбора исполнителя -->
                     <div class="d-flex flex-column">
                         <label for="executor" class="form-label">Исполнитель:</label>
@@ -44,54 +36,29 @@
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
-                                <option value="@item.Value" selected="@(item.Value == Model.executor)">@item.Value</option>
+                                <option value="@item.Value" @@(item.Value == Model.executor ? "selected" : "")>@item.Text</option>
                             }
                         </select>
                     </div>
-
-                    <!-- Строка поиска -->
+                    <!-- Поле поиска -->
                     <div class="d-flex flex-column">
                         <label for="search" class="form-label">Поиск:</label>
-                        <input type="text" class="form-control" id="search" placeholder="Поиск..." />
+                        <input type="text" class="form-control" id="search" name="search" placeholder="Поиск..." value="@(Model.SearchQuery)" />
                     </div>
-
-                    <!-- Кнопка для применения фильтров (даты + исполнитель) на сервере -->
-                    <button type="submit" class="btn btn-primary align-self-bottom">Применить</button>
-
-                    <!-- Кнопка для выхода (очистка куки) -->
-                    <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-outline-danger align-self-end">Выход</a>
+                    <!-- Кнопка для применения фильтров -->
+                    <button type="submit" class="btn btn-primary">Применить</button>
+                    <!-- Кнопка для выхода -->
+                    <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-outline-danger">Выход</a>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Основная таблица работ -->
+    <!-- Таблица работ (Partial view) -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="table-responsive">
+            <div id="workItemsTableContainer">
                 @await Html.PartialAsync("_WorkItemsTablePartial", Model)
-            </div>
-        </div>
-    </div>
-
-    <!-- Таблица уведомлений (пример) -->
-    <div class="row mb-4">
-        <div class="col-12 col-lg-6">
-            <div class="table-responsive">
-                <table class="table table-striped align-middle">
-                    <thead class="table-success">
-                        <tr>
-                            <th scope="col">Напоминание</th>
-                            <th scope="col">Дата</th>
-                            <th scope="col">Кому</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="3" class="text-muted">Нет уведомлений</td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -99,99 +66,101 @@
     <!-- Кнопки внизу страницы -->
     <div class="row mb-4">
         <div class="col-12 d-flex gap-3">
-            <button type="button" class="btn btn-success shadow-sm"
-                    style="transition: transform 0.2s;"
-                    onmousedown="this.style.transform='scale(0.95)'"
-                    onmouseup="this.style.transform='scale(1)'"
-                    onclick="showReportAndPrint()">
+            <button type="button" class="btn btn-success" id="openEditorBtn">
                 Сформировать сдаточный чек
             </button>
-
-            <form method="get">
-                <button type="submit" class="btn btn-secondary shadow-sm"
-                        style="transition: transform 0.2s;"
-                        onmousedown="this.style.transform='scale(0.95)'"
-                        onmouseup="this.style.transform='scale(1)'">
-                    Обновить
-                </button>
-            </form>
+            <button type="button" class="btn btn-secondary" id="refreshBtn">
+                Обновить
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Скрипты -->
-<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/rowreorder/1.4.1/js/dataTables.rowReorder.min.js"></script>
-<script src="https://cdn.datatables.net/select/1.7.0/js/dataTables.select.min.js"></script>
+<!-- Модальное окно для редактора (Handsontable) -->
+<div class="modal fade" id="editorModal" tabindex="-1" aria-labelledby="editorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editorModalLabel">Редактор сдаточного чека</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Контейнер для Handsontable -->
+        <div id="spreadsheet" style="width: 100%; height: 400px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="printBtn">Печать</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Скрипты: jQuery, Bootstrap, Handsontable -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
 @section Scripts {
-    <style>
-        /* Стиль выделения строк */
-        .dataTables_wrapper .selected {
-            background-color: rgba(224, 247, 250, 0.5) !important;
-        }
-
-        /* Ширина колонок при печати */
-        @@media print {
-            .print-table th:nth-child(2), .print-table td:nth-child(3)
-
-        {
-            width: 40% !important;
-        }
-
-        }
-    </style>
-
-    <script>
-        $(document).ready(function () {
-            // Инициализация DataTables
-            var table = $('#worksTable').DataTable({
-         
-                dom: 'Bfrtip', // Убираем стандартный поиск
-                buttons: [{
-                    extend: 'print',
-                    text: 'Печать',
-                    customize: function (win) {
-                        $(win.document.body).prepend(
-                            '<h3 style="text-align:right;">Отчет по работам</h3>' +
-                            '<p style="text-align:right;">Дата: ' + new Date().toLocaleDateString() + '</p>'
-                        );
-                        $(win.document.body).find('table').addClass('print-table');
-                    }
-                }],
-                columnDefs: [
-                    {
-                        type: 'date-eu', // Формат даты DD.MM.YYYY
-                        targets: [6, 7, 8, 9, 10] // Колонки с датами
-                    },
-                    {
-                        orderable: false,
-                        targets: [1, 2] // Колонка "№" не сортируется
-                    }
-                ],
-                rowReorder: true, // Включить перетаскивание строк
-                select: {
-                    style: 'multi',
-                    selector: 'td:not(:first-child)'
-                },
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/ru.json' // Русский язык
-                },
-                paging: false,
-                stateSave: true
-            });
-
-            // Поиск через ваше поле
-            $('#search').on('keyup', function () {
-                table.search(this.value).draw();
-            });
-
-            // Отправка формы при выборе исполнителя
-            $('#executor').on('change', function () {
-                $('#filterForm').submit();
-            });
+<script>
+$(document).ready(function(){
+    // При изменении любого поля формы (даты, исполнитель, поиск) – делаем AJAX‑запрос для обновления таблицы
+    $('#filterForm').on('change keyup', 'input, select', function(e) {
+        e.preventDefault();
+        var data = $('#filterForm').serialize();
+        $.ajax({
+            url: '@Url.Page("Index", "Filter")',
+            type: 'GET',
+            data: data,
+            success: function(result) {
+                $('#workItemsTableContainer').html(result);
+            }
         });
-    </script>
+    });
+
+    // Обновление страницы по нажатию кнопки &laquo;Обновить&raquo;
+    $('#refreshBtn').click(function(){
+        location.reload();
+    });
+
+    // Инициализация модального окна и Handsontable
+    var hot; // переменная для редактора
+    var editorModal = new bootstrap.Modal(document.getElementById('editorModal'), {
+        keyboard: false
+    });
+
+    $('#openEditorBtn').click(function(){
+        // Открываем модальное окно
+        editorModal.show();
+        // Инициализируем Handsontable один раз
+        if (!hot) {
+            var container = document.getElementById('spreadsheet');
+            // Пример данных, которые можно редактировать – здесь можно сформировать содержимое чека
+            var data = [
+                ['Заголовок 1', 'Заголовок 2', 'Заголовок 3'],
+                ['Данные 1', 'Данные 2', 'Данные 3'],
+                ['Данные 4', 'Данные 5', 'Данные 6']
+            ];
+            hot = new Handsontable(container, {
+                data: data,
+                rowHeaders: true,
+                colHeaders: true,
+                contextMenu: true,
+                stretchH: 'all',
+                licenseKey: 'non-commercial-and-evaluation'
+            });
+        }
+    });
+
+    // Обработка кнопки печати – здесь можно доработать сохранение/экспорт
+    $('#printBtn').click(function(){
+        var printContents = document.getElementById('spreadsheet').innerHTML;
+        var originalContents = document.body.innerHTML;
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+        location.reload();
+    });
+});
+</script>
 }
