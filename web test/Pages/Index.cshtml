@@ -42,8 +42,8 @@
                     </div>
                     <!-- Поле поиска -->
                     <div class="d-flex flex-column">
-                        <label for="SearchQuery" class="form-label">Поиск:</label>
-                        <input type="text" class="form-control" id="SearchQuery" name="SearchQuery" placeholder="Поиск..." value="@(Model.SearchQuery)" />
+                        <label for="search" class="form-label">Поиск:</label>
+                        <input type="text" class="form-control" id="search" name="search" placeholder="Поиск..." value="@(Model.SearchQuery)" />
                     </div>
                     <!-- Кнопка для применения фильтров -->
                     <button type="submit" class="btn btn-primary">Применить</button>
@@ -133,62 +133,27 @@
             background-color: #f8f9fa; /* Цвет фона заголовков */
             z-index: 1;
         }
-
-            /* Добавляем в секцию стилей */
-            .handsontable td {
-                font-size: 14px !important;
-                padding: 8px !important;
-            }
-
-            .handsontable th {
-                font-size: 16px !important;
-                font-weight: bold !important;
-                background-color: #f8f9fa !important;
-            }
     </style>
-
-
 <script>
 $(document).ready(function(){
-                // Обработчики изменений фильтров
-            $('#filterForm').on('change keyup', 'input, select', function(e) {
-                // Таймер для задержки запроса при печати
-                clearTimeout(window.filterTimeout);
-                window.filterTimeout = setTimeout(() => {
-                    submitFilters();
-                }, 300);
-            });
-
-        // Обновленный обработчик формы
-        $('#filterForm').on('submit', function(e) {
-            e.preventDefault();
-            submitFilters();
-        });
-
-        // Обновленная функция фильтрации
-        function submitFilters() {
-            const formData = $('#filterForm').serialize();
-
-            $.ajax({
-                url: '@Url.Page("Index")',
-                type: 'GET',
-                data: formData,
-                success: function(result) {
-                    $('#workItemsTableContainer').html(
-                        $(result).find('#workItemsTableContainer').html()
-                    );
-                    // Обновляем данные для редактора
-                    updateEditorData();
-                }
-            });
-        }
-
-        // Обновление данных в редакторе
-        function updateEditorData() {
-            if (hot) {
-                hot.loadData(@Html.Raw(Json.Serialize(Model.WorkItems)));
+    // При изменении любого поля формы (даты, исполнитель, поиск) – делаем AJAX‑запрос для обновления таблицы
+    $('#filterForm').on('change keyup', 'input, select', function(e) {
+        e.preventDefault();
+        var data = $('#filterForm').serialize();
+        $.ajax({
+            url: '@Url.Page("Index", "Filter")',
+            type: 'GET',
+            data: data,
+            success: function(result) {
+                $('#workItemsTableContainer').html(result);
             }
-        }
+        });
+    });
+
+    // Обновление страницы по нажатию кнопки &laquo;Обновить&raquo;
+    $('#refreshBtn').click(function(){
+        location.reload();
+    });
 
     // Инициализация модального окна и Handsontable
     var hot;
@@ -238,56 +203,37 @@ $(document).ready(function(){
         }
     });
 
-        $('#exportPdfBtn').click(async function(){
-            const spreadsheet = document.getElementById('spreadsheet');
-            const originalStyles = {
-                height: spreadsheet.style.height,
-                overflow: spreadsheet.style.overflow,
-                position: spreadsheet.style.position
-            };
+        // Обработка кнопки "Экспорт в PDF"
+            $('#exportPdfBtn').click(function(){
+                // Сохраняем исходные стили таблицы
+                const spreadsheet = document.getElementById('spreadsheet');
+                const originalHeight = spreadsheet.style.height;
+                const originalOverflow = spreadsheet.style.overflow;
 
-            // Временные стили для полного рендеринга
-            spreadsheet.style.height = 'auto';
-            spreadsheet.style.overflow = 'visible';
-            spreadsheet.style.position = 'static';
+                // Временно отключаем прокрутку и увеличиваем высоту таблицы
+                spreadsheet.style.height = 'auto';
+                spreadsheet.style.overflow = 'visible';
 
-            // Задержка для применения стилей
-            await new Promise(resolve => setTimeout(resolve, 500));
+                // Используем html2canvas для создания изображения таблицы
+                html2canvas(document.querySelector("#spreadsheet")).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jspdf.jsPDF({
+                        orientation: 'landscape', // Альбомная ориентация
+                        unit: 'mm',
+                        format: 'a4'
+                    });
 
-            html2canvas(spreadsheet, {
-                scrollY: -window.scrollY,
-                scrollX: -window.scrollX,
-                windowHeight: spreadsheet.scrollHeight,
-                windowWidth: spreadsheet.scrollWidth
-            }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jspdf.jsPDF({
-                    orientation: 'landscape',
-                    unit: 'mm',
-                    format: 'a4'
+                    const imgWidth = 297; // Ширина A4 в мм
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width; // Высота пропорционально ширине
+
+                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                    pdf.save("sdatocny_chek.pdf"); // Сохраняем PDF
+
+                    // Восстанавливаем исходные стили таблицы
+                    spreadsheet.style.height = originalHeight;
+                    spreadsheet.style.overflow = originalOverflow;
                 });
-
-                // Шапка документа
-                pdf.setFontSize(18);
-                pdf.text('Сдаточный чек', 105, 15, { align: 'center' });
-                pdf.setFontSize(12);
-                pdf.text(`Дата формирования: ${new Date().toLocaleDateString()}`, 105, 25, { align: 'center' });
-                pdf.text(`Подразделение: ${@Json.Serialize(Model.DepartmentName)}`, 105, 30, { align: 'center' });
-
-                // Размеры изображения
-                const imgWidth = 297;
-                const pageHeight = 210;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-                // Добавление изображения с отступами
-                pdf.addImage(imgData, 'PNG', 10, 40, imgWidth-20, imgHeight-20);
-
-                // Восстановление стилей
-                Object.assign(spreadsheet.style, originalStyles);
-
-                pdf.save("sdatocny_chek.pdf");
             });
-        });
 });
 </script>
 
