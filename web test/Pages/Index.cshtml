@@ -78,22 +78,24 @@
 
 <!-- Модальное окно для редактора (Handsontable) -->
 <div class="modal fade" id="editorModal" tabindex="-1" aria-labelledby="editorModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="editorModalLabel">Редактор сдаточного чека</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-      </div>
-      <div class="modal-body">
-        <!-- Контейнер для Handsontable -->
-        <div id="spreadsheet" style="width: 100%; height: 400px;"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="printBtn">Печать</button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-      </div>
+    <div class="modal-dialog modal-fullscreen">
+        <!-- Используем modal-fullscreen для максимальной ширины -->
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="editorModalLabel">Редактор сдаточного чека</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Контейнер для Handsontable -->
+                <div id="spreadsheet" style="width: 100%; height: 80vh;"></div> <!-- Увеличиваем высоту -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="exportPdfBtn">Экспорт в PDF</button> <!-- Новая кнопка -->
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <!-- Скрипты: jQuery, Bootstrap, Handsontable -->
@@ -102,6 +104,36 @@
 <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
 @section Scripts {
+
+    <style>
+        /* Ограничиваем ширину таблицы и добавляем горизонтальную прокрутку */
+        #spreadsheet {
+            width: 100%;
+            height: 80vh; /* 80% от высоты окна */
+            overflow: auto;
+            max-width: 100%;
+        }
+
+        /* Устанавливаем минимальную ширину для столбцов */
+        .handsontable th,
+        .handsontable td {
+            min-width: 50px; /* Минимальная ширина столбца */
+            max-width: 300px; /* Максимальная ширина столбца */
+        }
+
+        /* Убираем лишние отступы и padding */
+        .handsontable {
+            box-sizing: border-box;
+        }
+
+        /* Делаем заголовки столбцов фиксированными */
+        .handsontable colHeader {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa; /* Цвет фона заголовков */
+            z-index: 1;
+        }
+    </style>
 <script>
 $(document).ready(function(){
     // При изменении любого поля формы (даты, исполнитель, поиск) – делаем AJAX‑запрос для обновления таблицы
@@ -124,7 +156,7 @@ $(document).ready(function(){
     });
 
     // Инициализация модального окна и Handsontable
-    var hot; // переменная для редактора
+    var hot;
     var editorModal = new bootstrap.Modal(document.getElementById('editorModal'), {
         keyboard: false
     });
@@ -136,31 +168,73 @@ $(document).ready(function(){
         if (!hot) {
             var container = document.getElementById('spreadsheet');
             // Пример данных, которые можно редактировать – здесь можно сформировать содержимое чека
-            var data = [
-                ['Заголовок 1', 'Заголовок 2', 'Заголовок 3'],
-                ['Данные 1', 'Данные 2', 'Данные 3'],
-                ['Данные 4', 'Данные 5', 'Данные 6']
-            ];
+            var data = @Html.Raw(Json.Serialize(Model.WorkItems.Select(item => new object[] {
+                    item.DocumentNumber,
+                    item.DocumentName,
+                    item.WorkName,
+                    item.Executor,
+                    item.Controller,
+                    item.Approver,
+                    item.PlanDate?.ToString("dd.MM.yyyy"),
+                    item.Korrect1?.ToString("dd.MM.yyyy"),
+                    item.Korrect2?.ToString("dd.MM.yyyy"),
+                    item.Korrect3?.ToString("dd.MM.yyyy"),
+                    item.FactDate?.ToString("dd.MM.yyyy")
+                    }).ToList()));
             hot = new Handsontable(container, {
                 data: data,
                 rowHeaders: true,
-                colHeaders: true,
+                colHeaders: [
+                        '№', 'Наименование документа', 'Наименование работы', 'Исполнители',
+                        'Контролирующий', 'Принимающий', 'План', 'Корр1', 'Корр2', 'Корр3', 'Факт'
+                    ],
                 contextMenu: true,
                 stretchH: 'all',
+                manualColumnResize: true, // Включаем возможность изменения ширины столбцов
+                autoColumnSize: { // Автоматически подбираем ширину столбцов
+                    samplingRatio: 23
+                },
+                width: '100%', // Ширина таблицы
+                //height: '900px', // Высота таблицы
+                colWidths: [60, 250, 200, 60, 60, 60, 60, 60, 60, 60, 60], // Пример настройки ширины столбцов
                 licenseKey: 'non-commercial-and-evaluation'
             });
+
         }
     });
 
-    // Обработка кнопки печати – здесь можно доработать сохранение/экспорт
-    $('#printBtn').click(function(){
-        var printContents = document.getElementById('spreadsheet').innerHTML;
-        var originalContents = document.body.innerHTML;
-        document.body.innerHTML = printContents;
-        window.print();
-        document.body.innerHTML = originalContents;
-        location.reload();
-    });
+        // Обработка кнопки "Экспорт в PDF"
+            $('#exportPdfBtn').click(function(){
+                // Сохраняем исходные стили таблицы
+                const spreadsheet = document.getElementById('spreadsheet');
+                const originalHeight = spreadsheet.style.height;
+                const originalOverflow = spreadsheet.style.overflow;
+
+                // Временно отключаем прокрутку и увеличиваем высоту таблицы
+                spreadsheet.style.height = 'auto';
+                spreadsheet.style.overflow = 'visible';
+
+                // Используем html2canvas для создания изображения таблицы
+                html2canvas(document.querySelector("#spreadsheet")).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jspdf.jsPDF({
+                        orientation: 'landscape', // Альбомная ориентация
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+
+                    const imgWidth = 297; // Ширина A4 в мм
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width; // Высота пропорционально ширине
+
+                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                    pdf.save("sdatocny_chek.pdf"); // Сохраняем PDF
+
+                    // Восстанавливаем исходные стили таблицы
+                    spreadsheet.style.height = originalHeight;
+                    spreadsheet.style.overflow = originalOverflow;
+                });
+            });
 });
 </script>
+
 }
