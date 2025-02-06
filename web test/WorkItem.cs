@@ -14,5 +14,7 @@
         public DateTime? Korrect2 { get; set; }
         public DateTime? Korrect3 { get; set; }
         public DateTime? FactDate { get; set; }
+        
+        public DateTime? FactChoiseTime { get; set; }
     }
 }

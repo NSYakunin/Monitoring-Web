@@ -12,6 +12,7 @@ namespace web_test.Pages
 {
     public class IndexModel : PageModel
     {
+        private static List<WorkItem> _allWorkItems = new();
         // Фильтры, которые будут приниматься из строки запроса (QueryString) и/или AJAX‑запроса.
         [BindProperty(SupportsGet = true)]
         public DateTime? StartDate { get; set; }
@@ -71,11 +72,31 @@ namespace web_test.Pages
         /// </summary>
         public async Task<IActionResult> OnGetFilterAsync(string executor, DateTime? startDate, DateTime? endDate, string search)
         {
+
+            var filtered = _allWorkItems.AsQueryable();
             // Берём параметры, переданные из запроса:
             this.executor = executor;
             this.StartDate = startDate;
             this.EndDate = endDate;
             this.SearchQuery = search;
+
+            if (!string.IsNullOrEmpty(executor))
+                filtered = filtered.Where(x =>
+                    x.Executor.Equals(executor, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(SearchQuery))
+            {
+                search = SearchQuery.Trim();
+                filtered = filtered.Where(x =>
+                    (x.DocumentName != null && x.DocumentName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.WorkName != null && x.WorkName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Executor != null && x.Executor.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Controller != null && x.Controller.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Approver != null && x.Approver.Contains(search, StringComparison.OrdinalIgnoreCase)))
+                    ;
+            }
+
+
 
             // Читаем divisionId из cookie (предварительно убеждаемся, что там действительно число)
             if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
@@ -84,14 +105,17 @@ namespace web_test.Pages
                 return BadRequest("Невалидная информация о подразделении");
             }
 
-            // Перезагружаем список исполнителей
+            // Фильтрация по дате EndDate (приоритет Korrect3 -> Korrect2 -> Korrect1 -> PlanDate)
+            if (EndDate.HasValue)
+            {
+                filtered = filtered.Where(x =>
+                    (x.Korrect3 ?? x.Korrect2 ?? x.Korrect1 ?? x.PlanDate) <= EndDate);
+            }
+
             await LoadExecutorsAsync(divisionId);
 
-            // Выбираем отфильтрованные данные
-            await LoadDataAsync(divisionId);
+            WorkItems = filtered.ToList();
 
-            // Возвращаем частичное представление "_WorkItemsTablePartial.cshtml",
-            // в модель которого передаём текущий PageModel (IndexModel) с заполненными WorkItems.
             return Partial("_WorkItemsTablePartial", this);
         }
 
@@ -194,14 +218,15 @@ namespace web_test.Pages
                         DateTime? kor3 = reader["DateKorrect3"] as DateTime?;
                         DateTime? factDate = reader["DateFact"] as DateTime?;
 
-                        // Дополнительная логика – например, если дата плановая > EndDate, пропускаем, но это на ваше усмотрение
-                        if ((planDate.HasValue && planDate > EndDate) ||
-                            (kor1.HasValue && kor1 > EndDate) ||
-                            (kor2.HasValue && kor2 > EndDate) ||
-                            (kor3.HasValue && kor3 > EndDate))
-                        {
-                            continue;
-                        }
+
+                        //// Дополнительная логика – например, если дата плановая > EndDate, пропускаем, но это на ваше усмотрение
+                        //if ((planDate.HasValue && planDate > EndDate) ||
+                        //    (kor1.HasValue && kor1 > EndDate) ||
+                        //    (kor2.HasValue && kor2 > EndDate) ||
+                        //    (kor3.HasValue && kor3 > EndDate))
+                        //{
+                        //    continue;
+                        //}
 
                         // Ключ, чтобы объединять в одну строку записи, у которых совпадают остальные данные, но разные исполнители
                         string key = $"{documentName}|{workName}|{controller}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}";
@@ -219,7 +244,8 @@ namespace web_test.Pages
                                 Korrect1 = kor1,
                                 Korrect2 = kor2,
                                 Korrect3 = kor3,
-                                FactDate = factDate
+                                FactDate = factDate,
+                                FactChoiseTime = EndDate
                             };
                         }
                         else
@@ -241,6 +267,7 @@ namespace web_test.Pages
 
             // Преобразуем результат в список WorkItem и сохраняем в свойство PageModel
             WorkItems = workItemsDict.Values.ToList();
+            _allWorkItems = WorkItems;
         }
 
         /// <summary>
