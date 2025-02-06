@@ -11,6 +11,9 @@ namespace web_test.Pages
 {
     public class IndexModel : PageModel
     {
+        // Добавляем поле для хранения полного набора данных
+        private static List<WorkItem> _allWorkItems = new();
+
         // Фильтры, привязанные из URL
         [BindProperty(SupportsGet = true)]
         public DateTime? StartDate { get; set; }
@@ -30,8 +33,39 @@ namespace web_test.Pages
         public List<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
         public List<SelectListItem> Executors { get; set; } = new List<SelectListItem>();
 
+        private void ApplyFilters()
+        {
+            var filtered = _allWorkItems.AsQueryable();
+
+            if (!string.IsNullOrEmpty(executor))
+                filtered = filtered.Where(x =>
+                    x.Executor.Equals(executor, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(SearchQuery))
+            {
+                var search = SearchQuery.Trim();
+                filtered = filtered.Where(x =>
+                    (x.DocumentName != null && x.DocumentName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.WorkName != null && x.WorkName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Executor != null && x.Executor.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Controller != null && x.Controller.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Approver != null && x.Approver.Contains(search, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            // Фильтр по датам
+            if (StartDate.HasValue)
+                filtered = filtered.Where(x => x.PlanDate >= StartDate.Value.Date);
+
+            if (EndDate.HasValue)
+                filtered = filtered.Where(x => x.PlanDate <= EndDate.Value.Date.AddDays(1));
+
+
+            WorkItems = filtered.ToList();
+            Console.WriteLine($"Отфильтровано записей: {WorkItems.Count}"); // Логирование
+        }
         public async Task OnGet()
         {
+
             // Проверка наличия необходимых кук
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
             {
@@ -52,38 +86,40 @@ namespace web_test.Pages
             DateTime now = DateTime.Now;
             if (!EndDate.HasValue) EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
 
+
+            if (!_allWorkItems.Any())
+            {
+                await LoadAllDataAsync(divisionId);
+            }
+
             await LoadExecutorsAsync(divisionId);
-            await LoadDataAsync(divisionId);
+            // Применяем фильтры к кэшированным данным
+            ApplyFilters();
         }
 
-        /// <summary>
         /// Метод для фильтрации таблицы через AJAX.
-        /// </summary>
-        public async Task<IActionResult> OnGetFilterAsync(string executor, DateTime? startDate, DateTime? endDate, string search)
-        {
-            this.executor = executor;
-            StartDate = startDate;
-            EndDate = endDate;
-            SearchQuery = search;
-            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
-            await LoadDataAsync(divisionId);
-            return Partial("_WorkItemsTablePartial", this);
-        }
+        //public async Task<IActionResult> OnGetFilterAsync(string executor, DateTime? startDate, DateTime? endDate, string search)
+        //{
+        //    this.executor = executor;
+        //    StartDate = startDate;
+        //    EndDate = endDate;
+        //    SearchQuery = search;
+        //    int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+        //    await LoadAllDataAsync(divisionId);
+        //    return Partial("_WorkItemsTablePartial", this);
+        //}
 
-        /// <summary>
         /// Выход пользователя (очистка кук).
-        /// </summary>
         public IActionResult OnGetLogout()
         {
             HttpContext.Response.Cookies.Delete("userName");
             HttpContext.Response.Cookies.Delete("divisionId");
+            _allWorkItems.Clear();
             return RedirectToPage("Login");
         }
 
-        /// <summary>
-        /// Загрузка данных для таблицы с учётом фильтров.
-        /// </summary>
-        private async Task LoadDataAsync(int divisionId)
+
+        private async Task LoadAllDataAsync(int divisionId)
         {
             string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
             string start = StartDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
@@ -117,10 +153,6 @@ namespace web_test.Pages
             if (!string.IsNullOrEmpty(executor))
             {
                 query += " AND u.smallName = @executor ";
-            }
-            if (!string.IsNullOrEmpty(SearchQuery))
-            {
-                query += " AND (td.Name + ' ' + d.Name LIKE '%' + @search + '%' OR w.Name LIKE '%' + @search + '%') ";
             }
 
             query += @"
@@ -201,6 +233,7 @@ namespace web_test.Pages
             }
 
             WorkItems = workItemsDict.Values.ToList();
+            _allWorkItems = WorkItems;
         }
 
         /// <summary>
