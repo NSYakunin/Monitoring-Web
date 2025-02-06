@@ -51,10 +51,12 @@ namespace web_test.Pages
             DepartmentName = $"Отдел №{divisionId}";
 
             // Если даты не заданы, задаём какие-то разумные значения по умолчанию
-            if (!StartDate.HasValue) StartDate = new DateTime(2014, 1, 1);
+            if (!StartDate.HasValue)
+                StartDate = new DateTime(2014, 1, 1);
 
             DateTime now = DateTime.Now;
-            if (!EndDate.HasValue) EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+            if (!EndDate.HasValue)
+                EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
 
             // Загружаем список возможных исполнителей
             await LoadExecutorsAsync(divisionId);
