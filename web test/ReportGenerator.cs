@@ -37,31 +37,31 @@ namespace web_test
                                 columns.RelativeColumn(2); // Номер работы
                                 columns.RelativeColumn(6); // Название документа (шире)
                                 columns.RelativeColumn(5.5f); // Название работы (шире)
-                                columns.RelativeColumn(2); // Исполнитель
+                                columns.RelativeColumn(2.2f); // Исполнитель
                                 columns.RelativeColumn(2); // Контролирующий
-                                columns.RelativeColumn(2.2f); // Принимающий
-                                columns.RelativeColumn(1.5f); // Планонвая дата
-                                columns.RelativeColumn(1.5f); // Корр1
-                                columns.RelativeColumn(1.5f); // Корр2
-                                columns.RelativeColumn(1.5f); // Корр3
-                                columns.RelativeColumn(1.5f); // Факт
-                                columns.RelativeColumn(1.5f); // Подпись
+                                columns.RelativeColumn(2.5f); // Принимающий
+                                columns.RelativeColumn(1.8f); // Планонвая дата
+                                columns.RelativeColumn(1.8f); // Корр1
+                                columns.RelativeColumn(1.8f); // Корр2
+                                columns.RelativeColumn(1.8f); // Корр3
+                                columns.RelativeColumn(1.8f); // Факт
+                                columns.RelativeColumn(1.8f); // Подпись
                             });
 
                             table.Header(header =>
                             {
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Номер");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Название документа");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Название работы");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Исполнитель");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Контроль");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Принимающий");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("План");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Корр1");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Корр2");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Корр3");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Факт");
-                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).Text("Подпись");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Номер");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Название документа");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Название работы");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Исполнитель");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Контроль");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Принимающий");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("План");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Корр1");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Корр2");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Корр3");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Факт");
+                                header.Cell().Background(Colors.Grey.Lighten2).Element(Block).AlignCenter().Text("Подпись");
                             });
                             foreach (var item in data)
                             {
@@ -87,10 +87,10 @@ namespace web_test
                             .ShowOnce()
                             .MinWidth(20)
                             .MinHeight(20)
-                            .AlignCenter()
                             .AlignMiddle()
-                            .ScaleToFit()
                             .ScaleHorizontal(1)
+                            .PaddingHorizontal(1)
+                            .PaddingLeft(2)
                             ;
                     }
                 });
