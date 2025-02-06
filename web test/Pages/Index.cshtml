@@ -5,7 +5,8 @@
     ViewData["Title"] = "Главная страница";
     Layout = "_Layout.cshtml";
 }
-<!-- Подключаем стили для Handsontable (редактора) и Bootstrap (модальное окно) -->
+
+<!-- Подключаем стили -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 
@@ -18,16 +19,18 @@
                     <h5 class="mb-0">Подразделение: @Model.DepartmentName</h5>
                     <p class="text-muted mb-0">Текущий пользователь: @Model.UserName</p>
                 </div>
-                <!-- Форма с фильтрами -->
+                <!-- Форма с фильтрами (скрытая кнопка "Применить" мы убираем) -->
                 <form method="get" id="filterForm" class="d-flex flex-wrap align-items-end gap-2">
-                    <!-- Фильтр по датам -->
+                    <!-- Фильтр по датам (при необходимости тоже можно сделать автообновление) -->
                     <div class="d-flex flex-column">
                         <label for="startDate" class="form-label">C даты:</label>
-                        <input type="date" class="form-control" id="startDate" name="StartDate" value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-dd") : "")" />
+                        <input type="date" class="form-control" id="startDate" name="StartDate" 
+                               value="@(Model.StartDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
                     <div class="d-flex flex-column">
                         <label for="endDate" class="form-label">По дату:</label>
-                        <input type="date" class="form-control" id="endDate" name="EndDate" value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-dd") : "")" />
+                        <input type="date" class="form-control" id="endDate" name="EndDate" 
+                               value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
                     <!-- Выпадающий список для выбора исполнителя -->
                     <div class="d-flex flex-column">
@@ -36,18 +39,19 @@
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
-                                <option value="@item.Value" @@(item.Value == Model.executor ? "selected" : "")>@item.Text</option>
+                                <option value="@item.Value" @@(item.Value == Model.executor ? "selected" : "")>
+                                    @item.Text
+                                </option>
                             }
                         </select>
                     </div>
                     <!-- Поле поиска -->
                     <div class="d-flex flex-column">
                         <label for="search" class="form-label">Поиск:</label>
-                        <input type="text" class="form-control" id="search" name="search" placeholder="Поиск..." value="@(Model.SearchQuery)" />
+                        <input type="text" class="form-control" id="search" name="search" placeholder="Поиск..." 
+                               value="@Model.SearchQuery" />
                     </div>
-                    <!-- Кнопка для применения фильтров -->
-                    <button type="submit" class="btn btn-primary">Применить</button>
-                    <!-- Кнопка для выхода -->
+                    <!-- Кнопка выхода (Logout) -->
                     <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-outline-danger">Выход</a>
                 </form>
             </div>
@@ -88,10 +92,10 @@
             </div>
             <div class="modal-body">
                 <!-- Контейнер для Handsontable -->
-                <div id="spreadsheet" style="width: 100%; height: 80vh;"></div> <!-- Увеличиваем высоту -->
+                <div id="spreadsheet" style="width: 100%; height: 80vh;"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="exportPdfBtn">Экспорт в PDF</button> <!-- Новая кнопка -->
+                <button type="button" class="btn btn-primary" id="exportPdfBtn">Экспорт в PDF</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
             </div>
         </div>
@@ -104,71 +108,79 @@
 <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
 @section Scripts {
-
     <style>
         /* Ограничиваем ширину таблицы и добавляем горизонтальную прокрутку */
         #spreadsheet {
             width: 100%;
-            height: 80vh; /* 80% от высоты окна */
+            height: 80vh;
             overflow: auto;
             max-width: 100%;
         }
 
-        /* Устанавливаем минимальную ширину для столбцов */
         .handsontable th,
         .handsontable td {
-            min-width: 50px; /* Минимальная ширина столбца */
-            max-width: 300px; /* Максимальная ширина столбца */
+            min-width: 50px;
+            max-width: 300px;
         }
 
-        /* Убираем лишние отступы и padding */
         .handsontable {
             box-sizing: border-box;
         }
 
-            /* Делаем заголовки столбцов фиксированными */
-            .handsontable colHeader {
-                position: sticky;
-                top: 0;
-                background-color: #f8f9fa; /* Цвет фона заголовков */
-                z-index: 1;
-            }
+        .handsontable colHeader {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa; /* Цвет фона заголовков */
+            z-index: 1;
+        }
     </style>
 
-<script>
-$(document).ready(function(){
-    // При изменении любого поля формы (даты, исполнитель, поиск) – делаем AJAX‑запрос для обновления таблицы
-    $('#filterForm').on('change keyup', 'input, select', function(e) {
-        e.preventDefault();
-        var data = $('#filterForm').serialize();
-        $.ajax({
-            url: '@Url.Page("Index", "Filter")',
-            type: 'GET',
-            data: data,
-            success: function(result) {
-                $('#workItemsTableContainer').html(result);
-            }
-        });
-    });
+    <script>
+        $(document).ready(function(){
 
-    // Обновление страницы по нажатию кнопки &laquo;Обновить&raquo;
-    $('#refreshBtn').click(function(){
-        location.reload();
-    });
+            // Вешаем обработчик на изменение дат (при необходимости),
+            // выбор исполнителя (#executor) и ввод в поле поиска (#search).
+            // При любом изменении мы формируем AJAX‑запрос для обновления таблицы.
+            $('#startDate, #endDate, #executor, #search').on('change keyup', function(e) {
+                // Делаем запрос на сервер (OnGetFilterAsync)
+                // Соберём параметры в объект
+                var data = {
+                    startDate: $('#startDate').val(),
+                    endDate:   $('#endDate').val(),
+                    executor:  $('#executor').val(),
+                    search:    $('#search').val()
+                };
 
-    // Инициализация модального окна и Handsontable
-    var hot; // переменная для редактора
-    var editorModal = new bootstrap.Modal(document.getElementById('editorModal'), {
-        keyboard: false
-    });
+                $.ajax({
+                    url: '@Url.Page("Index", "Filter")',
+                    type: 'GET',
+                    data: data,
+                    success: function(result) {
+                        // Заменяем контейнер таблицы на обновлённый HTML
+                        $('#workItemsTableContainer').html(result);
+                    }
+                });
+            });
+
+            // Кнопка &laquo;Обновить&raquo; – просто перезагружает страницу.
+            $('#refreshBtn').click(function(){
+                location.reload();
+            });
+
+            // Инициализация модального окна и Handsontable
+            var hot; // переменная для редактора
+            var editorModal = new bootstrap.Modal(document.getElementById('editorModal'), {
+                keyboard: false
+            });
 
             $('#openEditorBtn').click(function(){
                 // Открываем модальное окно
                 editorModal.show();
+
                 // Инициализируем Handsontable один раз
                 if (!hot) {
                     var container = document.getElementById('spreadsheet');
-                    // Пример данных, которые можно редактировать – здесь можно сформировать содержимое чека
+                    // Подготовим массив данных для Handsontable
                     var data = @Html.Raw(Json.Serialize(Model.WorkItems.Select(item => new object[] {
                         item.DocumentNumber,
                         item.DocumentName,
@@ -182,60 +194,55 @@ $(document).ready(function(){
                         item.Korrect3?.ToString("dd.MM.yyyy"),
                         item.FactDate?.ToString("dd.MM.yyyy")
                     }).ToList()));
+
                     hot = new Handsontable(container, {
                         data: data,
                         rowHeaders: true,
                         colHeaders: [
-                                '№', 'Наименование документа', 'Наименование работы', 'Исполнители',
-                                'Контролирующий', 'Принимающий', 'План', 'Корр1', 'Корр2', 'Корр3', 'Факт'
-                            ],
+                            '№ документа/работы', 'Наименование документа', 'Наименование работы', 'Исполнитель(и)',
+                            'Контролирующий', 'Принимающий', 'План', 'Корр1', 'Корр2', 'Корр3', 'Факт'
+                        ],
                         contextMenu: true,
                         stretchH: 'all',
-                        manualColumnResize: true, // Включаем возможность изменения ширины столбцов
-                        autoColumnSize: { // Автоматически подбираем ширину столбцов
-                            samplingRatio: 23
-                        },
-                        width: '100%', // Ширина таблицы
-                        //height: '900px', // Высота таблицы
-                        colWidths: [60, 250, 200, 60, 60, 60, 60, 60, 60, 60, 60], // Пример настройки ширины столбцов
+                        manualColumnResize: true,
+                        autoColumnSize: { samplingRatio: 23 },
+                        width: '100%',
                         licenseKey: 'non-commercial-and-evaluation'
                     });
-
                 }
             });
 
-                // Обработка кнопки "Экспорт в PDF"
-                    $('#exportPdfBtn').click(function(){
-                        // Сохраняем исходные стили таблицы
-                        const spreadsheet = document.getElementById('spreadsheet');
-                        const originalHeight = spreadsheet.style.height;
-                        const originalOverflow = spreadsheet.style.overflow;
+            // Обработка кнопки "Экспорт в PDF"
+            $('#exportPdfBtn').click(function(){
+                // Сохраняем исходные стили таблицы
+                const spreadsheet = document.getElementById('spreadsheet');
+                const originalHeight = spreadsheet.style.height;
+                const originalOverflow = spreadsheet.style.overflow;
 
-                        // Временно отключаем прокрутку и увеличиваем высоту таблицы
-                        spreadsheet.style.height = 'auto';
-                        spreadsheet.style.overflow = 'visible';
+                // Временно отключаем прокрутку и увеличиваем высоту таблицы
+                spreadsheet.style.height = 'auto';
+                spreadsheet.style.overflow = 'visible';
 
-                        // Используем html2canvas для создания изображения таблицы
-                        html2canvas(document.querySelector("#spreadsheet")).then(canvas => {
-                            const imgData = canvas.toDataURL('image/png');
-                            const pdf = new jspdf.jsPDF({
-                                orientation: 'landscape', // Альбомная ориентация
-                                unit: 'mm',
-                                format: 'a4'
-                            });
-
-                            const imgWidth = 297; // Ширина A4 в мм
-                            const imgHeight = (canvas.height * imgWidth) / canvas.width; // Высота пропорционально ширине
-
-                            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-                            pdf.save("sdatocny_chek.pdf"); // Сохраняем PDF
-
-                            // Восстанавливаем исходные стили таблицы
-                            spreadsheet.style.height = originalHeight;
-                            spreadsheet.style.overflow = originalOverflow;
-                        });
+                // Используем html2canvas для создания изображения таблицы
+                html2canvas(spreadsheet).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jspdf.jsPDF({
+                        orientation: 'landscape',
+                        unit: 'mm',
+                        format: 'a4'
                     });
+
+                    const imgWidth = 297; // Ширина A4 (ландшафт)
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                    pdf.save("sdatocny_chek.pdf");
+
+                    // Восстанавливаем стили
+                    spreadsheet.style.height = originalHeight;
+                    spreadsheet.style.overflow = originalOverflow;
+                });
+            });
         });
     </script>
-
 }

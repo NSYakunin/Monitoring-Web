@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
@@ -11,7 +11,7 @@ namespace web_test.Pages
 {
     public class IndexModel : PageModel
     {
-        // �������, ����������� �� URL
+        // Фильтры, которые будут приниматься из строки запроса (QueryString) и/или AJAX‑запроса.
         [BindProperty(SupportsGet = true)]
         public DateTime? StartDate { get; set; }
 
@@ -24,15 +24,18 @@ namespace web_test.Pages
         [BindProperty(SupportsGet = true)]
         public string SearchQuery { get; set; }
 
-        public string DepartmentName { get; set; } = "����� �17";
+        public string DepartmentName { get; set; } = "Отдел №17";
         public string UserName { get; set; } = string.Empty;
 
+        // Список записей, которые выводим в таблицу
         public List<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
+
+        // Список исполнителей для выпадающего списка
         public List<SelectListItem> Executors { get; set; } = new List<SelectListItem>();
 
         public async Task OnGet()
         {
-            // �������� ������� ����������� ���
+            // Проверка наличия необходимых кук
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
             {
                 Response.Redirect("/Login");
@@ -45,33 +48,54 @@ namespace web_test.Pages
                 return;
             }
             UserName = HttpContext.Request.Cookies["userName"];
-            DepartmentName = $"����� �{divisionId}";
+            DepartmentName = $"Отдел №{divisionId}";
 
-            // ���� ���� �� ������, ����� �������� �� ���������
+            // Если даты не заданы, задаём какие-то разумные значения по умолчанию
             if (!StartDate.HasValue) StartDate = new DateTime(2014, 1, 1);
-            DateTime now = DateTime.Now;
-            if (!EndDate.HasValue) EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
 
+            DateTime now = DateTime.Now;
+            if (!EndDate.HasValue)
+                EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+
+            // Загружаем список возможных исполнителей
             await LoadExecutorsAsync(divisionId);
+
+            // Загружаем (фильтруем) данные для таблицы
             await LoadDataAsync(divisionId);
         }
 
         /// <summary>
-        /// ����� ��� ���������� ������� ����� AJAX.
+        /// Метод для асинхронного получения отфильтрованных данных по AJAX (или обычным GET).
         /// </summary>
         public async Task<IActionResult> OnGetFilterAsync(string executor, DateTime? startDate, DateTime? endDate, string search)
         {
+            // Берём параметры, переданные из запроса:
             this.executor = executor;
-            StartDate = startDate;
-            EndDate = endDate;
-            SearchQuery = search;
-            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+            this.StartDate = startDate;
+            this.EndDate = endDate;
+            this.SearchQuery = search;
+
+            // Читаем divisionId из cookie (предварительно убеждаемся, что там действительно число)
+            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
+            {
+                // В реальных условиях, если кука отсутствует, можно вернуть, например, ошибку или редирект.
+                return BadRequest("Невалидная информация о подразделении");
+            }
+
+            // Перезагружаем список исполнителей
+            await LoadExecutorsAsync(divisionId);
+
+            // Выбираем отфильтрованные данные
             await LoadDataAsync(divisionId);
+
+            // Возвращаем частичное представление "_WorkItemsTablePartial.cshtml",
+            // в модель которого передаём текущий PageModel (IndexModel) с заполненными WorkItems.
+
             return Partial("_WorkItemsTablePartial", this);
         }
 
         /// <summary>
-        /// ����� ������������ (������� ���).
+        /// Выход пользователя (очистка кук).
         /// </summary>
         public IActionResult OnGetLogout()
         {
@@ -81,13 +105,16 @@ namespace web_test.Pages
         }
 
         /// <summary>
-        /// �������� ������ ��� ������� � ������ ��������.
+        /// Загрузка и фильтрация данных для таблицы (с учётом выбранных параметров).
         /// </summary>
         private async Task LoadDataAsync(int divisionId)
         {
             string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
-            string start = StartDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
-            string end = EndDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
+
+            // Преобразуем даты в строки подходящего формата
+            string start = StartDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "2014-01-01 00:00:00";
+
+            string end = EndDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
             string query = @"
                 SELECT d.Number, wu.idWork,
@@ -114,15 +141,20 @@ namespace web_test.Pages
                     AND w.datePlan BETWEEN @start AND @end
             ";
 
+            // Дополнительная фильтрация по исполнителю (если задан)
             if (!string.IsNullOrEmpty(executor))
             {
                 query += " AND u.smallName = @executor ";
             }
+
+            // Дополнительная фильтрация по строке поиска (если задана).
+            // Ищем и по названию документа (td.Name + d.Name), и по названию работы (w.Name).
             if (!string.IsNullOrEmpty(SearchQuery))
             {
                 query += " AND (td.Name + ' ' + d.Name LIKE '%' + @search + '%' OR w.Name LIKE '%' + @search + '%') ";
             }
 
+            // Сортировка по номеру документа (тут, судя по фрагменту, была определённая логика сортировки)
             query += @"
                 ORDER BY
                     SUBSTRING(d.Number, 5, 2),
@@ -138,8 +170,10 @@ namespace web_test.Pages
                 cmd.Parameters.AddWithValue("@start", start);
                 cmd.Parameters.AddWithValue("@end", end);
                 cmd.Parameters.AddWithValue("@divId", divisionId);
+
                 if (!string.IsNullOrEmpty(executor))
                     cmd.Parameters.AddWithValue("@executor", executor);
+
                 if (!string.IsNullOrEmpty(SearchQuery))
                     cmd.Parameters.AddWithValue("@search", SearchQuery);
 
@@ -160,6 +194,7 @@ namespace web_test.Pages
                         DateTime? kor3 = reader["DateKorrect3"] as DateTime?;
                         DateTime? factDate = reader["DateFact"] as DateTime?;
 
+                        // Дополнительная логика – например, если дата плановая > EndDate, пропускаем, но это на ваше усмотрение
                         if ((planDate.HasValue && planDate > EndDate) ||
                             (kor1.HasValue && kor1 > EndDate) ||
                             (kor2.HasValue && kor2 > EndDate) ||
@@ -168,6 +203,7 @@ namespace web_test.Pages
                             continue;
                         }
 
+                        // Ключ, чтобы объединять в одну строку записи, у которых совпадают остальные данные, но разные исполнители
                         string key = $"{documentName}|{workName}|{controller}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}";
                         if (!workItemsDict.ContainsKey(key))
                         {
@@ -189,7 +225,10 @@ namespace web_test.Pages
                         else
                         {
                             var existing = workItemsDict[key];
-                            var executorList = existing.Executor.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                            var executorList = existing.Executor
+                                .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)
+                                .ToList();
+
                             if (!string.IsNullOrEmpty(currentExec) && !executorList.Contains(currentExec))
                             {
                                 executorList.Add(currentExec);
@@ -200,14 +239,17 @@ namespace web_test.Pages
                 }
             }
 
+            // Преобразуем результат в список WorkItem и сохраняем в свойство PageModel
             WorkItems = workItemsDict.Values.ToList();
         }
 
         /// <summary>
-        /// �������� ���������� ������������ ��� ����������� ������.
+        /// Загрузка уникальных исполнителей для выпадающего списка.
         /// </summary>
         private async Task LoadExecutorsAsync(int divisionId)
         {
+            Executors.Clear();
+
             string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
             string query = @"
                 SELECT DISTINCT u.smallName AS ExecName
