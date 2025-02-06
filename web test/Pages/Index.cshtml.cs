@@ -54,8 +54,7 @@ namespace web_test.Pages
             if (!StartDate.HasValue) StartDate = new DateTime(2014, 1, 1);
 
             DateTime now = DateTime.Now;
-            if (!EndDate.HasValue)
-                EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+            if (!EndDate.HasValue) EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
 
             // Загружаем список возможных исполнителей
             await LoadExecutorsAsync(divisionId);
@@ -90,7 +89,6 @@ namespace web_test.Pages
 
             // Возвращаем частичное представление "_WorkItemsTablePartial.cshtml",
             // в модель которого передаём текущий PageModel (IndexModel) с заполненными WorkItems.
-
             return Partial("_WorkItemsTablePartial", this);
         }
 
@@ -113,7 +111,6 @@ namespace web_test.Pages
 
             // Преобразуем даты в строки подходящего формата
             string start = StartDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "2014-01-01 00:00:00";
-
             string end = EndDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
             string query = @"

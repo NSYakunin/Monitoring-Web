@@ -1,5 +1,6 @@
 ﻿namespace web_test
 {
+    // Класс модели, описывающей одну строку данных
     public class WorkItem
     {
         public string DocumentNumber { get; set; }
