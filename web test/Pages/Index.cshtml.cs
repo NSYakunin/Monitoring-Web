@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace web_test.Pages
 {
@@ -277,6 +278,42 @@ namespace web_test.Pages
                         }
                     }
                 }
+            }
+        }
+
+
+        // Метод POST: Генерируем PDF
+        // (важно: делаем async, чтобы дождаться LoadDataAsync)
+        public async Task<IActionResult> OnPostAsync()
+        {
+            // Снова проверяем куки
+            if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
+            {
+                return RedirectToPage("/Login");
+            }
+            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
+            {
+                return RedirectToPage("/Login");
+            }
+
+            // Заново подгружаем данные
+            await LoadDataAsync(divisionId);
+
+            // Генерация PDF
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "report.pdf");
+            ReportGenerator.GeneratePdf(this.WorkItems, "Мой отчет");
+
+            // Проверяем, существует ли файл
+            if (System.IO.File.Exists(filePath))
+            {
+                // Отдаём файл пользователю (браузер скачает)
+                var fileBytes = System.IO.File.ReadAllBytes(filePath);
+                return File(fileBytes, "application/pdf", "report.pdf");
+            }
+            else
+            {
+                // Можно добавить сообщение об ошибке, но для упрощения:
+                return Page();
             }
         }
     }

@@ -58,6 +58,20 @@
         </div>
     </div>
 
+    <form method="post" class="position-relative">
+        <!-- Скрытые поля, чтобы фильтры передавались при POST -->
+        <input type="hidden" asp-for="StartDate" />
+        <input type="hidden" asp-for="EndDate" />
+        <input type="hidden" asp-for="executor" />
+        <input type="hidden" asp-for="SearchQuery" />
+
+        <button type="submit" class="btn btn-primary" id="generatePdfBtn">
+            <span class="spinner-border spinner-border-sm me-2"
+                  role="status" aria-hidden="true" style="display:none;"></span>
+            Сгенерировать PDF
+        </button>
+    </form>
+
     <!-- Таблица работ (Partial view) -->
     <div class="row mb-4">
         <div class="col-12">
@@ -136,6 +150,12 @@
     </style>
 
     <script>
+                // При клике на кнопку "Сгенерировать PDF" показываем спиннер
+        document.getElementById("generatePdfBtn").addEventListener("click", function () {
+            // Показываем иконку загрузки (spinner)
+            this.querySelector(".spinner-border").style.display = "inline-block";
+        });
+
         $(document).ready(function(){
 
             // Вешаем обработчик на изменение дат (при необходимости),
