@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
@@ -6,15 +6,14 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace web_test.Pages
 {
     public class IndexModel : PageModel
     {
-        // ��������� ���� ��� �������� ������� ������ ������
         private static List<WorkItem> _allWorkItems = new();
-
-        // �������, ����������� �� URL
+        // Фильтры, которые будут приниматься из строки запроса (QueryString) и/или AJAX‑запроса.
         [BindProperty(SupportsGet = true)]
         public DateTime? StartDate { get; set; }
 
@@ -27,46 +26,18 @@ namespace web_test.Pages
         [BindProperty(SupportsGet = true)]
         public string SearchQuery { get; set; }
 
-        public string DepartmentName { get; set; } = "����� �17";
+        public string DepartmentName { get; set; } = "Отдел №17";
         public string UserName { get; set; } = string.Empty;
 
+        // Список записей, которые выводим в таблицу
         public List<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
+
+        // Список исполнителей для выпадающего списка
         public List<SelectListItem> Executors { get; set; } = new List<SelectListItem>();
 
-        private void ApplyFilters()
-        {
-            var filtered = _allWorkItems.AsQueryable();
-
-            if (!string.IsNullOrEmpty(executor))
-                filtered = filtered.Where(x =>
-                    x.Executor.Equals(executor, StringComparison.OrdinalIgnoreCase));
-
-            if (!string.IsNullOrEmpty(SearchQuery))
-            {
-                var search = SearchQuery.Trim();
-                filtered = filtered.Where(x =>
-                    (x.DocumentName != null && x.DocumentName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.WorkName != null && x.WorkName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.Executor != null && x.Executor.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.Controller != null && x.Controller.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.Approver != null && x.Approver.Contains(search, StringComparison.OrdinalIgnoreCase)));
-            }
-
-            // ������ �� �����
-            if (StartDate.HasValue)
-                filtered = filtered.Where(x => x.PlanDate >= StartDate.Value.Date);
-
-            if (EndDate.HasValue)
-                filtered = filtered.Where(x => x.PlanDate <= EndDate.Value.Date.AddDays(1));
-
-
-            WorkItems = filtered.ToList();
-            Console.WriteLine($"������������� �������: {WorkItems.Count}"); // �����������
-        }
         public async Task OnGet()
         {
-
-            // �������� ������� ����������� ���
+            // Проверка наличия необходимых кук
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
             {
                 Response.Redirect("/Login");
@@ -79,51 +50,95 @@ namespace web_test.Pages
                 return;
             }
             UserName = HttpContext.Request.Cookies["userName"];
-            DepartmentName = $"����� �{divisionId}";
+            DepartmentName = $"Отдел №{divisionId}";
 
-            // ���� ���� �� ������, ����� �������� �� ���������
-            if (!StartDate.HasValue) StartDate = new DateTime(2014, 1, 1);
+            // Если даты не заданы, задаём какие-то разумные значения по умолчанию
+            if (!StartDate.HasValue)
+                StartDate = new DateTime(2014, 1, 1);
+
             DateTime now = DateTime.Now;
-            if (!EndDate.HasValue) EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+            if (!EndDate.HasValue)
+                EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
 
+            // Загружаем список возможных исполнителей
+            await LoadExecutorsAsync(divisionId);
 
-            if (!_allWorkItems.Any())
+            // Загружаем (фильтруем) данные для таблицы
+            await LoadDataAsync(divisionId);
+        }
+
+        /// <summary>
+        /// Метод для асинхронного получения отфильтрованных данных по AJAX (или обычным GET).
+        /// </summary>
+        public async Task<IActionResult> OnGetFilterAsync(string executor, DateTime? startDate, DateTime? endDate, string search)
+        {
+
+            var filtered = _allWorkItems.AsQueryable();
+            // Берём параметры, переданные из запроса:
+            this.executor = executor;
+            this.StartDate = startDate;
+            this.EndDate = endDate;
+            this.SearchQuery = search;
+
+            if (!string.IsNullOrEmpty(executor))
+                filtered = filtered.Where(x =>
+                    x.Executor.Equals(executor, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(SearchQuery))
             {
-                await LoadAllDataAsync(divisionId);
+                search = SearchQuery.Trim();
+                filtered = filtered.Where(x =>
+                    (x.DocumentName != null && x.DocumentName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.WorkName != null && x.WorkName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Executor != null && x.Executor.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Controller != null && x.Controller.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Approver != null && x.Approver.Contains(search, StringComparison.OrdinalIgnoreCase)))
+                    ;
+            }
+
+
+
+            // Читаем divisionId из cookie (предварительно убеждаемся, что там действительно число)
+            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
+            {
+                // В реальных условиях, если кука отсутствует, можно вернуть, например, ошибку или редирект.
+                return BadRequest("Невалидная информация о подразделении");
+            }
+
+            // Фильтрация по дате EndDate (приоритет Korrect3 -> Korrect2 -> Korrect1 -> PlanDate)
+            if (EndDate.HasValue)
+            {
+                filtered = filtered.Where(x =>
+                    (x.Korrect3 ?? x.Korrect2 ?? x.Korrect1 ?? x.PlanDate) <= EndDate);
             }
 
             await LoadExecutorsAsync(divisionId);
-            // ��������� ������� � ������������ ������
-            ApplyFilters();
+
+            WorkItems = filtered.ToList();
+
+            return Partial("_WorkItemsTablePartial", this);
         }
 
-        /// ����� ��� ���������� ������� ����� AJAX.
-        //public async Task<IActionResult> OnGetFilterAsync(string executor, DateTime? startDate, DateTime? endDate, string search)
-        //{
-        //    this.executor = executor;
-        //    StartDate = startDate;
-        //    EndDate = endDate;
-        //    SearchQuery = search;
-        //    int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
-        //    await LoadAllDataAsync(divisionId);
-        //    return Partial("_WorkItemsTablePartial", this);
-        //}
-
-        /// ����� ������������ (������� ���).
+        /// <summary>
+        /// Выход пользователя (очистка кук).
+        /// </summary>
         public IActionResult OnGetLogout()
         {
             HttpContext.Response.Cookies.Delete("userName");
             HttpContext.Response.Cookies.Delete("divisionId");
-            _allWorkItems.Clear();
             return RedirectToPage("Login");
         }
 
-
-        private async Task LoadAllDataAsync(int divisionId)
+        /// <summary>
+        /// Загрузка и фильтрация данных для таблицы (с учётом выбранных параметров).
+        /// </summary>
+        private async Task LoadDataAsync(int divisionId)
         {
             string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
-            string start = StartDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
-            string end = EndDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
+
+            // Преобразуем даты в строки подходящего формата
+            string start = StartDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "2014-01-01 00:00:00";
+            string end = EndDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
             string query = @"
                 SELECT d.Number, wu.idWork,
@@ -150,11 +165,20 @@ namespace web_test.Pages
                     AND w.datePlan BETWEEN @start AND @end
             ";
 
+            // Дополнительная фильтрация по исполнителю (если задан)
             if (!string.IsNullOrEmpty(executor))
             {
                 query += " AND u.smallName = @executor ";
             }
 
+            // Дополнительная фильтрация по строке поиска (если задана).
+            // Ищем и по названию документа (td.Name + d.Name), и по названию работы (w.Name).
+            if (!string.IsNullOrEmpty(SearchQuery))
+            {
+                query += " AND (td.Name + ' ' + d.Name LIKE '%' + @search + '%' OR w.Name LIKE '%' + @search + '%') ";
+            }
+
+            // Сортировка по номеру документа (тут, судя по фрагменту, была определённая логика сортировки)
             query += @"
                 ORDER BY
                     SUBSTRING(d.Number, 5, 2),
@@ -170,8 +194,10 @@ namespace web_test.Pages
                 cmd.Parameters.AddWithValue("@start", start);
                 cmd.Parameters.AddWithValue("@end", end);
                 cmd.Parameters.AddWithValue("@divId", divisionId);
+
                 if (!string.IsNullOrEmpty(executor))
                     cmd.Parameters.AddWithValue("@executor", executor);
+
                 if (!string.IsNullOrEmpty(SearchQuery))
                     cmd.Parameters.AddWithValue("@search", SearchQuery);
 
@@ -192,14 +218,17 @@ namespace web_test.Pages
                         DateTime? kor3 = reader["DateKorrect3"] as DateTime?;
                         DateTime? factDate = reader["DateFact"] as DateTime?;
 
-                        if ((planDate.HasValue && planDate > EndDate) ||
-                            (kor1.HasValue && kor1 > EndDate) ||
-                            (kor2.HasValue && kor2 > EndDate) ||
-                            (kor3.HasValue && kor3 > EndDate))
-                        {
-                            continue;
-                        }
 
+                        //// Дополнительная логика – например, если дата плановая > EndDate, пропускаем, но это на ваше усмотрение
+                        //if ((planDate.HasValue && planDate > EndDate) ||
+                        //    (kor1.HasValue && kor1 > EndDate) ||
+                        //    (kor2.HasValue && kor2 > EndDate) ||
+                        //    (kor3.HasValue && kor3 > EndDate))
+                        //{
+                        //    continue;
+                        //}
+
+                        // Ключ, чтобы объединять в одну строку записи, у которых совпадают остальные данные, но разные исполнители
                         string key = $"{documentName}|{workName}|{controller}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}";
                         if (!workItemsDict.ContainsKey(key))
                         {
@@ -215,13 +244,17 @@ namespace web_test.Pages
                                 Korrect1 = kor1,
                                 Korrect2 = kor2,
                                 Korrect3 = kor3,
-                                FactDate = factDate
+                                FactDate = factDate,
+                                FactChoiseTime = EndDate
                             };
                         }
                         else
                         {
                             var existing = workItemsDict[key];
-                            var executorList = existing.Executor.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                            var executorList = existing.Executor
+                                .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)
+                                .ToList();
+
                             if (!string.IsNullOrEmpty(currentExec) && !executorList.Contains(currentExec))
                             {
                                 executorList.Add(currentExec);
@@ -232,15 +265,18 @@ namespace web_test.Pages
                 }
             }
 
+            // Преобразуем результат в список WorkItem и сохраняем в свойство PageModel
             WorkItems = workItemsDict.Values.ToList();
             _allWorkItems = WorkItems;
         }
 
         /// <summary>
-        /// �������� ���������� ������������ ��� ����������� ������.
+        /// Загрузка уникальных исполнителей для выпадающего списка.
         /// </summary>
         private async Task LoadExecutorsAsync(int divisionId)
         {
+            Executors.Clear();
+
             string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
             string query = @"
                 SELECT DISTINCT u.smallName AS ExecName
@@ -269,6 +305,42 @@ namespace web_test.Pages
                         }
                     }
                 }
+            }
+        }
+
+
+        // Метод POST: Генерируем PDF
+        // (важно: делаем async, чтобы дождаться LoadDataAsync)
+        public async Task<IActionResult> OnPostAsync()
+        {
+            // Снова проверяем куки
+            if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
+            {
+                return RedirectToPage("/Login");
+            }
+            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
+            {
+                return RedirectToPage("/Login");
+            }
+
+            // Заново подгружаем данные
+            await LoadDataAsync(divisionId);
+
+            // Генерация PDF
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "report.pdf");
+            ReportGenerator.GeneratePdf(this.WorkItems, "Мой отчет");
+
+            // Проверяем, существует ли файл
+            if (System.IO.File.Exists(filePath))
+            {
+                // Отдаём файл пользователю (браузер скачает)
+                var fileBytes = System.IO.File.ReadAllBytes(filePath);
+                return File(fileBytes, "application/pdf", "report.pdf");
+            }
+            else
+            {
+                // Можно добавить сообщение об ошибке, но для упрощения:
+                return Page();
             }
         }
     }
