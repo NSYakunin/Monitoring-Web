@@ -28,10 +28,10 @@ namespace web_test.Pages
         public DateTime? EndDate { get; set; }
 
         [BindProperty(SupportsGet = true)]
-        public string Executor { get; set; } // Раньше было executor (с маленькой)
+        public string? Executor { get; set; } // Раньше было executor (с маленькой)
 
         [BindProperty(SupportsGet = true)]
-        public string SearchQuery { get; set; }
+        public string? SearchQuery { get; set; }
 
         public string DepartmentName { get; set; } = "Отдел №17";
         public string UserName { get; set; } = string.Empty;
@@ -310,7 +310,6 @@ namespace web_test.Pages
 
 
         // Метод POST: Генерируем PDF
-        // (важно: делаем async, чтобы дождаться LoadDataAsync)
         public async Task<IActionResult> OnPostAsync()
         {
             if (!HttpContext.Request.Cookies.TryGetValue("divisionId", out var divisionIdString)
