@@ -80,41 +80,9 @@
             </div>
         </div>
     </div>
-
-    <!-- Кнопки внизу страницы -->
-    <div class="row mb-4">
-        <div class="col-12 d-flex gap-3">
-            <button type="button" class="btn btn-success" id="openEditorBtn">
-                Сформировать сдаточный чек
-            </button>
-            <button type="button" class="btn btn-secondary" id="refreshBtn">
-                Обновить
-            </button>
-        </div>
-    </div>
 </div>
 
-<!-- Модальное окно для редактора (Handsontable) -->
-<div class="modal fade" id="editorModal" tabindex="-1" aria-labelledby="editorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
-        <!-- Используем modal-fullscreen для максимальной ширины -->
-        <div class="modal-content">
 
-            <div class="modal-header">
-                <h5 class="modal-title" id="editorModalLabel">Редактор сдаточного чека</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Контейнер для Handsontable -->
-                <div id="spreadsheet" style="width: 100%; height: 80vh;"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="exportPdfBtn">Экспорт в PDF</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Скрипты: jQuery, Bootstrap, Handsontable -->
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -150,117 +118,29 @@
     </style>
 
     <script>
-                // При клике на кнопку "Сгенерировать PDF" показываем спиннер
-        document.getElementById("generatePdfBtn").addEventListener("click", function () {
-            // Показываем иконку загрузки (spinner)
-            this.querySelector(".spinner-border").style.display = "inline-block";
-        });
-
         $(document).ready(function(){
-
-            // Вешаем обработчик на изменение дат (при необходимости),
-            // выбор исполнителя (#executor) и ввод в поле поиска (#search).
-            // При любом изменении мы формируем AJAX‑запрос для обновления таблицы.
+            // При изменении полей фильтра вызываем AJAX
             $('#startDate, #endDate, #executor, #search').on('change keyup', function(e) {
-                // Делаем запрос на сервер (OnGetFilterAsync)
-                // Соберём параметры в объект
-                var data = {
-                    startDate: $('#startDate').val(),
-                    endDate:   $('#endDate').val(),
-                    executor:  $('#executor').val(),
-                    search:    $('#search').val()
-                };
-
                 $.ajax({
-                    url: '@Url.Page("Index", "Filter")',
+                    url: '@Url.Page("Index", "Filter")', // вызов OnGetFilterAsync
                     type: 'GET',
-                    data: data,
+                    data: {
+                        startDate: $('#startDate').val(),
+                        endDate:   $('#endDate').val(),
+                        executor:  $('#executor').val(),
+                        searchQuery: $('#search').val()
+                    },
                     success: function(result) {
-                        // Заменяем контейнер таблицы на обновлённый HTML
+                        // Подменяем только таблицу
                         $('#workItemsTableContainer').html(result);
+
+                        // А также подставляем эти значения в скрытые поля,
+                        // чтобы при нажатии "Сгенерировать PDF" они ушли в OnPost
+                        $('input[name="StartDate"]').val($('#startDate').val());
+                        $('input[name="EndDate"]').val($('#endDate').val());
+                        $('input[name="Executor"]').val($('#executor').val());
+                        $('input[name="SearchQuery"]').val($('#search').val());
                     }
-                });
-            });
-
-            // Кнопка &laquo;Обновить&raquo; – просто перезагружает страницу.
-            $('#refreshBtn').click(function(){
-                location.reload();
-            });
-
-            // Инициализация модального окна и Handsontable
-            var hot; // переменная для редактора
-            var editorModal = new bootstrap.Modal(document.getElementById('editorModal'), {
-                keyboard: false
-            });
-
-            $('#openEditorBtn').click(function(){
-                // Открываем модальное окно
-                editorModal.show();
-
-                // Инициализируем Handsontable один раз
-                if (!hot) {
-                    var container = document.getElementById('spreadsheet');
-                    // Подготовим массив данных для Handsontable
-                    var data = @Html.Raw(Json.Serialize(Model.WorkItems.Select(item => new object[] {
-                        item.DocumentNumber,
-                        item.DocumentName,
-                        item.WorkName,
-                        item.Executor,
-                        item.Controller,
-                        item.Approver,
-                        item.PlanDate?.ToString("dd.MM.yyyy"),
-                        item.Korrect1?.ToString("dd.MM.yyyy"),
-                        item.Korrect2?.ToString("dd.MM.yyyy"),
-                        item.Korrect3?.ToString("dd.MM.yyyy"),
-                        item.FactDate?.ToString("dd.MM.yyyy")
-                    }).ToList()));
-
-                    hot = new Handsontable(container, {
-                        data: data,
-                        rowHeaders: true,
-                        colHeaders: [
-                            '№ документа/работы', 'Наименование документа', 'Наименование работы', 'Исполнитель(и)',
-                            'Контролирующий', 'Принимающий', 'План', 'Корр1', 'Корр2', 'Корр3', 'Факт'
-                        ],
-                        contextMenu: true,
-                        stretchH: 'all',
-                        manualColumnResize: true,
-                        autoColumnSize: { samplingRatio: 23 },
-                        width: '100%',
-                        licenseKey: 'non-commercial-and-evaluation'
-                    });
-                }
-            });
-
-            // Обработка кнопки "Экспорт в PDF"
-            $('#exportPdfBtn').click(function(){
-                // Сохраняем исходные стили таблицы
-                const spreadsheet = document.getElementById('spreadsheet');
-                const originalHeight = spreadsheet.style.height;
-                const originalOverflow = spreadsheet.style.overflow;
-
-                // Временно отключаем прокрутку и увеличиваем высоту таблицы
-                spreadsheet.style.height = 'auto';
-                spreadsheet.style.overflow = 'visible';
-
-                // Используем html2canvas для создания изображения таблицы
-                html2canvas(spreadsheet).then(canvas => {
-                    const imgData = canvas.toDataURL('image/png');
-                    const pdf = new jspdf.jsPDF({
-                        orientation: 'landscape',
-                        unit: 'mm',
-                        format: 'a4'
-                    });
-
-                    const imgWidth = 297; // Ширина A4 (ландшафт)
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-                    pdf.save("sdatocny_chek.pdf");
-
-                    // Восстанавливаем стили
-                    spreadsheet.style.height = originalHeight;
-                    spreadsheet.style.overflow = originalOverflow;
                 });
             });
         });

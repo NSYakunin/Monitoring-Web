@@ -73,6 +73,54 @@ namespace web_test.Pages
 
             ApplyFilters();
         }
+        // Этот метод будет вызываться только AJAX-ом,
+        // и возвращать кусок HTML (partial) без layout.
+        public async Task<IActionResult> OnGetFilterAsync(
+            DateTime? startDate,
+            DateTime? endDate,
+            string? executor,
+            string? searchQuery)
+        {
+            // Проверяем куки (как в основном OnGet)
+            if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
+                return new JsonResult(new { error = "Не найдены куки divisionId" });
+
+            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
+                return new JsonResult(new { error = "Некорректный divisionId в куках" });
+
+            UserName = HttpContext.Request.Cookies["userName"];
+            DepartmentName = $"Отдел №{divisionId}";
+
+            // Задаём даты "по умолчанию", если не переданы
+            if (!startDate.HasValue)
+                startDate = new DateTime(2014, 1, 1);
+
+            DateTime now = DateTime.Now;
+            if (!endDate.HasValue)
+                endDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+
+            // Присваиваем в текущую модель, чтобы ApplyFilters() работал
+            StartDate = startDate;
+            EndDate = endDate;
+            Executor = executor;
+            SearchQuery = searchQuery;
+
+            // Снова подтягиваем списки
+            Executors = await _workItemService.GetExecutorsAsync(divisionId);
+            WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
+
+            ApplyFilters(); // Фильтруем
+
+            // Возвращаем partial с таблицей.
+            // В Razor Pages нет встроенного "return PartialView(...)",
+            // поэтому используем PartialViewResult следующим образом:
+            return new PartialViewResult
+            {
+                ViewName = "_WorkItemsTablePartial", // наш partial
+                ViewData = this.ViewData,
+                // Модель (IndexModel) чтобы внутри partial'а работали @Model.WorkItems
+            };
+        }
 
         private void ApplyFilters()
         {
@@ -112,25 +160,24 @@ namespace web_test.Pages
         {
             // Проверяем куки
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
-            {
                 return RedirectToPage("/Login");
-            }
-            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
-            {
-                return RedirectToPage("/Login");
-            }
 
-            // Применяем фильтры к уже загруженным данным
+            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
+                return RedirectToPage("/Login");
+
+            // Загружаем из БД через сервис (или берем из кэша)
+            Executors = await _workItemService.GetExecutorsAsync(divisionId);
+            WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
+
+            // Применяем те же фильтры, что и в OnGet / OnGetFilterAsync
             ApplyFilters();
 
-            // Генерация PDF с уже отфильтрованными WorkItems
+            // Генерация PDF из уже отфильтрованных WorkItems
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "report.pdf");
             ReportGenerator.GeneratePdf(this.WorkItems, "Мой отчет");
 
-            // Проверяем, существует ли файл
             if (System.IO.File.Exists(filePath))
             {
-                // Отдаём файл пользователю
                 var fileBytes = System.IO.File.ReadAllBytes(filePath);
                 return File(fileBytes, "application/pdf", "report.pdf");
             }
