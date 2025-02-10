@@ -81,10 +81,9 @@ namespace web_test
                                 table.Cell().Element(Block).AlignCenter().Text(item.FactDate?.ToString("dd.MM.yy") ?? "");
                                 table.Cell().Element(Block).AlignCenter().Text("    ");
                             }
-                        })
-                        ;
+                        });
                         static IContainer Block(IContainer container)
-                    {
+                        {
                         return container
                             .Border(0.5f)
                             .ShowEntire() // Запрещаем разрыв содержимого
@@ -92,10 +91,17 @@ namespace web_test
                             .MinHeight(20)
                             .AlignMiddle()
                             .PaddingHorizontal(1)
-                            .PaddingLeft(2)
-                            ;
-                        ;
-                    }
+                            .PaddingLeft(2);
+                        }
+                    // Footer с номерами страниц
+                    page.Footer()
+                        .AlignCenter()
+                        .Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
                 });
             })
             .GeneratePdf(); // Сохраняем файл в wwwroot/report.pdf

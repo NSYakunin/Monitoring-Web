@@ -77,7 +77,7 @@ namespace web_test.Pages
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
             Dev = await _workItemService.GetDevAsync(divisionId);
 
-            DepartmentName = $"Подразделение {Dev}";
+            DepartmentName = Dev;
 
 
             ApplyFilters();
@@ -187,7 +187,7 @@ namespace web_test.Pages
 
             // Генерация PDF в памяти
             var pdfBytes = ReportGenerator.GeneratePdf(this.WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", Dev);
-            return File(pdfBytes, "application/pdf", "report.pdf");
+            return File(pdfBytes, "application/pdf", $"Чек от {DateTime.Now.ToShortDateString()}.pdf");
         }
     }
 }
