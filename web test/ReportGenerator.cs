@@ -95,12 +95,33 @@ namespace web_test
                         }
                     // Footer с номерами страниц
                     page.Footer()
-                        .AlignCenter()
-                        .Text(text =>
+                        .Column(column =>
                         {
-                            text.CurrentPageNumber();
-                            text.Span(" / ");
-                            text.TotalPages();
+                            // Номера страниц (на всех страницах)
+                            column.Item().AlignCenter().Text(text =>
+                            {
+                                text.CurrentPageNumber();
+                                text.Span(" / ");
+                                text.TotalPages();
+                            });
+
+                            // Блок подписей (только на последней странице)
+                            column.Item()
+                                .ShowIf(ctx => ctx.PageNumber == ctx.TotalPages)
+                                .PaddingTop(0)
+                                .Row(row =>
+                                {
+                                    row.AutoItem().AlignLeft().Text("Ответственное лицо");
+                                    row.RelativeItem().AlignRight().Text("Ответственное лицо ИАЦ");
+                                });
+
+                            column.Item()
+                                .ShowIf(ctx => ctx.PageNumber == ctx.TotalPages)
+                                .Row(row =>
+                                {
+                                    row.AutoItem().AlignLeft().Text("_______________________/");
+                                    row.RelativeItem().AlignRight().Text("____________________________/");
+                                });
                         });
                 });
             })
