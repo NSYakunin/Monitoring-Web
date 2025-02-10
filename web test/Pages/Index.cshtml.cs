@@ -45,6 +45,10 @@ namespace web_test.Pages
 
         public async Task OnGet()
         {
+
+            _cache.Remove("AllWorkItems");
+            _cache.Remove("Executors");
+
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
             {
                 Response.Redirect("/Login");
@@ -151,6 +155,8 @@ namespace web_test.Pages
 
         public IActionResult OnGetLogout()
         {
+            _cache.Remove("AllWorkItems");
+            _cache.Remove("Executors");
             HttpContext.Response.Cookies.Delete("userName");
             HttpContext.Response.Cookies.Delete("divisionId");
             return RedirectToPage("Login");
@@ -172,9 +178,11 @@ namespace web_test.Pages
             // Применяем те же фильтры, что и в OnGet / OnGetFilterAsync
             ApplyFilters();
 
+
+
             // Генерация PDF из уже отфильтрованных WorkItems
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "report.pdf");
-            ReportGenerator.GeneratePdf(this.WorkItems, "Мой отчет");
+            ReportGenerator.GeneratePdf(this.WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}");
 
             if (System.IO.File.Exists(filePath))
             {

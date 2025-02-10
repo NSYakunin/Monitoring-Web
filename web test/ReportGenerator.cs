@@ -16,36 +16,40 @@ namespace web_test
             {
                 container.Page(page =>
                 {
-                    page.Size(PageSizes.A4.Landscape()); // Горизонтальная ориентация
+                    page.Size(PageSizes.A4.Landscape());
                     page.Margin(1, Unit.Centimetre);
                     page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(8));
+                    page.DefaultTextStyle(x => x.FontSize(7));
 
+                    // Шапка - только на первой странице
                     page.Header()
-                        .Text(title)
-                        .FontSize(18)
+                        .ShowOnce()
+                        .Text(title )
+                        .FontSize(16)
                         .Bold()
                         .FontColor(Colors.Blue.Darken4)
-                        .SemiBold().FontSize(18).AlignCenter();
+                        .AlignCenter();
+                        
 
                     page.Content()
                         .PaddingVertical(1, Unit.Centimetre)
                         .Table(table =>
                         {
+
                             table.ColumnsDefinition(columns =>
                             {
-                                columns.RelativeColumn(2); // Номер работы
-                                columns.RelativeColumn(6); // Название документа (шире)
-                                columns.RelativeColumn(5.5f); // Название работы (шире)
+                                columns.RelativeColumn(3); // Номер работы
+                                columns.RelativeColumn(7); // Название документа (шире)
+                                columns.RelativeColumn(6.5f); // Название работы (шире)
                                 columns.RelativeColumn(2.2f); // Исполнитель
                                 columns.RelativeColumn(2); // Контролирующий
-                                columns.RelativeColumn(2.5f); // Принимающий
-                                columns.RelativeColumn(1.8f); // Планонвая дата
-                                columns.RelativeColumn(1.8f); // Корр1
-                                columns.RelativeColumn(1.8f); // Корр2
-                                columns.RelativeColumn(1.8f); // Корр3
-                                columns.RelativeColumn(1.8f); // Факт
-                                columns.RelativeColumn(1.8f); // Подпись
+                                columns.RelativeColumn(2.2f); // Принимающий
+                                columns.RelativeColumn(1.5f); // Планонвая дата
+                                columns.RelativeColumn(1.5f); // Корр1
+                                columns.RelativeColumn(1.5f); // Корр2
+                                columns.RelativeColumn(1.5f); // Корр3
+                                columns.RelativeColumn(1.5f); // Факт
+                                columns.RelativeColumn(1.5f); // Подпись
                             });
 
                             table.Header(header =>
@@ -65,35 +69,35 @@ namespace web_test
                             });
                             foreach (var item in data)
                             {
-                                table.Cell().Element(Block).Text(item.DocumentNumber);
+                                table.Cell().Element(Block).AlignCenter().Text(item.DocumentNumber);
                                 table.Cell().Element(Block).Text(item.DocumentName);
                                 table.Cell().Element(Block).Text(item.WorkName);
-                                table.Cell().Element(Block).Text(item.Executor);
-                                table.Cell().Element(Block).Text(item.Controller);
-                                table.Cell().Element(Block).Text(item.Approver);
-                                table.Cell().Element(Block).Text(item.PlanDate?.ToString("dd.MM.yyyy") ?? "");
-                                table.Cell().Element(Block).Text(item.Korrect1?.ToString("dd.MM.yyyy") ?? "");
-                                table.Cell().Element(Block).Text(item.Korrect2?.ToString("dd.MM.yyyy") ?? "");
-                                table.Cell().Element(Block).Text(item.Korrect3?.ToString("dd.MM.yyyy") ?? "");
-                                table.Cell().Element(Block).Text(item.FactDate?.ToString("dd.MM.yyyy") ?? "");
-                                table.Cell().Element(Block).Text("    ");
+                                table.Cell().Element(Block).AlignCenter().Text(item.Executor);
+                                table.Cell().Element(Block).AlignCenter().Text(item.Controller);
+                                table.Cell().Element(Block).AlignCenter().Text(item.Approver);
+                                table.Cell().Element(Block).AlignCenter().Text(item.PlanDate?.ToString("dd.MM.yy") ?? "");
+                                table.Cell().Element(Block).AlignCenter().Text(item.Korrect1?.ToString("dd.MM.yy") ?? "");
+                                table.Cell().Element(Block).AlignCenter().Text(item.Korrect2?.ToString("dd.MM.yy") ?? "");
+                                table.Cell().Element(Block).AlignCenter().Text(item.Korrect3?.ToString("dd.MM.yy") ?? "");
+                                table.Cell().Element(Block).AlignCenter().Text(item.FactDate?.ToString("dd.MM.yy") ?? "");
+                                table.Cell().Element(Block).AlignCenter().Text("    ");
                             }
                         });
-
-                    static IContainer Block(IContainer container)
+                        static IContainer Block(IContainer container)
                     {
                         return container
                             .Border(0.5f)
-                            .ShowOnce()
+                            .ShowEntire() // Запрещаем разрыв содержимого
                             .MinWidth(20)
                             .MinHeight(20)
                             .AlignMiddle()
-                            .ScaleHorizontal(1)
                             .PaddingHorizontal(1)
                             .PaddingLeft(2)
                             ;
+                        ;
                     }
-                });
+                }
+                );
             })
             .GeneratePdf(filePath); // Сохраняем файл в wwwroot/report.pdf
         }

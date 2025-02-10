@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
@@ -76,10 +77,13 @@ namespace web_test.Services
                     AND wu.idUser IN (SELECT idUser FROM Users WHERE idDivision = @divId)
             ";
 
+            var workItemsDict = new Dictionary<string, WorkItem>();
+
             using (var conn = new SqlConnection(connectionString))
             using (var cmd = new SqlCommand(query, conn))
             {
                 cmd.Parameters.AddWithValue("@divId", divisionId);
+
                 await conn.OpenAsync();
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
@@ -97,23 +101,44 @@ namespace web_test.Services
                         DateTime? kor3 = reader["DateKorrect3"] as DateTime?;
                         DateTime? factDate = reader["DateFact"] as DateTime?;
 
-                        workItems.Add(new WorkItem
+                        // Ключ, чтобы объединять в одну строку записи, у которых совпадают остальные данные, но разные исполнители
+                        string key = $"{documentName}|{workName}|{controller}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}";
+                        if (!workItemsDict.ContainsKey(key))
                         {
-                            DocumentNumber = documentNumber,
-                            DocumentName = documentName,
-                            WorkName = workName,
-                            Executor = currentExec,
-                            Controller = controller,
-                            Approver = approver,
-                            PlanDate = planDate,
-                            Korrect1 = kor1,
-                            Korrect2 = kor2,
-                            Korrect3 = kor3,
-                            FactDate = factDate
-                        });
+                            workItemsDict[key] = new WorkItem
+                            {
+                                DocumentNumber = documentNumber,
+                                DocumentName = documentName,
+                                WorkName = workName,
+                                Executor = currentExec,
+                                Controller = controller,
+                                Approver = approver,
+                                PlanDate = planDate,
+                                Korrect1 = kor1,
+                                Korrect2 = kor2,
+                                Korrect3 = kor3,
+                                FactDate = factDate
+                            };
+                        }
+                        else
+                        {
+                            var existing = workItemsDict[key];
+                            var executorList = existing.Executor
+                                .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)
+                                .ToList();
+
+                            if (!string.IsNullOrEmpty(currentExec) && !executorList.Contains(currentExec))
+                            {
+                                executorList.Add(currentExec);
+                                existing.Executor = string.Join(", ", executorList);
+                            }
+                        }
                     }
                 }
             }
+
+            // Преобразуем результат в список WorkItem и сохраняем в свойство PageModel
+            workItems = workItemsDict.Values.ToList();
             return workItems;
         }
 
