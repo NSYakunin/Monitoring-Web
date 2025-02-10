@@ -48,6 +48,19 @@ namespace web_test.Services
             return executors;
         }
 
+        public async Task<string> GetDevAsync(int divisionId)
+        {
+            const string cacheKey = "Dev";
+            if (!_cache.TryGetValue(cacheKey, out string dev))
+            {
+                dev = await LoadExecutorDevisionNameFromDatabaseAsync(divisionId);
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetSlidingExpiration(TimeSpan.FromMinutes(_configuration.GetValue<int>("CacheSettings:CacheDurationInMinutes")));
+                _cache.Set(cacheKey, dev, cacheEntryOptions);
+            }
+            return dev;
+        }
+
         private async Task<List<WorkItem>> LoadWorkItemsFromDatabaseAsync(int divisionId)
         {
             var workItems = new List<WorkItem>();
@@ -145,11 +158,14 @@ namespace web_test.Services
         private async Task<List<SelectListItem>> LoadExecutorsFromDatabaseAsync(int divisionId)
         {
             var executors = new List<SelectListItem>();
+            string executorDevisionName = string.Empty;
             string connectionString = _configuration.GetConnectionString("DefaultConnection");
 
             string query = @"
-                SELECT DISTINCT u.smallName AS ExecName
+                SELECT DISTINCT u.smallName AS ExecName, d.smallNameDivision as Dev
                 FROM Users u
+				INNER JOIN Divisions d
+				ON d.idDivision = u.idDivision
                 WHERE u.idDivision = @divId
                 ORDER BY u.smallName
             ";
@@ -164,6 +180,7 @@ namespace web_test.Services
                     while (await reader.ReadAsync())
                     {
                         string executorName = reader["ExecName"]?.ToString();
+                        executorDevisionName = reader["Dev"]?.ToString();
                         if (!string.IsNullOrEmpty(executorName))
                         {
                             executors.Add(new SelectListItem
@@ -173,9 +190,45 @@ namespace web_test.Services
                             });
                         }
                     }
+                    if (!string.IsNullOrEmpty(executorDevisionName))
+                    {
+                        executors.Add(new SelectListItem
+                        {
+                            Value = executorDevisionName,
+                            Text = executorDevisionName
+                        });
+                    }
                 }
             }
             return executors;
         }
+
+        private async Task<string> LoadExecutorDevisionNameFromDatabaseAsync(int divisionId)
+        {
+            string executorDevisionName = string.Empty;
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+            string query = @"
+                SELECT DISTINCT smallNameDivision as Dev
+                FROM Divisions
+                WHERE idDivision = @divId
+            ";
+
+            using (var conn = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("@divId", divisionId);
+                await conn.OpenAsync();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        executorDevisionName = reader["Dev"]?.ToString();
+                    }
+                }
+            }
+            return executorDevisionName;
+        }
+
     }
 }

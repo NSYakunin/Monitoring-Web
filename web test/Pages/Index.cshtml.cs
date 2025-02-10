@@ -42,12 +42,14 @@ namespace web_test.Pages
 
         public List<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
         public List<SelectListItem> Executors { get; set; } = new List<SelectListItem>();
+        public string Dev { get; set; } = " ";
 
         public async Task OnGet()
         {
 
             _cache.Remove("AllWorkItems");
             _cache.Remove("Executors");
+            _cache.Remove("Dev");
 
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
             {
@@ -63,7 +65,6 @@ namespace web_test.Pages
             }
 
             UserName = HttpContext.Request.Cookies["userName"];
-            DepartmentName = $"Отдел №{divisionId}";
 
             if (!StartDate.HasValue)
                 StartDate = new DateTime(2014, 1, 1);
@@ -74,6 +75,10 @@ namespace web_test.Pages
 
             Executors = await _workItemService.GetExecutorsAsync(divisionId);
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
+            Dev = await _workItemService.GetDevAsync(divisionId);
+
+            DepartmentName = $"Подразделение {Dev}";
+
 
             ApplyFilters();
         }
@@ -174,25 +179,15 @@ namespace web_test.Pages
             // Загружаем из БД через сервис (или берем из кэша)
             Executors = await _workItemService.GetExecutorsAsync(divisionId);
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
+            Dev = await _workItemService.GetDevAsync(divisionId);
 
             // Применяем те же фильтры, что и в OnGet / OnGetFilterAsync
             ApplyFilters();
 
 
-
-            // Генерация PDF из уже отфильтрованных WorkItems
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "report.pdf");
-            ReportGenerator.GeneratePdf(this.WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}");
-
-            if (System.IO.File.Exists(filePath))
-            {
-                var fileBytes = System.IO.File.ReadAllBytes(filePath);
-                return File(fileBytes, "application/pdf", "report.pdf");
-            }
-            else
-            {
-                return Page();
-            }
+            // Генерация PDF в памяти
+            var pdfBytes = ReportGenerator.GeneratePdf(this.WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", Dev);
+            return File(pdfBytes, "application/pdf", "report.pdf");
         }
     }
 }

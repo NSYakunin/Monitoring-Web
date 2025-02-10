@@ -8,11 +8,10 @@ namespace web_test
 {
     public class ReportGenerator
     {
-        public static void GeneratePdf(List<WorkItem> data, string title)
+        public static byte[] GeneratePdf(List<WorkItem> data, string title, string Dep)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "report.pdf");
 
-            Document.Create(container =>
+            return Document.Create(container =>
             {
                 container.Page(page =>
                 {
@@ -24,12 +23,12 @@ namespace web_test
                     // Шапка - только на первой странице
                     page.Header()
                         .ShowOnce()
-                        .Text(title )
-                        .FontSize(16)
+                        .Text(title + '\n' + "Подразделение: " + Dep)
+                        .FontSize(15)
                         .Bold()
                         .FontColor(Colors.Blue.Darken4)
                         .AlignCenter();
-                        
+
 
                     page.Content()
                         .PaddingVertical(1, Unit.Centimetre)
@@ -82,7 +81,8 @@ namespace web_test
                                 table.Cell().Element(Block).AlignCenter().Text(item.FactDate?.ToString("dd.MM.yy") ?? "");
                                 table.Cell().Element(Block).AlignCenter().Text("    ");
                             }
-                        });
+                        })
+                        ;
                         static IContainer Block(IContainer container)
                     {
                         return container
@@ -96,10 +96,9 @@ namespace web_test
                             ;
                         ;
                     }
-                }
-                );
+                });
             })
-            .GeneratePdf(filePath); // Сохраняем файл в wwwroot/report.pdf
+            .GeneratePdf(); // Сохраняем файл в wwwroot/report.pdf
         }
     }
 }
