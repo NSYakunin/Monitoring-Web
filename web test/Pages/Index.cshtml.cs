@@ -107,5 +107,37 @@ namespace web_test.Pages
             HttpContext.Response.Cookies.Delete("divisionId");
             return RedirectToPage("Login");
         }
+
+        public async Task<IActionResult> OnPostAsync()
+        {
+            // Проверяем куки
+            if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
+            {
+                return RedirectToPage("/Login");
+            }
+            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
+            {
+                return RedirectToPage("/Login");
+            }
+
+            // Применяем фильтры к уже загруженным данным
+            ApplyFilters();
+
+            // Генерация PDF с уже отфильтрованными WorkItems
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "report.pdf");
+            ReportGenerator.GeneratePdf(this.WorkItems, "Мой отчет");
+
+            // Проверяем, существует ли файл
+            if (System.IO.File.Exists(filePath))
+            {
+                // Отдаём файл пользователю
+                var fileBytes = System.IO.File.ReadAllBytes(filePath);
+                return File(fileBytes, "application/pdf", "report.pdf");
+            }
+            else
+            {
+                return Page();
+            }
+        }
     }
 }
