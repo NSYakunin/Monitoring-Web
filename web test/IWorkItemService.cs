@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace web_test
+namespace Monitoring.UI
 {
     public interface IWorkItemService
     {

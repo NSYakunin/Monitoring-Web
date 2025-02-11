@@ -2,9 +2,8 @@
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using System.IO;
-using web_test;
 
-namespace web_test
+namespace Monitoring.UI
 {
     public class ReportGenerator
     {
@@ -82,8 +81,8 @@ namespace web_test
                                 table.Cell().Element(Block).AlignCenter().Text("    ");
                             }
                         });
-                        static IContainer Block(IContainer container)
-                        {
+                    static IContainer Block(IContainer container)
+                    {
                         return container
                             .Border(0.5f)
                             .ShowEntire() // Запрещаем разрыв содержимого
@@ -92,7 +91,7 @@ namespace web_test
                             .AlignMiddle()
                             .PaddingHorizontal(1)
                             .PaddingLeft(2);
-                        }
+                    }
                     // Footer с номерами страниц
                     page.Footer()
                         .Column(column =>

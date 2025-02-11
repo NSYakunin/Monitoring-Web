@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace web_test.Pages.Shared
+namespace Monitoring.UI.Pages.Shared
 {
     public class _WorkItemsTablePartialModel : PageModel
     {

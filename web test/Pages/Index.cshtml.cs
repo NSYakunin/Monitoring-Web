@@ -8,9 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using web_test.Services;
 
-namespace web_test.Pages
+namespace Monitoring.UI.Pages
 {
     public class IndexModel : PageModel
     {
@@ -126,7 +125,7 @@ namespace web_test.Pages
             return new PartialViewResult
             {
                 ViewName = "_WorkItemsTablePartial", // наш partial
-                ViewData = this.ViewData,
+                ViewData = ViewData,
                 // Модель (IndexModel) чтобы внутри partial'а работали @Model.WorkItems
             };
         }
@@ -142,11 +141,11 @@ namespace web_test.Pages
             {
                 var search = SearchQuery.Trim();
                 filtered = filtered.Where(x =>
-                    (x.DocumentName != null && x.DocumentName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.WorkName != null && x.WorkName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.Executor != null && x.Executor.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.Controller != null && x.Controller.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.Approver != null && x.Approver.Contains(search, StringComparison.OrdinalIgnoreCase)));
+                    x.DocumentName != null && x.DocumentName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    x.WorkName != null && x.WorkName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    x.Executor != null && x.Executor.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    x.Controller != null && x.Controller.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    x.Approver != null && x.Approver.Contains(search, StringComparison.OrdinalIgnoreCase));
             }
 
             if (EndDate.HasValue)
@@ -186,7 +185,7 @@ namespace web_test.Pages
 
 
             // Генерация PDF в памяти
-            var pdfBytes = ReportGenerator.GeneratePdf(this.WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", Dev);
+            var pdfBytes = ReportGenerator.GeneratePdf(WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", Dev);
             return File(pdfBytes, "application/pdf", $"Чек от {DateTime.Now.ToShortDateString()}.pdf");
         }
     }

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace web_test.Pages
+namespace Monitoring.UI.Pages
 {
     public class AboutModel : PageModel
     {

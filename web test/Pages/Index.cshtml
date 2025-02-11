@@ -1,6 +1,7 @@
 ﻿@page
+@using Monitoring.UI.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@model web_test.Pages.IndexModel
+@model             IndexModel
 @{
     ViewData["Title"] = "Главная страница";
     Layout = "_Layout.cshtml";
@@ -39,7 +40,8 @@
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
-                                <option value="@item.Value" @@(item.Value == Model.executor ? "selected" : "")>
+                                <option value="@item.Value"
+                                        selected="@(item.Value == Model.Executor ? "selected" : null)">
                                     @item.Text
                                 </option>
                             }

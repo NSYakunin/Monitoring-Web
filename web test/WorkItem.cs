@@ -1,4 +1,4 @@
-﻿namespace web_test
+﻿namespace Monitoring.UI
 {
     // Класс модели, описывающей одну строку данных
     public class WorkItem
@@ -14,7 +14,7 @@
         public DateTime? Korrect2 { get; set; }
         public DateTime? Korrect3 { get; set; }
         public DateTime? FactDate { get; set; }
-        
+
         public DateTime? FactChoiseTime { get; set; }
     }
 }

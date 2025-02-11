@@ -1,3 +1,0 @@
-﻿namespace web_test
-{
-}
