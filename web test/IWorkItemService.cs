@@ -4,7 +4,9 @@ namespace web_test
 {
     public interface IWorkItemService
     {
-        Task<List<WorkItem>> LoadWorkItemsAsync(int divisionId, DateTime startDate, DateTime endDate, string executor);
-        Task<List<SelectListItem>> LoadExecutorsAsync(int divisionId);
+        Task<List<WorkItem>> GetAllWorkItemsAsync(int divisionId);
+        Task<List<SelectListItem>> GetExecutorsAsync(int divisionId);
+
+        Task<string> GetDevAsync(int divisionId);
     }
 }
