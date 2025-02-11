@@ -40,7 +40,8 @@
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
-                                <option value="@item.Value" @@(item.Value == Model.executor ? "selected" : "")>
+                                <option value="@item.Value"
+                                        selected="@(item.Value == Model.Executor ? "selected" : null)">
                                     @item.Text
                                 </option>
                             }
