@@ -1,4 +1,4 @@
-﻿namespace web_test
+﻿namespace Monitoring.UI
 {
     public class WorkItemDto
     {

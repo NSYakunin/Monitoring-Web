@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http; // Для работы с куки / сессией (зависит от версии ASP.NET Core)
+using Microsoft.AspNetCore.Http;
 
-namespace web_test.Pages
+namespace Monitoring.UI.Pages
 {
     public class LoginModel : PageModel
     {

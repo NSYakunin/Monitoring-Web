@@ -9,7 +9,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace web_test.Services
+namespace Monitoring.UI
 {
     public class WorkItemService : IWorkItemService
     {

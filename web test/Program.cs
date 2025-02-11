@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Infrastructure;
-using web_test.Services;
-using web_test;
+using Monitoring.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 
