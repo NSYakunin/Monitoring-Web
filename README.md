@@ -58,15 +58,33 @@
 
 ## Структура проекта
 ```plaintext
-Мониторинг
-├── Monitoring.sln             // Файл решения .NET
-├── Monitoring                 // Основная папка проекта
-│   ├── Pages                  // Razor Pages
-│   │   ├── Index.cshtml       // Главная страница (текущая таблица)
-│   │   ├── Index.cshtml.cs    // Логика обработчика Razor Page
-│   │   └── ...                // Другие страницы (пока не созданы)
-│   ├── Models                 // Классы данных и модели EF
-│   ├── Services               // Сервисы (логика генерирования PDF и т.п.)
-│   ├── wwwroot                // Статические файлы: CSS, JS и пр.
-│   └── ...                    // Другие папки проекта
-└── README.md                  // Текущий файл README
+Monitoring.sln
+ ├─ Monitoring.Domain
+ │   └─ Entities
+ │       ├─ WorkItem.cs
+ │       └─ ... (будут другие сущности)
+ ├─ Monitoring.Application
+ │   ├─ Interfaces
+ │   │   ├─ IWorkItemService.cs
+ │   │   ├─ ILoginService.cs
+ │   │   └─ ...
+ │   ├─ Models
+ │   │   └─ (DTO, ViewModels)
+ │   ├─ Services
+ │   │   └─ ReportGenerator.cs
+ │   └─ ...
+ ├─ Monitoring.Infrastructure
+ │   ├─ Services
+ │   │   ├─ WorkItemService.cs
+ │   │   └─ LoginService.cs
+ │   └─ ...
+ └─ Monitoring.UI
+     ├─ Pages
+     │   ├─ Index.cshtml
+     │   ├─ Index.cshtml.cs
+     │   ├─ Login.cshtml
+     │   ├─ Login.cshtml.cs
+     │   └─ Shared Partials (партиалы)
+     ├─ wwwroot
+     ├─ appsettings.json
+     └─ Program.cs
