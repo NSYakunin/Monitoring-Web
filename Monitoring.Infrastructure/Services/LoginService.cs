@@ -5,7 +5,6 @@ using System.Data.SqlClient;
 
 namespace Monitoring.Infrastructure.Services
 {
-    internal class LoginService
     /// <summary>
     /// Реализация ILoginService.
     /// Код, напрямую работающий с БД Users.
@@ -111,7 +110,7 @@ namespace Monitoring.Infrastructure.Services
                             divisionIdFromDb = reader["idDivision"] as int?;
 
                             if (passwordFromDb == password)
-    {
+                            {
                                 isPasswordValid = true;
                             }
                         }

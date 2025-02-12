@@ -2,7 +2,6 @@
 
 namespace Monitoring.Application.Interfaces
 {
-    internal interface ILoginService
     /// <summary>
     /// Интерфейс для логики авторизации/аутентификации.
     /// </summary>
