@@ -3,6 +3,7 @@ using Monitoring.Domain.Entities;
 
 namespace Monitoring.Application.Interfaces
 {
+    internal interface IWorkItemService
     /// <summary>
     /// Интерфейс для работы с WorkItem'ами
     /// (загрузка, фильтрация, пр. операции).
