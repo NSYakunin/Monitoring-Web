@@ -1,4 +1,3 @@
-// Monitoring.UI/Program.cs
 using Monitoring.Application.Interfaces;
 using Monitoring.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
@@ -6,26 +5,16 @@ using Monitoring.Infrastructure.Services.Fake;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1) Подключаем RazorPages
 builder.Services.AddRazorPages();
 
-// 2) Подключаем MemoryCache (если используешь)
 builder.Services.AddMemoryCache();
 
-// 3) Регистрируем наши сервисы из Infrastructure
-//    Связываем интерфейс -> реализация
 // builder.Services.AddScoped<IWorkItemService, WorkItemService>();
 builder.Services.AddScoped<IWorkItemService, FakeWorkItemService>();
 // builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<ILoginService, FakeLoginService>();
 
-// 4) Конфигурация подключения к БД (если appsettings.json, то вот так)
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-
-// Или можешь настроить явно в appsettings.Development.json и т.д.
-
-// Если хочешь, можешь напрямую прописать:
-// builder.Services.Configure<...>(...) // Или просто хранить в builder.Configuration
 
 var app = builder.Build();
 

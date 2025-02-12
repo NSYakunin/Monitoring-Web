@@ -6,6 +6,6 @@
         public string WorkName { get; set; }
         public string Executor { get; set; }
         public DateTime? PlanDate { get; set; }
-        // Остальные поля
+
     }
 }
