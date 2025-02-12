@@ -1,45 +1,41 @@
+// Monitoring.UI/Pages/Login.cshtml.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+using Monitoring.Application.Interfaces;
 
 namespace Monitoring.UI.Pages
 {
     public class LoginModel : PageModel
     {
-        // Список всех пользователей (их smallName) для выпадающего списка
+        private readonly ILoginService _loginService;
+
+        public LoginModel(ILoginService loginService)
+        {
+            _loginService = loginService;
+        }
+
+        // Список всех пользователей
         public List<string> AllUsers { get; set; } = new List<string>();
 
-        // Поле, куда биндим выбранного пользователя (значение select)
+        // Поля, куда привязываем форму
         [BindProperty]
         public string SelectedUser { get; set; } = string.Empty;
 
-        // Текущий пользователь
-        public string UserName { get; set; } = string.Empty;
-
-        // Поле для пароля
         [BindProperty]
         public string Password { get; set; } = string.Empty;
 
-        // Ошибка авторизации (если такая возникнет)
+        // Если ошибка авторизации
         public string ErrorMessage { get; set; } = string.Empty;
 
-        // Подключаемся к БД
-        private readonly string connectionString = "Data Source=ASCON;Initial Catalog=DocumentControl;Persist Security Info=False;User ID=test;Password=test123456789";
-
-        // При заходе на страницу (GET) загружаем список пользователей
         public async Task OnGet()
         {
-            await LoadAllUsersAsync();
+            AllUsers = await _loginService.GetAllUsersAsync();
         }
 
-        // При отправке формы (POST) тоже загрузим пользователей (чтобы не пропадали из списка), 
-        // и проверим авторизацию
         public async Task<IActionResult> OnPost()
         {
-            await LoadAllUsersAsync();  // чтобы при неудаче мы опять показали список пользователей
+            // Снова грузим список (чтобы не пропали при перезагрузке страницы)
+            AllUsers = await _loginService.GetAllUsersAsync();
 
             if (string.IsNullOrEmpty(SelectedUser))
             {
@@ -53,122 +49,27 @@ namespace Monitoring.UI.Pages
                 return Page();
             }
 
-            // Проверяем в БД пароль и idDivision
-            int? divisionIdFromDb = null;
-            bool isPasswordValid = false;
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                // Выбираем пароль и idDivision по выбранному smallName
-                string query = @"
-                    SELECT Password, idDivision 
-                    FROM [Users]
-                    WHERE smallName = @userName
-                      AND Isvalid = 1  -- вдруг у вас есть признак валидности
-                ";
-
-                using (SqlCommand cmd = new SqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@userName", SelectedUser);
-
-                    await conn.OpenAsync();
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            string passwordFromDb = reader["Password"]?.ToString();
-                            divisionIdFromDb = reader["idDivision"] as int?;
-
-                            // Сравнение пароля
-                            if (passwordFromDb == Password)
-                            {
-                                isPasswordValid = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!isPasswordValid || divisionIdFromDb == null)
+            // Проверяем
+            var (divisionId, isValid) = await _loginService.CheckUserCredentialsAsync(SelectedUser, Password);
+            if (!isValid || divisionId == null)
             {
                 ErrorMessage = "Неверное имя пользователя или пароль.";
                 return Page();
             }
 
-            // Если пароль верный, сохраняем данные о пользователе.
-            // Вариант 1. Передадим divisionId как параметр при редиректе:
-            // return RedirectToPage("Index", new { divisionId = divisionIdFromDb });
-
-            // Вариант 2. Сохраняем в cookie и просто редиректим на Index:
+            // Записываем в куки
             HttpContext.Response.Cookies.Append("userName", SelectedUser);
-            HttpContext.Response.Cookies.Append("divisionId", divisionIdFromDb.ToString());
+            HttpContext.Response.Cookies.Append("divisionId", divisionId.Value.ToString());
 
-            // Можно и в сессию:
-            // HttpContext.Session.SetString("userName", SelectedUser);
-            // HttpContext.Session.SetInt32("divisionId", divisionIdFromDb.Value);
-
+            // Редирект
             return RedirectToPage("Index");
-            // (пусть Index сама уже проверяет эти куки/сессию и подставляет divisionId)
         }
 
-        private async Task LoadAllUsersAsync()
-        {
-            AllUsers.Clear();
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                string query = @"SELECT smallName FROM [Users] WHERE Isvalid = 1 ORDER BY smallName";
-                using (SqlCommand cmd = new SqlCommand(query, conn))
-                {
-                    await conn.OpenAsync();
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            AllUsers.Add(reader["smallName"].ToString());
-                        }
-                    }
-                }
-            }
-        }
-
-        [IgnoreAntiforgeryToken(Order = 1001)] // Чтобы не ругался на отсутствие в GET запросах токена
+        // AJAX-метод:
         public async Task<IActionResult> OnGetFilterUsers(string query)
         {
-            // Простейшая защита от null
-            if (query == null) query = "";
-
-            List<string> matchedUsers = new List<string>();
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                // Пример фильтра: ищем в smallName, где LIKE '%query%'
-                // Важно добавить защиту от SQL-инъекций (параметры)
-                string sql = @"
-                        SELECT smallName 
-                        FROM [Users] 
-                        WHERE Isvalid = 1
-                          AND smallName LIKE '%' + @q + '%'
-                        ORDER BY smallName
-                    ";
-                using (SqlCommand cmd = new SqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@q", query);
-
-                    await conn.OpenAsync();
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            matchedUsers.Add(reader.GetString(0));
-                        }
-                    }
-                }
-            }
-
-            // Возвращаем JSON-список
-            return new JsonResult(matchedUsers);
+            var filtered = await _loginService.FilterUsersAsync(query);
+            return new JsonResult(filtered);
         }
     }
 }

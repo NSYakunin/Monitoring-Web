@@ -1,103 +1,103 @@
-﻿@page
-@using Monitoring.UI.Pages
-@model             LoginModel
-@{
-    Layout = "_Layout.cshtml";  // Или другой ваш общий layout
-    ViewData["Title"] = "Авторизация";
-}
+﻿    @page
+    @using Monitoring.UI.Pages
+    @model             LoginModel
+    @{
+        Layout = "_Layout.cshtml";  // Или другой ваш общий layout
+        ViewData["Title"] = "Авторизация";
+    }
 
-<div class="container my-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6">
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
 
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Авторизация</h5>
-                </div>
-                <div class="card-body">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Авторизация</h5>
+                    </div>
+                    <div class="card-body">
 
-                    <!-- Форма авторизации -->
-                    <form method="post" class="row g-3">
+                        <!-- Форма авторизации -->
+                        <form method="post" class="row g-3">
 
-                        <!-- Поле (или выпадающий список) для выбора пользователя -->
-                        <div class="col-12">
-                            <label for="userSearch" class="form-label">Поиск пользователя:</label>
-                            <input type="text" class="form-control" id="userSearch"
-                                   placeholder="Введите часть имени для фильтра..."
-                                   oninput="filterUsers()" />
-                        </div>
-
-                        <div class="col-12">
-                            <label for="SelectedUser" class="form-label">Пользователь:</label>
-                            <select id="SelectedUser" name="SelectedUser" class="form-select">
-                                <option value="">-- Выберите пользователя --</option>
-                                @foreach (var userName in Model.AllUsers)
-                                {
-                                    <option value="@userName">@userName</option>
-                                }
-                            </select>
-                        </div>
-
-                        <!-- Поле для ввода пароля -->
-                        <div class="col-12">
-                            <label for="Password" class="form-label">Пароль:</label>
-                            <input type="password" class="form-control" id="Password" name="Password" />
-                        </div>
-
-                        <!-- Если есть ошибка авторизации, выводим её -->
-                        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-                        {
-                            <div class="col-12 text-danger">
-                                @Model.ErrorMessage
+                            <!-- Поле (или выпадающий список) для выбора пользователя -->
+                            <div class="col-12">
+                                <label for="userSearch" class="form-label">Поиск пользователя:</label>
+                                <input type="text" class="form-control" id="userSearch"
+                                       placeholder="Введите часть имени для фильтра..."
+                                       oninput="filterUsers()" />
                             </div>
-                        }
 
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary">Войти</button>
-                        </div>
-                    </form>
+                            <div class="col-12">
+                                <label for="SelectedUser" class="form-label">Пользователь:</label>
+                                <select id="SelectedUser" name="SelectedUser" class="form-select">
+                                    <option value="">-- Выберите пользователя --</option>
+                                    @foreach (var userName in Model.AllUsers)
+                                    {
+                                        <option value="@userName">@userName</option>
+                                    }
+                                </select>
+                            </div>
 
+                            <!-- Поле для ввода пароля -->
+                            <div class="col-12">
+                                <label for="Password" class="form-label">Пароль:</label>
+                                <input type="password" class="form-control" id="Password" name="Password" />
+                            </div>
+
+                            <!-- Если есть ошибка авторизации, выводим её -->
+                            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                            {
+                                <div class="col-12 text-danger">
+                                    @Model.ErrorMessage
+                                </div>
+                            }
+
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">Войти</button>
+                            </div>
+                        </form>
+
+                    </div>
                 </div>
-            </div>
 
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Скрипт для клиентской фильтрации выпадающего списка пользователей -->
-<script>
-    async function filterUsers() {
-        let input = document.getElementById("userSearch").value;
+    <!-- Скрипт для клиентской фильтрации выпадающего списка пользователей -->
+    <script>
+        async function filterUsers() {
+            let input = document.getElementById("userSearch").value;
 
-        // Делаем fetch на метод-хендлер ?handler=FilterUsers
-        // Например: /Login?handler=FilterUsers&query=...
-        // (т.к. страница называется Login, Razor Pages по умолчанию: /Login?handler=FilterUsers)
-        // Кодируем введённую строку на случай пробелов и спец.символов
-        let response = await fetch(`Login?handler=FilterUsers&query=${encodeURIComponent(input)}`);
+            // Делаем fetch на метод-хендлер ?handler=FilterUsers
+            // Например: /Login?handler=FilterUsers&query=...
+            // (т.к. страница называется Login, Razor Pages по умолчанию: /Login?handler=FilterUsers)
+            // Кодируем введённую строку на случай пробелов и спец.символов
+            let response = await fetch(`Login?handler=FilterUsers&query=${encodeURIComponent(input)}`);
 
-        if (!response.ok) {
-            console.error("Ошибка при загрузке списка пользователей:", response.status);
-            return;
+            if (!response.ok) {
+                console.error("Ошибка при загрузке списка пользователей:", response.status);
+                return;
+            }
+
+            let users = await response.json(); // Считываем JSON-список пользователей
+
+            let select = document.getElementById("SelectedUser");
+            // Очищаем старые опции
+            select.innerHTML = "";
+
+            // Добавим опцию "по умолчанию"
+            let defaultOption = document.createElement("option");
+            defaultOption.value = "";
+            defaultOption.textContent = "-- Выберите пользователя --";
+            select.appendChild(defaultOption);
+
+            // Добавляем новые опции из массива
+            users.forEach(u => {
+                let opt = document.createElement("option");
+                opt.value = u;
+                opt.textContent = u;
+                select.appendChild(opt);
+            });
         }
-
-        let users = await response.json(); // Считываем JSON-список пользователей
-
-        let select = document.getElementById("SelectedUser");
-        // Очищаем старые опции
-        select.innerHTML = "";
-
-        // Добавим опцию "по умолчанию"
-        let defaultOption = document.createElement("option");
-        defaultOption.value = "";
-        defaultOption.textContent = "-- Выберите пользователя --";
-        select.appendChild(defaultOption);
-
-        // Добавляем новые опции из массива
-        users.forEach(u => {
-            let opt = document.createElement("option");
-            opt.value = u;
-            opt.textContent = u;
-            select.appendChild(opt);
-        });
-    }
-</script>
+    </script>

@@ -1,27 +1,20 @@
-﻿// Pages/Index.cshtml.cs
+﻿// Monitoring.UI/Pages/Index.cshtml.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Monitoring.Application.Interfaces;
+using Monitoring.Application.Services; // если ReportGenerator лежит в .Application
+using Monitoring.Domain.Entities;
 
 namespace Monitoring.UI.Pages
 {
     public class IndexModel : PageModel
     {
         private readonly IWorkItemService _workItemService;
-        private readonly IMemoryCache _cache;
-        private readonly IConfiguration _configuration;
 
-        public IndexModel(IWorkItemService workItemService, IMemoryCache cache, IConfiguration configuration)
+        public IndexModel(IWorkItemService workItemService)
         {
             _workItemService = workItemService;
-            _cache = cache;
-            _configuration = configuration;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -40,94 +33,78 @@ namespace Monitoring.UI.Pages
         public string UserName { get; set; } = string.Empty;
 
         public List<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
-        public List<SelectListItem> Executors { get; set; } = new List<SelectListItem>();
-        public string Dev { get; set; } = " ";
+        public List<string> Executors { get; set; } = new List<string>();
 
         public async Task OnGet()
         {
-
-            _cache.Remove("AllWorkItems");
-            _cache.Remove("Executors");
-            _cache.Remove("Dev");
-
+            // Пример чтения куки
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
             {
                 Response.Redirect("/Login");
                 return;
             }
 
-            var divisionIdString = HttpContext.Request.Cookies["divisionId"];
-            if (!int.TryParse(divisionIdString, out int divisionId))
-            {
-                Response.Redirect("/Login");
-                return;
-            }
-
+            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
             if (!StartDate.HasValue)
                 StartDate = new DateTime(2014, 1, 1);
 
-            DateTime now = DateTime.Now;
             if (!EndDate.HasValue)
-                EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+                EndDate = DateTime.Now;
 
+            // Загружаем данные
             Executors = await _workItemService.GetExecutorsAsync(divisionId);
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
-            Dev = await _workItemService.GetDevAsync(divisionId);
+            DepartmentName = await _workItemService.GetDevAsync(divisionId);
 
-            DepartmentName = Dev;
-
-
+            // Применяем фильтры (можно было бы вынести в Application-слой).
             ApplyFilters();
         }
-        // Этот метод будет вызываться только AJAX-ом,
-        // и возвращать кусок HTML (partial) без layout.
+
         public async Task<IActionResult> OnGetFilterAsync(
             DateTime? startDate,
             DateTime? endDate,
             string? executor,
             string? searchQuery)
         {
-            // Проверяем куки (как в основном OnGet)
+            // Пример AJAX-обработчика
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
                 return new JsonResult(new { error = "Не найдены куки divisionId" });
 
-            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
-                return new JsonResult(new { error = "Некорректный divisionId в куках" });
+            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
 
-            UserName = HttpContext.Request.Cookies["userName"];
-            DepartmentName = $"Отдел №{divisionId}";
-
-            // Задаём даты "по умолчанию", если не переданы
-            if (!startDate.HasValue)
-                startDate = new DateTime(2014, 1, 1);
-
-            DateTime now = DateTime.Now;
-            if (!endDate.HasValue)
-                endDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
-
-            // Присваиваем в текущую модель, чтобы ApplyFilters() работал
-            StartDate = startDate;
-            EndDate = endDate;
+            StartDate = startDate ?? new DateTime(2014, 1, 1);
+            EndDate = endDate ?? DateTime.Now;
             Executor = executor;
             SearchQuery = searchQuery;
 
-            // Снова подтягиваем списки
             Executors = await _workItemService.GetExecutorsAsync(divisionId);
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
+            DepartmentName = await _workItemService.GetDevAsync(divisionId);
 
-            ApplyFilters(); // Фильтруем
+            ApplyFilters();
 
-            // Возвращаем partial с таблицей.
-            // В Razor Pages нет встроенного "return PartialView(...)",
-            // поэтому используем PartialViewResult следующим образом:
-            return new PartialViewResult
-            {
-                ViewName = "_WorkItemsTablePartial", // наш partial
-                ViewData = ViewData,
-                // Модель (IndexModel) чтобы внутри partial'а работали @Model.WorkItems
-            };
+            // Возвращаем partial
+            return Partial("_WorkItemsTablePartial", this);
+        }
+
+        public async Task<IActionResult> OnPostAsync()
+        {
+            // Генерация PDF
+            if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
+                return RedirectToPage("/Login");
+
+            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+
+            Executors = await _workItemService.GetExecutorsAsync(divisionId);
+            WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
+            string dev = await _workItemService.GetDevAsync(divisionId);
+
+            ApplyFilters();
+
+            var pdfBytes = ReportGenerator.GeneratePdf(WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+            return File(pdfBytes, "application/pdf", $"Чек_{DateTime.Now:yyyyMMdd}.pdf");
         }
 
         private void ApplyFilters()
@@ -135,17 +112,18 @@ namespace Monitoring.UI.Pages
             var filtered = WorkItems.AsQueryable();
 
             if (!string.IsNullOrEmpty(Executor))
-                filtered = filtered.Where(x => x.Executor.Equals(Executor, StringComparison.OrdinalIgnoreCase));
+            {
+                filtered = filtered.Where(x => x.Executor.Contains(Executor, StringComparison.OrdinalIgnoreCase));
+            }
 
             if (!string.IsNullOrEmpty(SearchQuery))
             {
-                var search = SearchQuery.Trim();
                 filtered = filtered.Where(x =>
-                    x.DocumentName != null && x.DocumentName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    x.WorkName != null && x.WorkName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    x.Executor != null && x.Executor.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    x.Controller != null && x.Controller.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    x.Approver != null && x.Approver.Contains(search, StringComparison.OrdinalIgnoreCase));
+                    (x.DocumentName != null && x.DocumentName.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.WorkName != null && x.WorkName.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Executor != null && x.Executor.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Controller != null && x.Controller.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Approver != null && x.Approver.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)));
             }
 
             if (EndDate.HasValue)
@@ -159,34 +137,10 @@ namespace Monitoring.UI.Pages
 
         public IActionResult OnGetLogout()
         {
-            _cache.Remove("AllWorkItems");
-            _cache.Remove("Executors");
+            // Логаут
             HttpContext.Response.Cookies.Delete("userName");
             HttpContext.Response.Cookies.Delete("divisionId");
             return RedirectToPage("Login");
-        }
-
-        public async Task<IActionResult> OnPostAsync()
-        {
-            // Проверяем куки
-            if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
-                return RedirectToPage("/Login");
-
-            if (!int.TryParse(HttpContext.Request.Cookies["divisionId"], out int divisionId))
-                return RedirectToPage("/Login");
-
-            // Загружаем из БД через сервис (или берем из кэша)
-            Executors = await _workItemService.GetExecutorsAsync(divisionId);
-            WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
-            Dev = await _workItemService.GetDevAsync(divisionId);
-
-            // Применяем те же фильтры, что и в OnGet / OnGetFilterAsync
-            ApplyFilters();
-
-
-            // Генерация PDF в памяти
-            var pdfBytes = ReportGenerator.GeneratePdf(WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", Dev);
-            return File(pdfBytes, "application/pdf", $"Чек от {DateTime.Now.ToShortDateString()}.pdf");
         }
     }
 }

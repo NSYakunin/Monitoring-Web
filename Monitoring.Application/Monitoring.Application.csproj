@@ -15,4 +15,8 @@
     <Folder Include="UseCases\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNet.Mvc" Version="5.3.0" />
+  </ItemGroup>
+
 </Project>
