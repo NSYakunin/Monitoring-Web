@@ -50,8 +50,9 @@ namespace Monitoring.UI.Pages
             if (!StartDate.HasValue)
                 StartDate = new DateTime(2014, 1, 1);
 
+            DateTime now = DateTime.Now;
             if (!EndDate.HasValue)
-                EndDate = DateTime.Now;
+                EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
 
             // Загружаем данные
             Executors = await _workItemService.GetExecutorsAsync(divisionId);

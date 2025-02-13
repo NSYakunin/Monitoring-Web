@@ -41,7 +41,7 @@
                             @foreach (var item in Model.Executors)
                             {
                                 <option value="@item"
-                                        selected="@item">
+                                        selected="@(item == Model.Executor ? "selected" : null)">
                                     @item
                                 </option>
                             }

@@ -1,6 +1,5 @@
 ﻿// Monitoring.Application/Interfaces/IWorkItemService.cs
 using Monitoring.Domain.Entities;
-using System.Web.Mvc;
 
 namespace Monitoring.Application.Interfaces
 {
