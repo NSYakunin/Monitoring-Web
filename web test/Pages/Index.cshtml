@@ -66,6 +66,9 @@
         <input type="hidden" asp-for="EndDate" />
         <input type="hidden" asp-for="Executor" />
         <input type="hidden" asp-for="SearchQuery" />
+        <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
+
+
 
         <button type="submit" class="btn btn-primary" id="generatePdfBtn">
             <span class="spinner-border spinner-border-sm me-2"
@@ -90,6 +93,11 @@
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- jQuery UI (один из вариантов CDN) -->
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
 
 @section Scripts {
     <style>
@@ -145,6 +153,36 @@
                     }
                 });
             });
+        });
+    </script>
+
+    <script>
+        document.getElementById("generatePdfBtn").addEventListener("click", function(e) {
+            // Собираем массив
+            let rows = document.querySelectorAll("#workItemsTable tbody tr");
+            let result = [];
+
+            rows.forEach((row) => {
+                let checkbox = row.querySelector("input.row-select");
+                let isChecked = checkbox && checkbox.checked;
+
+                // data-id в tr
+                let itemId = row.getAttribute("data-id") || "";
+
+                if (isChecked) {
+                    // если чекбокс отмечен, добавим в массив
+                    result.push(itemId);
+                }
+            });
+
+            // Преобразуем в JSON
+            let jsonString = JSON.stringify(result);
+
+            // Записываем в скрытое поле
+            document.getElementById("SelectedItemsOrder").value = jsonString;
+
+            // Дальше форма сабмитится как обычно
+            // Если нужно AJAX — делаем preventDefault() и AJAX. Но ты вроде используешь обычный POST.
         });
     </script>
 }

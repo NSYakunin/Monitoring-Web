@@ -35,6 +35,9 @@ namespace Monitoring.UI.Pages
         public List<WorkItem> WorkItems { get; set; } = new List<WorkItem>();
         public List<string> Executors { get; set; } = new List<string>();
 
+        [BindProperty]
+        public string SelectedItemsOrder { get; set; } = string.Empty;
+
         public async Task OnGet()
         {
             // Пример чтения куки
@@ -103,6 +106,27 @@ namespace Monitoring.UI.Pages
             string dev = await _workItemService.GetDevAsync(divisionId);
 
             ApplyFilters();
+
+            // Теперь учитываем SelectedItemsOrder
+            if (!string.IsNullOrEmpty(SelectedItemsOrder))
+            {
+                // Парсим JSON
+                // Допустим, это массив строк DocumentNumber: ["123/1","999/2",...]
+                var selectedList = System.Text.Json.JsonSerializer.Deserialize<List<string>>(SelectedItemsOrder);
+
+                if (selectedList != null && selectedList.Count > 0)
+                {
+                    // 1. Фильтруем WorkItems => только где DocumentNumber есть в selectedList
+                    var filtered = WorkItems.Where(w => selectedList.Contains(w.DocumentNumber)).ToList();
+
+                    // 2. Сортируем по порядку, в котором они идут в selectedList
+                    //    Можно сделать так:
+                    filtered = filtered.OrderBy(w => selectedList.IndexOf(w.DocumentNumber)).ToList();
+
+                    // 3. Перезаписываем WorkItems
+                    WorkItems = filtered;
+                }
+            }
 
             var pdfBytes = ReportGenerator.GeneratePdf(WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
             return File(pdfBytes, "application/pdf", $"Чек_{DateTime.Now:yyyyMMdd}.pdf");

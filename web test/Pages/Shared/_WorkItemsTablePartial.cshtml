@@ -1,48 +1,73 @@
 ﻿@model Monitoring.UI.Pages.IndexModel
 
-<table class="table table-bordered table-hover text-center">
-    <thead class="table-dark">
+<!-- Подключаем стили jQuery UI (для draggable, sortable) -->
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
+
+<!-- Подключаем jQuery + jQuery UI (Sortable) внизу -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"
+        integrity="sha256-/xUj+xOHO3P5QnDd1z8nMYuZAdyM7XnZcHPF7C+N8BY="
+        crossorigin="anonymous"></script>
+
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"
+        integrity="sha256-lBCXF5Ug8u8fSZayWvK+2n2Lbq7VX/TS8btW3kCj0OU="
+        crossorigin="anonymous"></script>
+
+
+<script>
+    $(function() {
+        // Делаем строки таблицы (tbody) сортируемыми
+        $("#workItemsTable tbody").sortable({
+            handle: ".drag-handle",  // тащим за элемент с этим классом
+            axis: "y",               // только вертикально
+            cursor: "move"           // меняем курсор при перетаскивании
+        });
+
+        // Отключаем выделение текста при перетаскивании
+        $("#workItemsTable tbody").disableSelection();
+    });
+</script>
+
+<table class="table table-bordered" id="workItemsTable">
+    <thead>
         <tr>
-            <th>№</th>
-            <th>Наименование документа</th>
-            <th>Наименование работы</th>
-            <th>Исполнители</th>
-            <th>Контролирующий</th>
-            <th>Принимающий</th>
-            <th>План</th>
-            <th>Корр1</th>
-            <th>Корр2</th>
-            <th>Корр3</th>
-            <th>Факт</th>
+            <th>DocumentName</th>
+            <th>WorkName</th>
+            <th>Executor</th>
+            <th>Controller</th>
+            <th>Approver</th>
+            <th>PlanDate</th>
+            <th>Korrect1</th>
+            <th>Korrect2</th>
+            <th>Korrect3</th>
+            <th>Выбор</th> <!-- вместо FactDate делаем колонку Выбор/порядок -->
         </tr>
     </thead>
     <tbody>
-        @if (Model.WorkItems == null || !Model.WorkItems.Any())
+        @foreach (var item in Model.WorkItems)
         {
-            <tr>
-                <td colspan="11" class="text-muted">Нет данных</td>
+            <!-- Используем data-id, чтобы позже идентифицировать строку -->
+            <tr data-id="@item.DocumentNumber">
+                <td>@item.DocumentName</td>
+                <td>@item.WorkName</td>
+                <td>@item.Executor</td>
+                <td>@item.Controller</td>
+                <td>@item.Approver</td>
+                <td>@item.PlanDate?.ToShortDateString()</td>
+                <td>@item.Korrect1?.ToShortDateString()</td>
+                <td>@item.Korrect2?.ToShortDateString()</td>
+                <td>@item.Korrect3?.ToShortDateString()</td>
+
+                <!-- Чекбокс и "ручка" для перетаскивания -->
+                <td class="align-middle">
+                    <input type="checkbox" class="row-select" />
+
+                    <!-- drag-handle -->
+                    <span class="drag-handle" style="cursor: move; margin-left: 5px;">
+                        &#x2630; <!-- Unicode "гамбургер" -->
+                    </span>
+                </td>
             </tr>
-        }
-        else
-        {
-            int index = 1;
-            foreach (var item in Model.WorkItems)
-            {
-                <tr>
-                    <td>@index</td>
-                    <td>@item.DocumentName</td>
-                    <td>@item.WorkName</td>
-                    <td>@item.Executor</td>
-                    <td>@item.Controller</td>
-                    <td>@item.Approver</td>
-                    <td>@item.PlanDate?.ToString("dd.MM.yyyy")</td>
-                    <td>@item.Korrect1?.ToString("dd.MM.yyyy")</td>
-                    <td>@item.Korrect2?.ToString("dd.MM.yyyy")</td>
-                    <td>@item.Korrect3?.ToString("dd.MM.yyyy")</td>
-                    <td>@item.FactDate?.ToString("dd.MM.yyyy")</td>
-                </tr>
-                index++;
-            }
         }
     </tbody>
 </table>
+
