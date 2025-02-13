@@ -89,6 +89,7 @@ namespace Monitoring.UI.Pages
 
             ApplyFilters();
 
+
             // Возвращаем partial
             return Partial("_WorkItemsTablePartial", this);
         }

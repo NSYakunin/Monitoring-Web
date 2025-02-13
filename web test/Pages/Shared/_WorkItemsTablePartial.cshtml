@@ -12,6 +12,23 @@
         integrity="sha256-lBCXF5Ug8u8fSZayWvK+2n2Lbq7VX/TS8btW3kCj0OU="
         crossorigin="anonymous"></script>
 
+<style>
+    .selected-row {
+        background-color: #e9f7ef !important; /* Светло-зеленый фон для выбранных строк */
+    }
+
+    .drag-handle {
+        cursor: move;
+        margin-left: 5px;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .drag-handle:hover {
+        opacity: 1;
+    }
+</style>
+
 
 <script>
     $(function() {
@@ -24,6 +41,34 @@
 
         // Отключаем выделение текста при перетаскивании
         $("#workItemsTable tbody").disableSelection();
+    });
+</script>
+
+<script>
+    $(function() {
+        // Инициализация сортировки с обработчиками
+        $("#workItemsTable tbody").sortable({
+            handle: ".drag-handle",
+            axis: "y",
+            cursor: "move",
+            start: function(event, ui) {
+                // При начале перетаскивания отмечаем чекбокс и добавляем стиль
+                ui.item.find('.row-select').prop('checked', true);
+                ui.item.addClass('selected-row');
+            },
+            update: function(event, ui) {
+                // При изменении порядка можно добавить дополнительную логику
+                console.log('Порядок изменен');
+            }
+        }).disableSelection();
+
+        // Обработчик изменения чекбокса
+        $('#workItemsTable').on('change', '.row-select', function() {
+            $(this).closest('tr').toggleClass('selected-row', this.checked);
+        });
+
+        // Выделяем уже отмеченные строки при загрузке
+        $('#workItemsTable .row-select:checked').closest('tr').addClass('selected-row');
     });
 </script>
 
@@ -57,14 +102,9 @@
                 <td>@item.Korrect2?.ToShortDateString()</td>
                 <td>@item.Korrect3?.ToShortDateString()</td>
 
-                <!-- Чекбокс и "ручка" для перетаскивания -->
                 <td class="align-middle">
                     <input type="checkbox" class="row-select" />
-
-                    <!-- drag-handle -->
-                    <span class="drag-handle" style="cursor: move; margin-left: 5px;">
-                        &#x2630; <!-- Unicode "гамбургер" -->
-                    </span>
+                    <span class="drag-handle">&#x2630;</span>
                 </td>
             </tr>
         }
