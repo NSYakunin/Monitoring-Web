@@ -59,8 +59,13 @@
                                placeholder="Поиск..." value="@Model.SearchQuery" />
                     </div>
 
-                    <!-- Кнопка выхода (Logout) -->
-                    <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-outline-danger">Выход</a>
+                    <div class="d-flex justify-content-end gap-3 mb-4">
+                        <!-- Кнопка выхода -->
+                        <a asp-page="./Index" asp-page-handler="Logout"
+                           class="btn btn-logout">
+                            Выход
+                        </a>
+                    </div>
                 </form>
             </div>
         </div>
@@ -74,11 +79,14 @@
         <input type="hidden" asp-for="SearchQuery" />
         <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
 
-        <button type="submit" class="btn btn-primary" id="generatePdfBtn">
-            <span class="spinner-border spinner-border-sm me-2"
-                  role="status" aria-hidden="true" style="display:none;"></span>
-            Сгенерировать PDF
-        </button>
+        <div class="d-flex justify-content-end gap-3 mb-4">
+            <!-- Кнопка генерации PDF -->
+            <button type="submit" class="btn btn-pdf" id="generatePdfBtn">
+                <span class="spinner-border spinner-border-sm me-2"
+                      role="status" aria-hidden="true" style="display:none;"></span>
+                Сгенерировать PDF
+            </button>
+        </div>
     </form>
 
     <!-- Контейнер для таблицы работ (Partial view) -->
@@ -98,7 +106,7 @@
         <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
-        <!-- Дополнительные стили (можно вынести в .css-файл) -->
+        <!-- Дополнительные стили (вынести в .css-файл) -->
         <style>
             /* Пример ограничений для Handsontable, если используется */
             #spreadsheet {
@@ -149,6 +157,50 @@
                 opacity: 1;
                 transform: scale(1.2);
             }
+
+        .btn-pdf {
+            background: linear-gradient(145deg, #2c3e50, #34495e);
+            color: white !important;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+            .btn-pdf:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+                background: linear-gradient(145deg, #34495e, #2c3e50);
+            }
+
+            .btn-pdf:active {
+                transform: translateY(1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+        .btn-logout {
+            border: 2px solid #dc3545;
+            color: #dc3545;
+            background: transparent;
+            padding: 5px 10px;
+            border-radius: 8px;
+            transition: all 0.4s ease;
+            position: relative;
+        }
+
+            .btn-logout:hover {
+                background: rgba(220, 53, 69, 0.9);
+                color: white !important;
+                border-color: transparent;
+                box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+            }
+
+        .spinner-border {
+            vertical-align: text-top;
+        }
         </style>
 
         <script>

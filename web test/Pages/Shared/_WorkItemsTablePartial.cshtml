@@ -1,9 +1,6 @@
-﻿@model Monitoring.UI.Pages.IndexModel
-
-<!-- В partial-е ТОЛЬКО разметка таблицы (без подключений скриптов, без инициализаций) -->
-<table class="table table-bordered" id="workItemsTable">
+﻿<table class="table table-bordered table-hover" id="workItemsTable">
     <thead>
-        <tr>
+        <tr class="custom-header">
             <th>Наименование документа</th>
             <th>Наименование работы</th>
             <th>Исполнители</th>
@@ -15,7 +12,7 @@
             <th>Корр3</th>
             <th>
                 <span class="toggle-all-btn" title="Выделить/снять все">
-                    ⚙️ <!-- Или другой значок -->
+                    ⚙️
                 </span>
             </th>
         </tr>
@@ -23,7 +20,6 @@
     <tbody>
         @foreach (var item in Model.WorkItems)
         {
-            <!-- data-id, чтобы идентифицировать строку по DocumentNumber -->
             <tr data-id="@item.DocumentNumber">
                 <td>@item.DocumentName</td>
                 <td>@item.WorkName</td>
@@ -42,3 +38,48 @@
         }
     </tbody>
 </table>
+
+<style>
+    .custom-header th {
+        background: linear-gradient(145deg, #2c3e50, #34495e);
+        color: white;
+        font-weight: 500;
+        border-bottom: 2px solid #1a252f;
+        transition: all 0.3s ease;
+        padding: 15px;
+        position: relative;
+    }
+
+        .custom-header th:hover {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .custom-header th::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 60%;
+            width: 1px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .custom-header th:last-child::after {
+            display: none;
+        }
+
+    .toggle-all-btn {
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        display: inline-block;
+        padding: 5px;
+    }
+
+        .toggle-all-btn:hover {
+            transform: rotate(90deg);
+            color: #ecf0f1;
+        }
+</style>
