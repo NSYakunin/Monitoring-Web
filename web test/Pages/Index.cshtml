@@ -1,15 +1,17 @@
 ﻿@page
 @using Monitoring.UI.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@model             IndexModel
+@model IndexModel
 @{
     ViewData["Title"] = "Главная страница";
     Layout = "_Layout.cshtml";
 }
 
-<!-- Подключаем стили -->
+<!-- Подключение необходимых стилей (можно в _Layout.cshtml) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<!-- jQuery UI (CSS для sortable и прочего) -->
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
 
 <div class="container-fluid mt-4">
     <!-- Шапка: подразделение, пользователь, фильтры -->
@@ -20,9 +22,10 @@
                     <h5 class="mb-0">Подразделение: @Model.DepartmentName</h5>
                     <p class="text-muted mb-0">Текущий пользователь: @Model.UserName</p>
                 </div>
-                <!-- Форма с фильтрами (скрытая кнопка "Применить" мы убираем) -->
+
+                <!-- Форма с фильтрами -->
                 <form method="get" id="filterForm" class="d-flex flex-wrap align-items-end gap-2">
-                    <!-- Фильтр по датам (при необходимости тоже можно сделать автообновление) -->
+                    <!-- Фильтр по датам -->
                     <div class="d-flex flex-column">
                         <label for="startDate" class="form-label">C даты:</label>
                         <input type="date" class="form-control" id="startDate" name="StartDate" 
@@ -33,6 +36,7 @@
                         <input type="date" class="form-control" id="endDate" name="EndDate" 
                                value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
+
                     <!-- Выпадающий список для выбора исполнителя -->
                     <div class="d-flex flex-column">
                         <label for="executor" class="form-label">Исполнитель:</label>
@@ -40,19 +44,21 @@
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
-                                <option value="@item"
-                                        selected="@(item == Model.Executor ? "selected" : null)">
+                                    <option value="@item"
+                                            selected="@(item == Model.Executor ? "selected" : null)">
                                     @item
-                                </option>
+                                    </option>
                             }
                         </select>
                     </div>
+
                     <!-- Поле поиска -->
                     <div class="d-flex flex-column">
                         <label for="search" class="form-label">Поиск:</label>
-                        <input type="text" class="form-control" id="search" name="search" placeholder="Поиск..." 
-                               value="@Model.SearchQuery" />
+                        <input type="text" class="form-control" id="search" name="search" 
+                               placeholder="Поиск..." value="@Model.SearchQuery" />
                     </div>
+
                     <!-- Кнопка выхода (Logout) -->
                     <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-outline-danger">Выход</a>
                 </form>
@@ -60,15 +66,13 @@
         </div>
     </div>
 
+    <!-- Форма для генерации PDF (метод POST). Храним скрытые поля для передачи фильтров -->
     <form method="post" class="position-relative">
-        <!-- Скрытые поля, чтобы фильтры передавались при POST -->
         <input type="hidden" asp-for="StartDate" />
         <input type="hidden" asp-for="EndDate" />
         <input type="hidden" asp-for="Executor" />
         <input type="hidden" asp-for="SearchQuery" />
         <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
-
-
 
         <button type="submit" class="btn btn-primary" id="generatePdfBtn">
             <span class="spinner-border spinner-border-sm me-2"
@@ -77,7 +81,7 @@
         </button>
     </form>
 
-    <!-- Таблица работ (Partial view) -->
+    <!-- Контейнер для таблицы работ (Partial view) -->
     <div class="row mb-4">
         <div class="col-12">
             <div id="workItemsTableContainer">
@@ -87,105 +91,159 @@
     </div>
 </div>
 
-
-
-<!-- Скрипты: jQuery, Bootstrap, Handsontable -->
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- jQuery UI (один из вариантов CDN) -->
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
-
 @section Scripts {
-    <style>
-        /* Ограничиваем ширину таблицы и добавляем горизонтальную прокрутку */
-        #spreadsheet {
-            width: 100%;
-            height: 80vh;
-            overflow: auto;
-            max-width: 100%;
-        }
+        <!-- Скрипты: jQuery, Bootstrap, Handsontable, jQuery UI -->
+        <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
-        .handsontable th,
-        .handsontable td {
-            min-width: 50px;
-            max-width: 300px;
-        }
+        <!-- Дополнительные стили (можно вынести в .css-файл) -->
+        <style>
+            /* Пример ограничений для Handsontable, если используется */
+            #spreadsheet {
+                width: 100%;
+                height: 80vh;
+                overflow: auto;
+                max-width: 100%;
+            }
+            .handsontable th,
+            .handsontable td {
+                min-width: 50px;
+                max-width: 300px;
+            }
+            .handsontable {
+                box-sizing: border-box;
+            }
+            .handsontable colHeader {
+                position: sticky;
+                top: 0;
+                background-color: #f8f9fa;
+                z-index: 1;
+            }
 
-        .handsontable {
-            box-sizing: border-box;
-        }
+            /* Подсветка выбранной (чекбоксом) строки */
+            .selected-row {
+                background-color: #e9f7ef !important; /* Светло-зеленый фон */
+            }
 
-        .handsontable colHeader {
-            position: sticky;
-            top: 0;
-            background-color: #f8f9fa; /* Цвет фона заголовков */
-            z-index: 1;
-        }
-    </style>
+            /* Иконка/элемент для "таскания" строк */
+            .drag-handle {
+                cursor: move;
+                margin-left: 5px;
+                opacity: 0.7;
+                transition: opacity 0.2s;
+            }
+            .drag-handle:hover {
+                opacity: 1;
+            }
 
-    <script>
-        $(document).ready(function(){
-            // При изменении полей фильтра вызываем AJAX
-            $('#startDate, #endDate, #executor, #search').on('change keyup', function(e) {
-                $.ajax({
-                    url: '@Url.Page("Index", "Filter")', // вызов OnGetFilterAsync
-                    type: 'GET',
-                    data: {
-                        startDate: $('#startDate').val(),
-                        endDate:   $('#endDate').val(),
-                        executor:  $('#executor').val(),
-                        searchQuery: $('#search').val()
+            /* Кнопка "Выделить/снять все" */
+            .toggle-all-btn {
+                cursor: pointer;
+                margin-left: 8px;
+                opacity: 0.7;
+                transition: all 0.3s;
+            }
+            .toggle-all-btn:hover {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        </style>
+
+        <script>
+            // Функция для инициализации сортировки строк и чекбоксов.
+            // Вызывается и при первом рендере, и после AJAX-перезагрузки partial.
+            function initSortableTable() {
+                var $tableBody = $("#workItemsTable tbody");
+
+                // Делаем строки таблицы сортируемыми
+                $tableBody.sortable({
+                    handle: ".drag-handle",  // "тащим" за элемент с этим классом
+                    axis: "y",               // только вертикально
+                    cursor: "move",
+                    start: function(event, ui) {
+                        // При начале перетаскивания отмечаем чекбокс и добавляем стиль
+                        ui.item.find('.row-select').prop('checked', true);
+                        ui.item.addClass('selected-row');
                     },
-                    success: function(result) {
-                        
-                        // Подменяем только таблицу
-                        $('#workItemsTableContainer').html(result);
-
-                        // А также подставляем эти значения в скрытые поля,
-                        // чтобы при нажатии "Сгенерировать PDF" они ушли в OnPost
-                        $('input[name="StartDate"]').val($('#startDate').val());
-                        $('input[name="EndDate"]').val($('#endDate').val());
-                        $('input[name="Executor"]').val($('#executor').val());
-                        $('input[name="SearchQuery"]').val($('#search').val());
+                    update: function(event, ui) {
+                        console.log('Порядок изменен');
                     }
                 });
+                $tableBody.disableSelection();  // отключаем выделение текста при перетаскивании
+
+                // Обработчик изменения одного чекбокса (выделение/снятие выделения)
+                $('#workItemsTable').on('change', '.row-select', function() {
+                    $(this).closest('tr').toggleClass('selected-row', this.checked);
+                });
+
+                // При загрузке: выделим строки, у которых уже отмечен чекбокс
+                $('#workItemsTable .row-select:checked')
+                    .closest('tr')
+                    .addClass('selected-row');
+
+                // Обработчик "Выделить/снять все"
+                $('.toggle-all-btn').off('click').on('click', function() {
+                    let all = $('#workItemsTable .row-select');
+                    // Проверяем, есть ли хоть один неотмеченный
+                    let anyUnchecked = all.filter(':not(:checked)').length > 0;
+                    // Если есть неотмеченные – ставим всем checked; иначе снимаем
+                    all.prop('checked', anyUnchecked).trigger('change');
+                });
+            }
+
+            $(document).ready(function(){
+                // Инициализируем сортировку и обработчики при первой загрузке
+                initSortableTable();
+
+                // При изменении полей фильтра вызываем AJAX
+                $('#startDate, #endDate, #executor, #search').on('change keyup', function(e) {
+                    $.ajax({
+                        url: '@Url.Page("Index", "Filter")', // вызов OnGetFilterAsync
+                        type: 'GET',
+                        data: {
+                            startDate: $('#startDate').val(),
+                            endDate:   $('#endDate').val(),
+                            executor:  $('#executor').val(),
+                            searchQuery: $('#search').val()
+                        },
+                        success: function(result) {
+                            // Обновляем только контейнер с таблицей
+                            $('#workItemsTableContainer').html(result);
+
+                            // Повторно инициализируем sortable/чекбоксы для вновь загруженной таблицы
+                            initSortableTable();
+
+                            // Подставляем новые значения в скрытые поля, чтобы они ушли при POST
+                            $('input[name="StartDate"]').val($('#startDate').val());
+                            $('input[name="EndDate"]').val($('#endDate').val());
+                            $('input[name="Executor"]').val($('#executor').val());
+                            $('input[name="SearchQuery"]').val($('#search').val());
+                        }
+                    });
+                });
+
+                // Кнопка "Сгенерировать PDF"
+                document.getElementById("generatePdfBtn").addEventListener("click", function(e) {
+                    // Собираем id выбранных строк
+                    let rows = document.querySelectorAll("#workItemsTable tbody tr");
+                    let result = [];
+
+                    rows.forEach((row) => {
+                        let checkbox = row.querySelector("input.row-select");
+                        let isChecked = checkbox && checkbox.checked;
+                        let itemId = row.getAttribute("data-id") || "";
+                        if (isChecked) {
+                            result.push(itemId);
+                        }
+                    });
+
+                    // Преобразуем в JSON и сохраняем в скрытое поле
+                    let jsonString = JSON.stringify(result);
+                    document.getElementById("SelectedItemsOrder").value = jsonString;
+                    // Далее форма сабмитится как обычно (POST -> OnPostAsync)
+                });
             });
-        });
-
-
-    </script>
-
-    <script>
-        document.getElementById("generatePdfBtn").addEventListener("click", function(e) {
-            // Собираем массив
-            let rows = document.querySelectorAll("#workItemsTable tbody tr");
-            let result = [];
-
-            rows.forEach((row) => {
-                let checkbox = row.querySelector("input.row-select");
-                let isChecked = checkbox && checkbox.checked;
-
-                // data-id в tr
-                let itemId = row.getAttribute("data-id") || "";
-
-                if (isChecked) {
-                    // если чекбокс отмечен, добавим в массив
-                    result.push(itemId);
-                }
-            });
-
-            // Преобразуем в JSON
-            let jsonString = JSON.stringify(result);
-
-            // Записываем в скрытое поле
-            document.getElementById("SelectedItemsOrder").value = jsonString;
-
-            // Дальше форма сабмитится как обычно
-            // Если нужно AJAX — делаем preventDefault() и AJAX.
-        });
-    </script>
+        </script>
 }

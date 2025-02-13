@@ -1,10 +1,9 @@
-﻿// Monitoring.UI/Pages/Index.cshtml.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Monitoring.Application.Interfaces;
-using Monitoring.Application.Services; // если ReportGenerator лежит в .Application
+using Monitoring.Application.Services;
 using Monitoring.Domain.Entities;
+using System.Text.Json; // Для JsonSerializer
 
 namespace Monitoring.UI.Pages
 {
@@ -50,6 +49,7 @@ namespace Monitoring.UI.Pages
             int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
+            // Установка дат по умолчанию, если не заданы
             if (!StartDate.HasValue)
                 StartDate = new DateTime(2014, 1, 1);
 
@@ -62,7 +62,7 @@ namespace Monitoring.UI.Pages
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
             DepartmentName = await _workItemService.GetDevAsync(divisionId);
 
-            // Применяем фильтры (можно было бы вынести в Application-слой).
+            // Применяем фильтры к WorkItems
             ApplyFilters();
         }
 
@@ -72,7 +72,7 @@ namespace Monitoring.UI.Pages
             string? executor,
             string? searchQuery)
         {
-            // Пример AJAX-обработчика
+            // AJAX-обработчик, вызываемый при изменении фильтров
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
                 return new JsonResult(new { error = "Не найдены куки divisionId" });
 
@@ -89,8 +89,7 @@ namespace Monitoring.UI.Pages
 
             ApplyFilters();
 
-
-            // Возвращаем partial
+            // Возвращаем partial (HTML-фрагмент) с таблицей
             return Partial("_WorkItemsTablePartial", this);
         }
 
@@ -108,33 +107,32 @@ namespace Monitoring.UI.Pages
 
             ApplyFilters();
 
-            // Теперь учитываем SelectedItemsOrder
+            // Обработка выбранных позиций (SelectedItemsOrder)
             if (!string.IsNullOrEmpty(SelectedItemsOrder))
             {
-                // Парсим JSON
-                // Допустим, это массив строк DocumentNumber: ["123/1","999/2",...]
-                var selectedList = System.Text.Json.JsonSerializer.Deserialize<List<string>>(SelectedItemsOrder);
-
+                var selectedList = JsonSerializer.Deserialize<List<string>>(SelectedItemsOrder);
                 if (selectedList != null && selectedList.Count > 0)
                 {
-                    // 1. Фильтруем WorkItems => только где DocumentNumber есть в selectedList
+                    // Фильтруем WorkItems, оставляем только те, DocumentNumber которых есть в selectedList
                     var filtered = WorkItems.Where(w => selectedList.Contains(w.DocumentNumber)).ToList();
 
-                    // 2. Сортируем по порядку, в котором они идут в selectedList
-                    //    Можно сделать так:
+                    // Сортируем в порядке, в котором DocumentNumber идут в selectedList
                     filtered = filtered.OrderBy(w => selectedList.IndexOf(w.DocumentNumber)).ToList();
 
-                    // 3. Перезаписываем WorkItems
                     WorkItems = filtered;
                 }
             }
 
-            var pdfBytes = ReportGenerator.GeneratePdf(WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+            // Генерация pdfBytes (ReportGenerator - ваш сервис/утилита, не показан в коде)
+            var pdfBytes = ReportGenerator.GeneratePdf(WorkItems,
+                          $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+
             return File(pdfBytes, "application/pdf", $"Чек_{DateTime.Now:yyyyMMdd}.pdf");
         }
 
         private void ApplyFilters()
         {
+            // Применение выбранных фильтров
             var filtered = WorkItems.AsQueryable();
 
             if (!string.IsNullOrEmpty(Executor))

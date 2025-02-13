@@ -1,91 +1,6 @@
 ﻿@model Monitoring.UI.Pages.IndexModel
 
-<!-- Подключаем стили jQuery UI (для draggable, sortable) -->
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
-
-<!-- Подключаем jQuery + jQuery UI (Sortable) внизу -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"
-        integrity="sha256-/xUj+xOHO3P5QnDd1z8nMYuZAdyM7XnZcHPF7C+N8BY="
-        crossorigin="anonymous"></script>
-
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"
-        integrity="sha256-lBCXF5Ug8u8fSZayWvK+2n2Lbq7VX/TS8btW3kCj0OU="
-        crossorigin="anonymous"></script>
-
-<style>
-    .selected-row {
-        background-color: #e9f7ef !important; /* Светло-зеленый фон для выбранных строк */
-    }
-
-    .drag-handle {
-        cursor: move;
-        margin-left: 5px;
-        opacity: 0.7;
-        transition: opacity 0.2s;
-    }
-
-    .drag-handle:hover {
-        opacity: 1;
-    }
-
-        .toggle-all-btn {
-        cursor: pointer;
-        margin-left: 8px;
-        opacity: 0.7;
-        transition: all 0.3s;
-    }
-
-    .toggle-all-btn:hover {
-        opacity: 1;
-        transform: scale(1.2);
-    }
-</style>
-
-
-<script>
-    $(function() {
-        // Делаем строки таблицы (tbody) сортируемыми
-        $("#workItemsTable tbody").sortable({
-            handle: ".drag-handle",  // тащим за элемент с этим классом
-            axis: "y",               // только вертикально
-            cursor: "move"           // меняем курсор при перетаскивании
-        });
-
-        // Отключаем выделение текста при перетаскивании
-        $("#workItemsTable tbody").disableSelection();
-    });
-</script>
-
-<script>
-    $(function() {
-        // Инициализация сортировки с обработчиками
-        $("#workItemsTable tbody").sortable({
-            handle: ".drag-handle",
-            axis: "y",
-            cursor: "move",
-            start: function(event, ui) {
-                // При начале перетаскивания отмечаем чекбокс и добавляем стиль
-                ui.item.find('.row-select').prop('checked', true);
-                ui.item.addClass('selected-row');
-            },
-            update: function(event, ui) {
-                // При изменении порядка можно добавить дополнительную логику
-                console.log('Порядок изменен');
-            }
-        }).disableSelection();
-
-        // Обработчик изменения чекбокса
-        $('#workItemsTable').on('change', '.row-select', function() {
-            $(this).closest('tr').toggleClass('selected-row', this.checked);
-        });
-
-        // Выделяем уже отмеченные строки при загрузке
-        $('#workItemsTable .row-select:checked').closest('tr').addClass('selected-row');
-    });
-</script>
-
-
-
+<!-- В partial-е ТОЛЬКО разметка таблицы (без подключений скриптов, без инициализаций) -->
 <table class="table table-bordered" id="workItemsTable">
     <thead>
         <tr>
@@ -100,7 +15,7 @@
             <th>Корр3</th>
             <th>
                 <span class="toggle-all-btn" title="Выделить/снять все">
-                    ⚙️<!-- или другой значок -->
+                    ⚙️ <!-- Или другой значок -->
                 </span>
             </th>
         </tr>
@@ -108,7 +23,7 @@
     <tbody>
         @foreach (var item in Model.WorkItems)
         {
-            <!-- Используем data-id, чтобы позже идентифицировать строку -->
+            <!-- data-id, чтобы идентифицировать строку по DocumentNumber -->
             <tr data-id="@item.DocumentNumber">
                 <td>@item.DocumentName</td>
                 <td>@item.WorkName</td>
@@ -119,7 +34,6 @@
                 <td>@item.Korrect1?.ToShortDateString()</td>
                 <td>@item.Korrect2?.ToShortDateString()</td>
                 <td>@item.Korrect3?.ToShortDateString()</td>
-
                 <td class="align-middle">
                     <input type="checkbox" class="row-select" />
                     <span class="drag-handle">&#x2630;</span>
@@ -128,4 +42,3 @@
         }
     </tbody>
 </table>
-
