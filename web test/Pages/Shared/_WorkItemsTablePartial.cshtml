@@ -1,38 +1,48 @@
 ﻿@model Monitoring.UI.Pages.IndexModel
 
-<!-- Просто кусок таблицы -->
-<table class="table table-bordered">
-    <thead>
+<table class="table table-bordered table-hover text-center">
+    <thead class="table-dark">
         <tr>
-            <th>DocumentNumber</th>
-            <th>DocumentName</th>
-            <th>WorkName</th>
-            <th>Executor</th>
-            <th>Controller</th>
-            <th>Approver</th>
-            <th>PlanDate</th>
-            <th>Korrect1</th>
-            <th>Korrect2</th>
-            <th>Korrect3</th>
-            <th>FactDate</th>
+            <th>№</th>
+            <th>Наименование документа</th>
+            <th>Наименование работы</th>
+            <th>Исполнители</th>
+            <th>Контролирующий</th>
+            <th>Принимающий</th>
+            <th>План</th>
+            <th>Корр1</th>
+            <th>Корр2</th>
+            <th>Корр3</th>
+            <th>Факт</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in Model.WorkItems)
+        @if (Model.WorkItems == null || !Model.WorkItems.Any())
         {
             <tr>
-                <td>@item.DocumentNumber</td>
-                <td>@item.DocumentName</td>
-                <td>@item.WorkName</td>
-                <td>@item.Executor</td>
-                <td>@item.Controller</td>
-                <td>@item.Approver</td>
-                <td>@item.PlanDate?.ToShortDateString()</td>
-                <td>@item.Korrect1?.ToShortDateString()</td>
-                <td>@item.Korrect2?.ToShortDateString()</td>
-                <td>@item.Korrect3?.ToShortDateString()</td>
-                <td>@item.FactDate?.ToShortDateString()</td>
+                <td colspan="11" class="text-muted">Нет данных</td>
             </tr>
+        }
+        else
+        {
+            int index = 1;
+            foreach (var item in Model.WorkItems)
+            {
+                <tr>
+                    <td>@index</td>
+                    <td>@item.DocumentName</td>
+                    <td>@item.WorkName</td>
+                    <td>@item.Executor</td>
+                    <td>@item.Controller</td>
+                    <td>@item.Approver</td>
+                    <td>@item.PlanDate?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Korrect1?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Korrect2?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Korrect3?.ToString("dd.MM.yyyy")</td>
+                    <td>@item.FactDate?.ToString("dd.MM.yyyy")</td>
+                </tr>
+                index++;
+            }
         }
     </tbody>
 </table>

@@ -40,8 +40,8 @@
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
-                                <option value="@item.Length"
-                                        selected="@(item.Contains(Model.Executor) ? "selected" : null)">
+                                <option value="@item"
+                                        selected="@item">
                                     @item
                                 </option>
                             }
