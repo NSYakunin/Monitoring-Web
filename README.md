@@ -62,19 +62,25 @@ Monitoring.sln
  ├─ Monitoring.Domain
  │   └─ Entities
  │       ├─ WorkItem.cs
- │       └─ ... (будут другие сущности)
+ |       ├─ WorkRequest.cs
+ │       └─ Notification.cs
+ |       
  ├─ Monitoring.Application
  │   ├─ Interfaces
  │   │   ├─ IWorkItemService.cs
  │   │   ├─ ILoginService.cs
- │   │   └─ ...
+ |   |   ├─ IWorkRequestService.cs
+ │   │   └─ INotificationService.cs
  │   ├─ Models
- │   │   └─ (DTO, ViewModels)
+ │   │   ├─ CreateRequestDto.cs
+ |   |   └─ StatusChangeDto.cs
  │   ├─ Services
  │   │   └─ ReportGenerator.cs
  │   └─ ...
  ├─ Monitoring.Infrastructure
  │   ├─ Services
+ |   |   ├─ NotificationService.cs
+ |   |   ├─ WorkRequestService.cs
  │   │   ├─ WorkItemService.cs
  │   │   └─ LoginService.cs
  │   └─ ...
