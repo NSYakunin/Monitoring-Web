@@ -329,6 +329,11 @@ namespace Monitoring.UI.Pages
             }
         }
 
+        public async Task<IActionResult> OnGetMyRequestsAsync()
+        {
+            return new JsonResult(new { siccess = true, message = "Что то"});
+        }
+
         public IActionResult OnGetLogout()
         {
             // Логаут
