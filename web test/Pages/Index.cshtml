@@ -71,6 +71,46 @@
         </div>
     </div>
 
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Уведомления</h5>
+                </div>
+                <div class="card-body p-2">
+                    @if (Model.Notifications != null && Model.Notifications.Count > 0)
+                    {
+                        <table class="table table-sm table-bordered align-middle mb-0" id="notificationsTable">
+                            <thead>
+                                <tr class="bg-light">
+                                    <th>№</th>
+                                    <th>Заголовок</th>
+                                    <th>Пользователь</th>
+                                    <th>Дата</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var note in Model.Notifications)
+                                {
+                                    <tr>
+                                        <td>@note.Id</td>
+                                        <td>@note.Title</td>
+                                        <td>@note.UserName</td>
+                                        <td>@note.DateSetInSystem.ToShortDateString()</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">Нет активных уведомлений.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Форма для генерации PDF (метод POST). Храним скрытые поля для передачи фильтров -->
     <form method="post" class="position-relative">
         <input type="hidden" asp-for="StartDate" />

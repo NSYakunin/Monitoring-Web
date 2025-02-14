@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Monitoring.Application.Interfaces;
 using Monitoring.Application.Services;
 using Monitoring.Domain.Entities;
+using Monitoring.Infrastructure.Services;
 using System.Text.Json; // Для JsonSerializer
 
 namespace Monitoring.UI.Pages
@@ -10,10 +11,12 @@ namespace Monitoring.UI.Pages
     public class IndexModel : PageModel
     {
         private readonly IWorkItemService _workItemService;
+        private readonly INotificationService _notificationService;
 
-        public IndexModel(IWorkItemService workItemService)
+        public IndexModel(IWorkItemService workItemService, INotificationService notificationService)
         {
             _workItemService = workItemService;
+            _notificationService = notificationService;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -36,6 +39,7 @@ namespace Monitoring.UI.Pages
 
         [BindProperty]
         public string SelectedItemsOrder { get; set; } = string.Empty;
+        public List<Notification> Notifications { get; set; } = new List<Notification>();
 
         public async Task OnGet()
         {
@@ -49,6 +53,7 @@ namespace Monitoring.UI.Pages
             int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
+
             // Установка дат по умолчанию, если не заданы
             if (!StartDate.HasValue)
                 StartDate = new DateTime(2014, 1, 1);
@@ -56,6 +61,12 @@ namespace Monitoring.UI.Pages
             DateTime now = DateTime.Now;
             if (!EndDate.HasValue)
                 EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+
+            // Деактивируем старые уведомления:
+            await _notificationService.DeactivateOldNotificationsAsync(90);
+
+            // Получаем активные уведомления:
+            Notifications = await _notificationService.GetActiveNotificationsAsync(divisionId);
 
             // Загружаем данные
             Executors = await _workItemService.GetExecutorsAsync(divisionId);
