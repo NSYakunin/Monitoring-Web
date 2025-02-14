@@ -98,3 +98,9 @@ Monitoring.sln
      ├─ wwwroot
      ├─ appsettings.json
      └─ Program.cs
+
+## Скриншоты
+![image](https://github.com/user-attachments/assets/ab9e4e30-7b23-484c-82ea-ef997c2d8fb3)
+![image](https://github.com/user-attachments/assets/ef4b3035-6351-46ad-96cf-f2e5ee88fd5d)
+![image](https://github.com/user-attachments/assets/edc6b3b0-1de0-493d-a7c6-0426ee1b832c)
+
