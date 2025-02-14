@@ -1,4 +1,6 @@
-﻿<table class="table table-bordered table-hover" id="workItemsTable">
+﻿
+
+<table class="table table-bordered table-hover" id="workItemsTable">
     <thead>
         <tr class="custom-header">
             <th>Наименование документа</th>
@@ -20,7 +22,22 @@
     <tbody>
         @foreach (var item in Model.WorkItems)
         {
-            <tr data-id="@item.DocumentNumber">
+            // Если вы где-то в OnGet прописываете item.HighlightCssClass,
+            // он отразится тут, например table-warning / table-info
+            string highlightClass = item.HighlightCssClass ?? "";
+
+            // Проверяем, является ли UserName исполнителем
+            bool canSendRequest = false;
+            @if (!string.IsNullOrEmpty(Model.UserName) && !string.IsNullOrEmpty(item.Executor))
+            {
+                string execStr = (string)item.Executor;
+                string[] parts = execStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                var exList = parts.Select(x => x.Trim());
+
+                canSendRequest = exList.Contains((string)Model.UserName);
+            }
+
+            <tr data-id="@item.DocumentNumber" class="@highlightClass">
                 <td>@item.DocumentName</td>
                 <td>@item.WorkName</td>
                 <td>@item.Executor</td>
@@ -31,8 +48,25 @@
                 <td>@item.Korrect2?.ToShortDateString()</td>
                 <td>@item.Korrect3?.ToShortDateString()</td>
                 <td class="align-middle">
+                    <!-- Чекбокс для PDF -->
                     <input type="checkbox" class="row-select" />
+                    <!-- Иконка для сортировки -->
                     <span class="drag-handle">&#x2630;</span>
+
+                    <!-- Кнопка "Запрос" -->
+                    @if (canSendRequest)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver')">
+                            ✉️
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>
+                            ✉️
+                        </button>
+                    }
                 </td>
             </tr>
         }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Monitoring.Application.DTO;
 using Monitoring.Application.Interfaces;
 using Monitoring.Application.Services;
 using Monitoring.Domain.Entities;
@@ -10,13 +11,15 @@ namespace Monitoring.UI.Pages
 {
     public class IndexModel : PageModel
     {
+        private readonly IWorkRequestService _workRequestService;
         private readonly IWorkItemService _workItemService;
         private readonly INotificationService _notificationService;
 
-        public IndexModel(IWorkItemService workItemService, INotificationService notificationService)
+        public IndexModel(IWorkItemService workItemService, INotificationService notificationService, IWorkRequestService workRequestService)
         {
             _workItemService = workItemService;
             _notificationService = notificationService;
+            _workRequestService = workRequestService;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -73,8 +76,12 @@ namespace Monitoring.UI.Pages
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
             DepartmentName = await _workItemService.GetDevAsync(divisionId);
 
+
             // Применяем фильтры к WorkItems
             ApplyFilters();
+
+            // Подсветка строк (смотрим заявки)
+            HighlightRows();
         }
 
         public async Task<IActionResult> OnGetFilterAsync(
@@ -100,8 +107,42 @@ namespace Monitoring.UI.Pages
 
             ApplyFilters();
 
+            // Подсветка строк (смотрим заявки)
+            HighlightRows();
+
             // Возвращаем partial (HTML-фрагмент) с таблицей
             return Partial("_WorkItemsTablePartial", this);
+        }
+
+        // Метод, который помечает WorkItem'ы, у которых есть Pending-заявки
+        private async void HighlightRows()
+        {
+            // Получим все заявки по тем DocumentNumber, которые у нас в WorkItems
+            // Можно сделать единый запрос, если нужно
+            var docNumbers = WorkItems.Select(w => w.DocumentNumber).ToList();
+
+            foreach (var item in WorkItems)
+            {
+                // Загрузим заявки для каждого WorkItem
+                var requests = await _workRequestService.GetRequestsByDocumentNumberAsync(item.DocumentNumber);
+                // Ищем актуальные (Pending)
+                var pendingRequests = requests.Where(r => r.Status == "Pending" && !r.IsDone).ToList();
+
+                // Если есть заявка "факт" => будем красить голубым
+                // Если есть заявка "корр1/корр2/корр3" => красить коричневым
+                if (pendingRequests.Any())
+                {
+                    bool hasFact = pendingRequests.Any(r => r.RequestType == "fact");
+                    bool hasCorr = pendingRequests.Any(r => r.RequestType.StartsWith("корр"));
+
+                    // Сохраним для Frontend - можно завести поле item.HighlightCssClass
+                    // или как-то иначе (доп. свойство в WorkItem).
+                    if (hasFact)
+                        item.HighlightCssClass = "table-info"; // голубой (Bootstrap)
+                    else if (hasCorr)
+                        item.HighlightCssClass = "table-warning"; // коричневато-жёлтый (Bootstrap)
+                }
+            }
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -168,6 +209,124 @@ namespace Monitoring.UI.Pages
             }
 
             WorkItems = filtered.ToList();
+        }
+
+        // Хендлер для создания заявки
+        [IgnoreAntiforgeryToken] // упрощаем
+        public async Task<IActionResult> OnPostCreateRequestAsync()
+        {
+            try
+            {
+                using var reader = new StreamReader(Request.Body);
+                string body = await reader.ReadToEndAsync();
+
+                var dto = JsonSerializer.Deserialize<CreateRequestDto>(body);
+                if (dto == null)
+                    return new JsonResult(new { success = false, message = "Невалидный JSON" });
+
+                // Проверка: текущий пользователь == dto.Sender и он должен входить в "Executor" списка
+                // Для упрощения: сделаем маленькую проверку
+                // Загружаем WorkItem
+                // Загружаем данные
+                int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+                UserName = HttpContext.Request.Cookies["userName"];
+
+                Executors = await _workItemService.GetExecutorsAsync(divisionId);
+                WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
+                DepartmentName = await _workItemService.GetDevAsync(divisionId);
+
+                var witem = WorkItems.FirstOrDefault(x => x.DocumentNumber == dto.DocumentNumber);
+                if (witem == null)
+                {
+                    return new JsonResult(new { success = false, message = "WorkItem не найден" });
+                }
+
+                // Если в witem.Executor несколько имён через запятую, проверяем
+                var allExecutors = witem.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim())
+                    .ToList();
+
+                if (!allExecutors.Contains(UserName))
+                {
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        message = "Вы не являетесь исполнителем, запрос недоступен."
+                    });
+                }
+
+                // Создаём заявку
+                var request = new WorkRequest
+                {
+                    WorkDocumentNumber = dto.DocumentNumber,
+                    RequestType = dto.RequestType,
+                    Sender = dto.Sender,
+                    Receiver = dto.Receiver,
+                    RequestDate = DateTime.Now,
+                    ProposedDate = dto.ProposedDate,
+                    Note = dto.Note,
+                    Status = "Pending",
+                    IsDone = false
+                };
+
+                await _workRequestService.CreateRequestAsync(request);
+
+                return new JsonResult(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
+
+        // Хендлер для принятия/отклонения заявки
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> OnPostSetRequestStatusAsync()
+        {
+            try
+            {
+                using var reader = new StreamReader(Request.Body);
+                string body = await reader.ReadToEndAsync();
+
+                var data = JsonSerializer.Deserialize<StatusChangeDto>(body);
+                if (data == null)
+                    return new JsonResult(new { success = false, message = "Невалидные данные" });
+
+                // Надо проверить, что текущий пользователь == Receiver
+                // Для этого нужно загрузить заявку по Id
+                // (Заметим, что в OnGet мы не грузили все заявки в отдельное свойство,
+                //   поэтому сделаем отдельный запрос)
+                // Но если WorkItems уже загружены, можно кэшировать. Упростим.
+                var requestList = await _workRequestService.GetRequestsByDocumentNumberAsync(data.DocumentNumber);
+                var req = requestList.FirstOrDefault(r => r.Id == data.RequestId);
+
+                if (req == null)
+                    return new JsonResult(new { success = false, message = "Заявка не найдена" });
+
+                if (req.Receiver != UserName)
+                {
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        message = "У вас нет прав для принятия/отклонения этой заявки."
+                    });
+                }
+
+                // Устанавливаем статус
+                string newStatus = data.NewStatus; // "Accepted" или "Declined"
+                if (newStatus != "Accepted" && newStatus != "Declined")
+                {
+                    return new JsonResult(new { success = false, message = "Некорректный статус" });
+                }
+
+                await _workRequestService.SetRequestStatusAsync(data.RequestId, newStatus);
+
+                return new JsonResult(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
         }
 
         public IActionResult OnGetLogout()

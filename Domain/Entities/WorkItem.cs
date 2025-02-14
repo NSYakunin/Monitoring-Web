@@ -31,6 +31,8 @@ namespace Monitoring.Domain.Entities
         public DateTime? Korrect3 { get; set; }
         public DateTime? FactDate { get; set; }
 
+        public string HighlightCssClass { get; set; } = "";
+
         // При желании, в будущем можно добавить методы,
         // которые проверяют корректность данных, валидацию и т.д.
     }

@@ -7,10 +7,9 @@
     Layout = "_Layout.cshtml";
 }
 
-<!-- Подключение необходимых стилей (можно в _Layout.cshtml) -->
+<!-- Подключение необходимых стилей (можно часть вынести в Layout) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-<!-- jQuery UI (CSS для sortable и прочего) -->
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
 
 <div class="container-fluid mt-4">
@@ -28,12 +27,12 @@
                     <!-- Фильтр по датам -->
                     <div class="d-flex flex-column">
                         <label for="startDate" class="form-label">C даты:</label>
-                        <input type="date" class="form-control" id="startDate" name="StartDate" 
+                        <input type="date" class="form-control" id="startDate" name="StartDate"
                                value="@(Model.StartDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
                     <div class="d-flex flex-column">
                         <label for="endDate" class="form-label">По дату:</label>
-                        <input type="date" class="form-control" id="endDate" name="EndDate" 
+                        <input type="date" class="form-control" id="endDate" name="EndDate"
                                value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
 
@@ -44,10 +43,9 @@
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
-                                    <option value="@item"
-                                            selected="@(item == Model.Executor ? "selected" : null)">
+                                <option value="@item" selected="@(item == Model.Executor ? "selected" : null)">
                                     @item
-                                    </option>
+                                </option>
                             }
                         </select>
                     </div>
@@ -55,7 +53,7 @@
                     <!-- Поле поиска -->
                     <div class="d-flex flex-column">
                         <label for="search" class="form-label">Поиск:</label>
-                        <input type="text" class="form-control" id="search" name="search" 
+                        <input type="text" class="form-control" id="search" name="search"
                                placeholder="Поиск..." value="@Model.SearchQuery" />
                     </div>
 
@@ -71,22 +69,24 @@
         </div>
     </div>
 
+    <!-- Блок "Уведомления" (слева) и "Сгенерировать PDF" (справа) на одной линии -->
     <div class="row mb-3">
-        <div class="col-12">
-            <div class="card shadow-sm">
+        <div class="col-auto">
+            <!-- Карточка с уведомлениями (если используете NotificationService) -->
+            <div class="card shadow-sm" style="min-width: 300px;">
                 <div class="card-header bg-warning">
-                    <h5 class="mb-0">Уведомления</h5>
+                    <h6 class="mb-0" style="font-size: 0.95rem;">Уведомления</h6>
                 </div>
-                <div class="card-body p-2">
+                <div class="card-body p-2" style="font-size: 0.85rem;">
                     @if (Model.Notifications != null && Model.Notifications.Count > 0)
                     {
-                        <table class="table table-sm table-bordered align-middle mb-0" id="notificationsTable">
+                        <table class="table table-sm table-bordered align-middle mb-0" style="font-size:0.85rem;">
                             <thead>
                                 <tr class="bg-light">
-                                    <th>№</th>
+                                    <th style="width: 45px;">№</th>
                                     <th>Заголовок</th>
                                     <th>Пользователь</th>
-                                    <th>Дата</th>
+                                    <th style="width: 90px;">Дата</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -109,27 +109,28 @@
                 </div>
             </div>
         </div>
+
+        <!-- Кнопка PDF -->
+        <div class="col d-flex align-items-start justify-content-end">
+            <form method="post" class="position-relative">
+                <input type="hidden" asp-for="StartDate" />
+                <input type="hidden" asp-for="EndDate" />
+                <input type="hidden" asp-for="Executor" />
+                <input type="hidden" asp-for="SearchQuery" />
+                <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
+
+                <div class="d-flex justify-content-end gap-3 mb-4">
+                    <button type="submit" class="btn btn-pdf" id="generatePdfBtn">
+                        <span class="spinner-border spinner-border-sm me-2"
+                              role="status" aria-hidden="true" style="display:none;"></span>
+                        Сгенерировать PDF
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- Форма для генерации PDF (метод POST). Храним скрытые поля для передачи фильтров -->
-    <form method="post" class="position-relative">
-        <input type="hidden" asp-for="StartDate" />
-        <input type="hidden" asp-for="EndDate" />
-        <input type="hidden" asp-for="Executor" />
-        <input type="hidden" asp-for="SearchQuery" />
-        <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
-
-        <div class="d-flex justify-content-end gap-3 mb-4">
-            <!-- Кнопка генерации PDF -->
-            <button type="submit" class="btn btn-pdf" id="generatePdfBtn">
-                <span class="spinner-border spinner-border-sm me-2"
-                      role="status" aria-hidden="true" style="display:none;"></span>
-                Сгенерировать PDF
-            </button>
-        </div>
-    </form>
-
-    <!-- Контейнер для таблицы работ (Partial view) -->
+    <!-- Основная таблица (partial) -->
     <div class="row mb-4">
         <div class="col-12">
             <div id="workItemsTableContainer">
@@ -137,32 +138,108 @@
             </div>
         </div>
     </div>
+
+    <!-- "Мои входящие заявки" (для Accept/Decline) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5>Мои входящие заявки</h5>
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Документ</th>
+                        <th>Тип</th>
+                        <th>Предлагаемая дата</th>
+                        <th>Отправитель</th>
+                        <th>Примечание</th>
+                        <th>Действие</th>
+                    </tr>
+                </thead>
+                <tbody id="myRequestsTbody">
+                    <!-- JS заполнит -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно (Bootstrap) для создания заявки -->
+<div class="modal fade" id="requestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Отправить запрос</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="hiddenDocNumber" />
+
+                <!-- Тип запроса -->
+                <div class="mb-3">
+                    <label for="requestTypeSelect" class="form-label">Тип запроса</label>
+                    <select id="requestTypeSelect" class="form-select">
+                        <option value="корр1">корр1</option>
+                        <option value="корр2">корр2</option>
+                        <option value="корр3">корр3</option>
+                        <option value="fact">Фактическое закрытие</option>
+                    </select>
+                </div>
+
+                <!-- Желаемая дата -->
+                <div class="mb-3">
+                    <label for="proposedDate" class="form-label">Желаемая дата</label>
+                    <input type="date" id="proposedDate" class="form-control" />
+                </div>
+
+                <!-- Получатель (Controller/Approver) -->
+                <div class="mb-3">
+                    <label for="receiverSelect" class="form-label">Получатель</label>
+                    <select id="receiverSelect" class="form-select">
+                        <!-- Заполняется в openRequestModal(...) -->
+                    </select>
+                </div>
+
+                <!-- Примечание -->
+                <div class="mb-3">
+                    <label for="requestNote" class="form-label">Примечание</label>
+                    <textarea id="requestNote" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" onclick="sendWorkRequest()">Отправить</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-        <!-- Скрипты: jQuery, Bootstrap, Handsontable, jQuery UI -->
-        <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <!-- Подключаем скрипты: jQuery, Bootstrap, Handsontable, jQuery UI -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
-        <!-- Дополнительные стили (вынести в .css-файл) -->
-        <style>
-            /* Пример ограничений для Handsontable, если используется */
-            #spreadsheet {
-                width: 100%;
-                height: 80vh;
-                overflow: auto;
-                max-width: 100%;
-            }
-            .handsontable th,
-            .handsontable td {
-                min-width: 50px;
-                max-width: 300px;
-            }
-            .handsontable {
-                box-sizing: border-box;
-            }
+    <!-- Дополнительные стили -->
+    <style>
+        /* Пример ограничений для Handsontable */
+        #spreadsheet {
+            width: 100%;
+            height: 80vh;
+            overflow: auto;
+            max-width: 100%;
+        }
+
+        .handsontable th,
+        .handsontable td {
+            min-width: 50px;
+            max-width: 300px;
+        }
+
+        .handsontable {
+            box-sizing: border-box;
+        }
+
             .handsontable colHeader {
                 position: sticky;
                 top: 0;
@@ -170,34 +247,37 @@
                 z-index: 1;
             }
 
-            /* Подсветка выбранной (чекбоксом) строки */
-            .selected-row {
-                background-color: #e9f7ef !important; /* Светло-зеленый фон */
-            }
+        /* Подсветка выбранной (чекбоксом) строки */
+        .selected-row {
+            background-color: #e9f7ef !important; /* Светло-зеленый фон */
+        }
 
-            /* Иконка/элемент для "таскания" строк */
-            .drag-handle {
-                cursor: move;
-                margin-left: 5px;
-                opacity: 0.7;
-                transition: opacity 0.2s;
-            }
+        /* Иконка/элемент для "перетаскивания" строк */
+        .drag-handle {
+            cursor: move;
+            margin-left: 5px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
             .drag-handle:hover {
                 opacity: 1;
             }
 
-            /* Кнопка "Выделить/снять все" */
-            .toggle-all-btn {
-                cursor: pointer;
-                margin-left: 8px;
-                opacity: 0.7;
-                transition: all 0.3s;
-            }
+        /* Кнопка "Выделить/снять все" */
+        .toggle-all-btn {
+            cursor: pointer;
+            margin-left: 8px;
+            opacity: 0.7;
+            transition: all 0.3s;
+        }
+
             .toggle-all-btn:hover {
                 opacity: 1;
                 transform: scale(1.2);
             }
 
+        /* Кнопка PDF */
         .btn-pdf {
             background: linear-gradient(145deg, #2c3e50, #34495e);
             color: white !important;
@@ -221,6 +301,7 @@
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
 
+        /* Кнопка "Выход" */
         .btn-logout {
             border: 2px solid #dc3545;
             color: #dc3545;
@@ -241,101 +322,234 @@
         .spinner-border {
             vertical-align: text-top;
         }
-        </style>
 
-        <script>
-            // Функция для инициализации сортировки строк и чекбоксов.
-            // Вызывается и при первом рендере, и после AJAX-перезагрузки partial.
-            function initSortableTable() {
-                var $tableBody = $("#workItemsTable tbody");
+        /* Уменьшенный шрифт для уведомлений */
+        .table-sm {
+            font-size: 0.85rem;
+        }
+    </style>
 
-                // Делаем строки таблицы сортируемыми
-                $tableBody.sortable({
-                    handle: ".drag-handle",  // "тащим" за элемент с этим классом
-                    axis: "y",               // только вертикально
-                    cursor: "move",
-                    start: function(event, ui) {
-                        // При начале перетаскивания отмечаем чекбокс и добавляем стиль
-                        ui.item.find('.row-select').prop('checked', true);
-                        ui.item.addClass('selected-row');
+    <script>
+        // Инициализация сортировки строк + чекбоксы (PDF)
+        function initSortableTable() {
+            var $tableBody = $("#workItemsTable tbody");
+
+            // Сортируем строки
+            $tableBody.sortable({
+                handle: ".drag-handle",
+                axis: "y",
+                cursor: "move",
+                start: function(event, ui) {
+                    // При начале перетаскивания отмечаем чекбокс
+                    ui.item.find('.row-select').prop('checked', true);
+                    ui.item.addClass('selected-row');
+                },
+                update: function(event, ui) {
+                    console.log('Порядок изменен');
+                }
+            });
+            $tableBody.disableSelection();
+
+            // Чекбоксы
+            $('#workItemsTable').on('change', '.row-select', function() {
+                $(this).closest('tr').toggleClass('selected-row', this.checked);
+            });
+            $('#workItemsTable .row-select:checked').closest('tr').addClass('selected-row');
+
+            // "Выделить/снять все"
+            $('.toggle-all-btn').off('click').on('click', function() {
+                let all = $('#workItemsTable .row-select');
+                let anyUnchecked = all.filter(':not(:checked)').length > 0;
+                all.prop('checked', anyUnchecked).trigger('change');
+            });
+        }
+
+        $(document).ready(function(){
+            initSortableTable();
+
+            // AJAX-фильтр: при изменении полей
+            $('#startDate, #endDate, #executor, #search').on('change keyup', function() {
+                $.ajax({
+                    url: '@Url.Page("Index", "Filter")',
+                    type: 'GET',
+                    data: {
+                        startDate: $('#startDate').val(),
+                        endDate: $('#endDate').val(),
+                        executor: $('#executor').val(),
+                        searchQuery: $('#search').val()
                     },
-                    update: function(event, ui) {
-                        console.log('Порядок изменен');
+                    success: function(result) {
+                        $('#workItemsTableContainer').html(result);
+                        initSortableTable();
+
+                        // Передаём в скрытые поля для POST
+                        $('input[name="StartDate"]').val($('#startDate').val());
+                        $('input[name="EndDate"]').val($('#endDate').val());
+                        $('input[name="Executor"]').val($('#executor').val());
+                        $('input[name="SearchQuery"]').val($('#search').val());
                     }
                 });
-                $tableBody.disableSelection();  // отключаем выделение текста при перетаскивании
-
-                // Обработчик изменения одного чекбокса (выделение/снятие выделения)
-                $('#workItemsTable').on('change', '.row-select', function() {
-                    $(this).closest('tr').toggleClass('selected-row', this.checked);
-                });
-
-                // При загрузке: выделим строки, у которых уже отмечен чекбокс
-                $('#workItemsTable .row-select:checked')
-                    .closest('tr')
-                    .addClass('selected-row');
-
-                // Обработчик "Выделить/снять все"
-                $('.toggle-all-btn').off('click').on('click', function() {
-                    let all = $('#workItemsTable .row-select');
-                    // Проверяем, есть ли хоть один неотмеченный
-                    let anyUnchecked = all.filter(':not(:checked)').length > 0;
-                    // Если есть неотмеченные – ставим всем checked; иначе снимаем
-                    all.prop('checked', anyUnchecked).trigger('change');
-                });
-            }
-
-            $(document).ready(function(){
-                // Инициализируем сортировку и обработчики при первой загрузке
-                initSortableTable();
-
-                // При изменении полей фильтра вызываем AJAX
-                $('#startDate, #endDate, #executor, #search').on('change keyup', function(e) {
-                    $.ajax({
-                        url: '@Url.Page("Index", "Filter")', // вызов OnGetFilterAsync
-                        type: 'GET',
-                        data: {
-                            startDate: $('#startDate').val(),
-                            endDate:   $('#endDate').val(),
-                            executor:  $('#executor').val(),
-                            searchQuery: $('#search').val()
-                        },
-                        success: function(result) {
-                            // Обновляем только контейнер с таблицей
-                            $('#workItemsTableContainer').html(result);
-
-                            // Повторно инициализируем sortable/чекбоксы для вновь загруженной таблицы
-                            initSortableTable();
-
-                            // Подставляем новые значения в скрытые поля, чтобы они ушли при POST
-                            $('input[name="StartDate"]').val($('#startDate').val());
-                            $('input[name="EndDate"]').val($('#endDate').val());
-                            $('input[name="Executor"]').val($('#executor').val());
-                            $('input[name="SearchQuery"]').val($('#search').val());
-                        }
-                    });
-                });
-
-                // Кнопка "Сгенерировать PDF"
-                document.getElementById("generatePdfBtn").addEventListener("click", function(e) {
-                    // Собираем id выбранных строк
-                    let rows = document.querySelectorAll("#workItemsTable tbody tr");
-                    let result = [];
-
-                    rows.forEach((row) => {
-                        let checkbox = row.querySelector("input.row-select");
-                        let isChecked = checkbox && checkbox.checked;
-                        let itemId = row.getAttribute("data-id") || "";
-                        if (isChecked) {
-                            result.push(itemId);
-                        }
-                    });
-
-                    // Преобразуем в JSON и сохраняем в скрытое поле
-                    let jsonString = JSON.stringify(result);
-                    document.getElementById("SelectedItemsOrder").value = jsonString;
-                    // Далее форма сабмитится как обычно (POST -> OnPostAsync)
-                });
             });
-        </script>
+
+            // Обработка кнопки "Сгенерировать PDF" (формирование SelectedItemsOrder)
+            $('#generatePdfBtn').on('click', function() {
+                let rows = document.querySelectorAll("#workItemsTable tbody tr");
+                let result = [];
+                rows.forEach((row) => {
+                    let checkbox = row.querySelector("input.row-select");
+                    if (checkbox && checkbox.checked) {
+                        result.push(row.getAttribute("data-id") || "");
+                    }
+                });
+                $("#SelectedItemsOrder").val(JSON.stringify(result));
+            });
+
+            // Загрузим "мои заявки" (pending)
+            loadMyPendingRequests();
+        });
+
+        // ----------------------------------------------------
+        // Модальное окно: заполнение полей, открытие
+        // ----------------------------------------------------
+        function openRequestModal(docNumber, controller, approver) {
+            $('#hiddenDocNumber').val(docNumber);
+            $('#proposedDate').val("");
+            $('#requestNote').val("");
+
+            let receiverSelect = document.getElementById('receiverSelect');
+            receiverSelect.innerHTML = "";
+
+            // Добавим "Контролирующий"
+            let optCtrl = document.createElement('option');
+            optCtrl.value = controller;
+            optCtrl.textContent = `Контролирующий (${controller})`;
+            receiverSelect.appendChild(optCtrl);
+
+            // Добавим "Принимающий"
+            let optAppr = document.createElement('option');
+            optAppr.value = approver;
+            optAppr.textContent = `Принимающий (${approver})`;
+            receiverSelect.appendChild(optAppr);
+
+            // Открываем модалку
+            let modal = new bootstrap.Modal(document.getElementById('requestModal'));
+            modal.show();
+        }
+
+        // ----------------------------------------------------
+        // Отправка заявки (создание)
+        // ----------------------------------------------------
+        function sendWorkRequest() {
+            let docNumber = $('#hiddenDocNumber').val();
+            let requestType = $('#requestTypeSelect').val();
+            let proposedDate = $('#proposedDate').val(); // string (YYYY-MM-DD)
+            let receiver = $('#receiverSelect').val();
+            let note = $('#requestNote').val();
+            let sender = '@Model.UserName';
+
+            // Преобразуем proposedDate в формат, который десериализуется как DateTime
+            // Если пустая строка -> null
+            let dateObj = proposedDate ? new Date(proposedDate + "T00:00:00") : null;
+
+            let data = {
+                DocumentNumber: docNumber,
+                RequestType: requestType,
+                Sender: sender,
+                Receiver: receiver,
+                ProposedDate: dateObj,
+                Note: note
+            };
+
+            fetch('@Url.Page("Index", "CreateRequest")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    alert("Заявка отправлена!");
+                    let modalEl = document.getElementById('requestModal');
+                    let modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+
+                    // Подсветим строку
+                    let row = document.querySelector(`tr[data-id="${docNumber}"]`);
+                    if (row) {
+                        if (requestType.startsWith('корр'))
+                            row.classList.add('table-warning'); // коричневато-жёлтый
+                        else if (requestType === 'fact')
+                            row.classList.add('table-info');    // голубой
+                    }
+                } else {
+                    alert("Ошибка: " + res.message);
+                }
+            })
+            .catch(e => console.error(e));
+        }
+
+        // ----------------------------------------------------
+        // Загрузка моих входящих заявок (Receiver == @Model.UserName)
+        // и их отображение в таблице
+        // ----------------------------------------------------
+        function loadMyPendingRequests() {
+            // AJAX GET: Index?handler=GetMyRequests
+            // (В IndexModel напишите OnGetMyRequestsAsync, который вернёт JSON заявок)
+            fetch('@Url.Page("Index", "MyRequests")')
+            .then(r => r.json())
+            .then(data => {
+                let tbody = document.getElementById('myRequestsTbody');
+                tbody.innerHTML = "";
+                data.forEach(req => {
+                    let tr = document.createElement('tr');
+                    let dateStr = req.proposedDate ? req.proposedDate.substring(0,10) : '';
+                    let noteStr = req.note || '';
+
+                    tr.innerHTML = `
+                        <td>${req.workDocumentNumber}</td>
+                        <td>${req.requestType}</td>
+                        <td>${dateStr}</td>
+                        <td>${req.sender}</td>
+                        <td>${noteStr}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success"
+                                onclick="setRequestStatus(${req.id}, '${req.workDocumentNumber}', 'Accepted')">
+                                Принять
+                            </button>
+                            <button class="btn btn-sm btn-danger"
+                                onclick="setRequestStatus(${req.id}, '${req.workDocumentNumber}', 'Declined')">
+                                Отклонить
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(e => console.error(e));
+        }
+
+        function setRequestStatus(requestId, docNumber, newStatus) {
+            let bodyData = {
+                RequestId: requestId,
+                DocumentNumber: docNumber,
+                NewStatus: newStatus
+            };
+            fetch('@Url.Page("Index", "SetRequestStatus")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyData)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    alert("Статус обновлён: " + newStatus);
+                    // Перезагрузить список заявок
+                    loadMyPendingRequests();
+                } else {
+                    alert("Ошибка: " + res.message);
+                }
+            })
+            .catch(e => console.error(e));
+        }
+    </script>
 }

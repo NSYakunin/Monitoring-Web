@@ -20,6 +20,7 @@ builder.Services.AddMemoryCache();
 //builder.Services.AddScoped<ILoginService, FakeLoginService>();
 
 builder.Services.AddTransient<INotificationService, NotificationService>();
+builder.Services.AddTransient<IWorkRequestService, WorkRequestService>();
 
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
