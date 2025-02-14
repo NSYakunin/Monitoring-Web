@@ -14,7 +14,7 @@
             <th>Корр3</th>
             <th>
                 <span class="toggle-all-btn" title="Выделить/снять все">
-                    ⚙️
+                    📌
                 </span>
             </th>
         </tr>
@@ -49,7 +49,7 @@
                 <td>@item.Korrect3?.ToShortDateString()</td>
                 <td class="align-middle">
                     <!-- Чекбокс для PDF -->
-                    <input type="checkbox" class="row-select" />
+                    <input type="checkbox" class="row-select"/>
                     <!-- Иконка для сортировки -->
                     <span class="drag-handle">&#x2630;</span>
 
@@ -58,13 +58,13 @@
                     {
                         <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
                                 onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver')">
-                            ✉️
+                            📝
                         </button>
                     }
                     else
                     {
                         <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>
-                            ✉️
+                            📝
                         </button>
                     }
                 </td>
