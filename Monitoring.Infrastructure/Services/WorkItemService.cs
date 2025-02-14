@@ -69,6 +69,7 @@ namespace Monitoring.Infrastructure.Services
                         await conn.OpenAsync();
 
                         var dict = new Dictionary<string, WorkItem>();
+
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
                             while (await reader.ReadAsync())
@@ -86,7 +87,9 @@ namespace Monitoring.Infrastructure.Services
                                 DateTime? kor3 = reader["DateKorrect3"] as DateTime?;
                                 DateTime? factDate = reader["DateFact"] as DateTime?;
 
-                                string key = $"{docName}|{workName}|{controller}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}";
+                                // Формируем ключ без поля controller (и executor), 
+                                // чтобы все их варианты собирались в одну запись:
+                                string key = $"{docName}|{workName}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}";
 
                                 if (!dict.ContainsKey(key))
                                 {
@@ -95,6 +98,8 @@ namespace Monitoring.Infrastructure.Services
                                         DocumentNumber = docNumber,
                                         DocumentName = docName ?? "",
                                         WorkName = workName ?? "",
+                                        // Executor и Controller пока задаём напрямую
+                                        // (если придёт первая запись с ними).
                                         Executor = executor ?? "",
                                         Controller = controller ?? "",
                                         Approver = approver ?? "",
@@ -107,16 +112,36 @@ namespace Monitoring.Infrastructure.Services
                                 }
                                 else
                                 {
-                                    // Если уже есть, значит нам нужно добавить исполнителя
+                                    // Если запись уже есть, дополняем &laquo;исполнителей&raquo; и &laquo;контролирующих&raquo;.
                                     var existing = dict[key];
+
+                                    // *** Агрегация исполнителя (Executor) ***
                                     if (!string.IsNullOrWhiteSpace(executor))
                                     {
-                                        // Чтобы не дублировать, если executor уже есть
-                                        var execList = existing.Executor.Split(",", StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToList();
+                                        var execList = existing.Executor
+                                            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(x => x.Trim())
+                                            .ToList();
+
                                         if (!execList.Contains(executor))
                                         {
                                             execList.Add(executor);
                                             existing.Executor = string.Join(", ", execList);
+                                        }
+                                    }
+
+                                    // *** Агрегация контролирующего (Controller) ***
+                                    if (!string.IsNullOrWhiteSpace(controller))
+                                    {
+                                        var ctrlList = existing.Controller
+                                            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(x => x.Trim())
+                                            .ToList();
+
+                                        if (!ctrlList.Contains(controller))
+                                        {
+                                            ctrlList.Add(controller);
+                                            existing.Controller = string.Join(", ", ctrlList);
                                         }
                                     }
                                 }

@@ -19,6 +19,8 @@ builder.Services.AddMemoryCache();
  builder.Services.AddScoped<ILoginService, LoginService>();
 //builder.Services.AddScoped<ILoginService, FakeLoginService>();
 
+builder.Services.AddTransient<INotificationService, NotificationService>();
+
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
 QuestPDF.Settings.License = LicenseType.Community;
