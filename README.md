@@ -25,7 +25,11 @@
 
 Основное предназначение проекта:  
 - Авторизация пользователя (логин и пароль)  
-- Отображение главного экрана с большой таблицей работ за выбранный период  
+- Отображение главного экрана с большой таблицей работ за выбранный период
+- Отображение активных уведомлений в отдельно небольшой таблице
+- Возможность "руками" перетаскивать элементы основной таблицы, ручная сортировка + выбор необходимых строк для отчета
+- Создание заявок на корректировку по дате (или закрытие) выбранной работы, добавление заметок к заявке и выбор человека для рассмотрения.
+- Вывод входящих заявок, и их рассмотрение (отклонение или принятие)
 - Поля фильтрации и сортировки (по исполнителям, а также строка поиска)  
 - Генерация **PDF**-отчёта с помощью библиотеки **QuestPDF**  
 
@@ -62,19 +66,25 @@ Monitoring.sln
  ├─ Monitoring.Domain
  │   └─ Entities
  │       ├─ WorkItem.cs
- │       └─ ... (будут другие сущности)
+ |       ├─ WorkRequest.cs
+ │       └─ Notification.cs
+ |       
  ├─ Monitoring.Application
  │   ├─ Interfaces
  │   │   ├─ IWorkItemService.cs
  │   │   ├─ ILoginService.cs
- │   │   └─ ...
+ |   |   ├─ IWorkRequestService.cs
+ │   │   └─ INotificationService.cs
  │   ├─ Models
- │   │   └─ (DTO, ViewModels)
+ │   │   ├─ CreateRequestDto.cs
+ |   |   └─ StatusChangeDto.cs
  │   ├─ Services
  │   │   └─ ReportGenerator.cs
  │   └─ ...
  ├─ Monitoring.Infrastructure
  │   ├─ Services
+ |   |   ├─ NotificationService.cs
+ |   |   ├─ WorkRequestService.cs
  │   │   ├─ WorkItemService.cs
  │   │   └─ LoginService.cs
  │   └─ ...
