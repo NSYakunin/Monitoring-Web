@@ -85,10 +85,10 @@ namespace Monitoring.UI.Pages
         }
 
         public async Task<IActionResult> OnGetFilterAsync(
-            DateTime? startDate,
-            DateTime? endDate,
-            string? executor,
-            string? searchQuery)
+                        DateTime? startDate,
+                        DateTime? endDate,
+                        string? executor,
+                        string? searchQuery)
         {
             // AJAX-обработчик, вызываемый при изменении фильтров
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
