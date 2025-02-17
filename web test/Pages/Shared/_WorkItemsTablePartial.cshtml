@@ -22,7 +22,7 @@
     <tbody>
         @foreach (var item in Model.WorkItems)
         {
-            // Если вы где-то в OnGet прописываете item.HighlightCssClass,
+            // Если где-то в OnGet прописать item.HighlightCssClass,
             // он отразится тут, например table-warning / table-info
             string highlightClass = item.HighlightCssClass ?? "";
 

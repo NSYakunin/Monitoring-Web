@@ -2,6 +2,7 @@
 using Monitoring.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using System.Data.SqlClient;
+using System.Collections.Generic;
 
 namespace Monitoring.Infrastructure.Services
 {
@@ -101,6 +102,46 @@ namespace Monitoring.Infrastructure.Services
             cmd.Parameters.AddWithValue("@Id", requestId);
 
             await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<List<WorkRequest>> GetAllRequestsAsync()
+        {
+            var listRequest = new List<WorkRequest>();
+            string connStr = _config.GetConnectionString("DefaultConnection");
+            using var conn = new SqlConnection(connStr);
+            await conn.OpenAsync();
+
+            string sql = @"
+                SELECT * FROM Requests
+                    WHERE Status = 'Pending' AND IsDone = 0
+                ";
+
+            using var cmd = new SqlCommand(sql, conn);
+
+            using var rdr = await cmd.ExecuteReaderAsync();
+            while (await rdr.ReadAsync())
+            {
+                var wr = new WorkRequest
+                {
+                    Id = rdr.GetInt32(rdr.GetOrdinal("Id")),
+                    WorkDocumentNumber = rdr.GetString(rdr.GetOrdinal("WorkDocumentNumber")),
+                    RequestType = rdr.GetString(rdr.GetOrdinal("RequestType")),
+                    Sender = rdr.GetString(rdr.GetOrdinal("Sender")),
+                    Receiver = rdr.GetString(rdr.GetOrdinal("Receiver")),
+                    RequestDate = rdr.GetDateTime(rdr.GetOrdinal("RequestDate")),
+                    ProposedDate = rdr["ProposedDate"] as DateTime?,
+                    Status = rdr.GetString(rdr.GetOrdinal("Status")),
+                    IsDone = rdr.GetBoolean(rdr.GetOrdinal("IsDone")),
+                    Note = rdr["Note"] as string
+                };
+                listRequest.Add(wr);
+            }
+            return listRequest;
+
+
+            // SQL-запрос:
+            // SELECT * FROM Requests
+            // WHERE Receiver = @rcv AND Status = 'Pending' AND IsDone = 0
         }
     }
 }

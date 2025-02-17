@@ -146,6 +146,8 @@
             <table class="table table-bordered table-hover">
                 <thead>
                     <tr>
+                        <th>Наименование документа</th>
+                        <th>Наименование работы</th>
                         <th>Документ</th>
                         <th>Тип</th>
                         <th>Предлагаемая дата</th>
@@ -506,6 +508,9 @@
                     let noteStr = req.note || '';
 
                     tr.innerHTML = `
+                        <td>${"Пусто пока"}</td>
+                        <td>${"Пусто пока"}</td>
+                        <td>${req.workDocumentNumber}</td>
                         <td>${req.workDocumentNumber}</td>
                         <td>${req.requestType}</td>
                         <td>${dateStr}</td>

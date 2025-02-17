@@ -91,20 +91,26 @@ namespace Monitoring.UI.Pages
                         string? searchQuery)
         {
             // AJAX-обработчик, вызываемый при изменении фильтров
+            // 1) Проверяем куки
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
                 return new JsonResult(new { error = "Не найдены куки divisionId" });
 
+            // 2) Считываем всё то же, что и в OnGet
             int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+            UserName = HttpContext.Request.Cookies["userName"]; // <-- ВАЖНО!!! Присваиваем, чтобы partial знал пользователя
 
+            // 3) Устанавливаем поля модели
             StartDate = startDate ?? new DateTime(2014, 1, 1);
             EndDate = endDate ?? DateTime.Now;
             Executor = executor;
             SearchQuery = searchQuery;
 
+            // 4) Подгружаем данные, как и в OnGet
             Executors = await _workItemService.GetExecutorsAsync(divisionId);
             WorkItems = await _workItemService.GetAllWorkItemsAsync(divisionId);
             DepartmentName = await _workItemService.GetDevAsync(divisionId);
 
+            // 5) Фильтруем + выделяем строки с заявками
             ApplyFilters();
 
             // Подсветка строк (смотрим заявки)
@@ -283,6 +289,7 @@ namespace Monitoring.UI.Pages
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostSetRequestStatusAsync()
         {
+            UserName = HttpContext.Request.Cookies["userName"];
             try
             {
                 using var reader = new StreamReader(Request.Body);
@@ -331,7 +338,37 @@ namespace Monitoring.UI.Pages
 
         public async Task<IActionResult> OnGetMyRequestsAsync()
         {
-            return new JsonResult(new { siccess = true, message = "Что то"});
+            // 1) Проверяем, что пользователь зашёл
+            if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
+            {
+                // Можно вернуть пустой список или ошибку
+                return new JsonResult(new { success = false, message = "Не найдены куки divisionId" });
+            }
+
+            // 2) Считываем userName
+            string userName = HttpContext.Request.Cookies["userName"];
+            UserName = userName; // чтобы при необходимости дальше использовать
+
+            // 3) Загружаем все заявки, но фильтруем только те, где Receiver == userName и Status == "Pending" и не IsDone
+            //    - либо вызываем специальный метод _workRequestService.GetRequestsForReceiverAsync(userName)
+            //      если у вас такого нет — легко добавить, или просто получить все Requests, а потом отфильтровать.
+            var allRequests = await _workRequestService.GetAllRequestsAsync(); // пример
+            var myPendingRequests = allRequests
+                .Where(r => r.Receiver == userName && r.Status == "Pending" && !r.IsDone)
+                .ToList();
+
+            // 4) Для удобства на клиенте вернём анонимный объект
+            var result = myPendingRequests.Select(r => new {
+                id = r.Id,
+                workDocumentNumber = r.WorkDocumentNumber,
+                requestType = r.RequestType,
+                proposedDate = r.ProposedDate?.ToString("yyyy-MM-dd"),
+                sender = r.Sender,
+                note = r.Note
+            });
+
+            // 5) Возвращаем JSON
+            return new JsonResult(result);
         }
 
         public IActionResult OnGetLogout()
