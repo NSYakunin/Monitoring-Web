@@ -40,28 +40,59 @@ namespace Monitoring.Infrastructure.Services
                 using (var conn = new SqlConnection(connectionString))
                 {
                     string query = @"
-                        SELECT d.Number, wu.idWork,
-                            td.Name + ' ' + d.Name AS DocumentName,
-                            w.Name AS WorkName,
-                            u.smallName AS Executor,
-                            (SELECT smallName FROM Users WHERE idUser = wucontr.idUser) AS Controller,
-                            (SELECT smallName FROM Users WHERE idUser = wuc.idUser) AS Approver,
-                            w.DatePlan,
-                            wu.DateKorrect1,
-                            wu.DateKorrect2,
-                            wu.DateKorrect3,
-                            w.DateFact
-                        FROM WorkUser wu
-                            INNER JOIN Works w ON wu.idWork = w.id
-                            INNER JOIN Documents d ON w.idDocuments = d.id
-                            LEFT JOIN WorkUserCheck wuc ON wuc.idWork = w.id
-                            LEFT JOIN WorkUserControl wucontr ON wucontr.idWork = w.id
-                            INNER JOIN TypeDocs td ON td.id = d.idTypeDoc
-                            INNER JOIN Users u ON wu.idUser = u.idUser
-                        WHERE
-                            wu.dateFact IS NULL
-                            AND wu.idUser IN (SELECT idUser FROM Users WHERE idDivision = @divId)
-                    ";
+                        SELECT 
+                                d.Number,
+                                wu.idWork,
+                                td.Name + ' ' + d.Name AS DocumentName,
+                                w.Name AS WorkName,
+
+                                -- Вместо агрегированной строки исполнителей
+                                -- выводим имя конкретного пользователя
+                                U2.smallName AS Executor,
+
+                                (SELECT smallName 
+                                 FROM Users 
+                                 WHERE idUser = wucontr.idUser
+                                ) AS Controller,
+
+                                (SELECT smallName 
+                                 FROM Users 
+                                 WHERE idUser = wuc.idUser
+                                ) AS Approver,
+
+                                w.DatePlan,
+                                wu.DateKorrect1,
+                                wu.DateKorrect2,
+                                wu.DateKorrect3,
+                                w.DateFact
+
+                            FROM WorkUser wu
+                                INNER JOIN Works w 
+                                    ON wu.idWork = w.id
+                                INNER JOIN Documents d 
+                                    ON w.idDocuments = d.id
+                                LEFT JOIN WorkUserCheck wuc 
+                                    ON wuc.idWork = w.id
+                                LEFT JOIN WorkUserControl wucontr 
+                                    ON wucontr.idWork = w.id
+                                INNER JOIN TypeDocs td 
+                                    ON td.id = d.idTypeDoc
+                                INNER JOIN Users u 
+                                    ON wu.idUser = u.idUser
+
+                                -- Новые JOIN-ы, отвечающие за получение исполнителей
+                                INNER JOIN WorkUser       wu2   ON wu2.idWork = w.id
+                                INNER JOIN Users          U2    ON U2.idUser = wu2.idUser
+                                INNER JOIN WorkUserCheck  wuc2  ON wuc2.idWork = w.id
+
+                            WHERE
+                                wu.dateFact IS NULL
+                                AND wu.idUser IN (
+                                    SELECT idUser 
+                                    FROM Users 
+                                    WHERE idDivision = @divId
+                                );
+                                    ";
 
                     using (var cmd = new SqlCommand(query, conn))
                     {
@@ -75,6 +106,7 @@ namespace Monitoring.Infrastructure.Services
                             while (await reader.ReadAsync())
                             {
                                 // Считываем поля
+                                string idWork = reader["idWork"]?.ToString();
                                 string docNumber = reader["Number"]?.ToString() + "/" + reader["idWork"]?.ToString();
                                 string docName = reader["DocumentName"]?.ToString();
                                 string workName = reader["WorkName"]?.ToString();
@@ -89,7 +121,7 @@ namespace Monitoring.Infrastructure.Services
 
                                 // Формируем ключ без поля controller (и executor), 
                                 // чтобы все их варианты собирались в одну запись:
-                                string key = $"{docName}|{workName}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}";
+                                string key = $"{docName}|{workName}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}|{idWork}";
 
                                 if (!dict.ContainsKey(key))
                                 {
