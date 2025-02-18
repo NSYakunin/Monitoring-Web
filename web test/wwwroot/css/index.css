@@ -1,1 +1,45 @@
-﻿
+﻿/* Стили для кнопки "Обновить" */
+#refreshCacheBtn {
+    /* Небольшой градиент, закругления и тени */
+    background: linear-gradient(145deg, #2c7a7b, #319795);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    /* Плавный переход на все изменения (цвет, тень, transform) */
+    transition: all 0.3s ease;
+    /* Дополнительная тень */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    /* Чтобы курсор показывал "руку" */
+    cursor: pointer;
+}
+
+    /* При наведении меняем чуть-чуть цвет, "поднимаем" кнопку */
+    #refreshCacheBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* При активном клике – эффект &laquo;вдавливания&raquo; */
+    #refreshCacheBtn:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Состояние disabled (когда кнопка недоступна) */
+    #refreshCacheBtn:disabled {
+        /* Сероватый цвет и более тусклая кнопка */
+        background: #ccc;
+        color: #666;
+        cursor: not-allowed;
+        transform: none; /* чтобы не скакала при клике, если disabled */
+        box-shadow: none;
+        opacity: 0.8;
+    }
+
+/* Для наглядности можно добавить класс .countdown (если захотим анимировать текст) */
+.countdown {
+    font-weight: bold;
+    margin-left: 8px;
+    transition: color 0.5s;
+}

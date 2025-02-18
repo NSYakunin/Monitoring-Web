@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
+<link rel="stylesheet" href="css/index.css" />
+
 
 <div class="container-fluid mt-4">
     <!-- Шапка: подразделение, пользователь, фильтры -->
@@ -557,30 +559,54 @@
         }
 
                 function refreshCache() {
-            // Блокируем кнопку
+            // Получаем саму кнопку
             let btn = document.getElementById('refreshCacheBtn');
+
+            // Сохраняем исходный текст (на случай, если нужно будет вернуть)
+            let originalText = btn.innerHTML;
+
+            // Блокируем кнопку сразу, чтобы пользователь не нажимал её повторно
             btn.disabled = true;
 
-            // Вызываем POST-запрос к хендлеру Index?handler=RefreshCache
+            // Меняем текст на &laquo;Обновляю…&raquo; (можно добавить иконку-спиннер, например)
+            btn.innerHTML = "Обновляю...";
+
+            // Делаем POST запрос к хендлеру RefreshCache
             fetch('@Url.Page("Index", "RefreshCache")', {
                 method: 'POST'
             })
-            .then(r => r.json())
+            .then(response => response.json())
             .then(res => {
                 if (res.success) {
-                    alert("Кэш очищен, данные будут обновлены!");
-                    // Вариант 1: просто перезагрузить страницу:
-                    location.reload();
+                    // Если всё ок, запускаем обратный счёт перед перезагрузкой:
+                    let countdown = 5; // количество секунд
+                    let timerId = setInterval(() => {
+                        countdown--;
+                        // Меняем текст в кнопке, чтобы было видно, сколько осталось
+                        btn.innerHTML = `Ожидайте ${countdown}c`;
+
+                        if (countdown <= 0) {
+                            clearInterval(timerId);
+                            // Когда счёт дошёл до нуля — перезагружаем страницу
+                            location.reload();
+                        }
+                    }, 1000);
                 } else {
+                    // Если пришёл ответ с ошибкой
                     alert("Ошибка при очистке кэша: " + res.message);
+                    // Возвращаем исходный текст и разблокируем кнопку
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
                 }
             })
-            .catch(e => console.error(e))
-            .finally(() => {
-                // Ставим таймер в 30 секунд на разблокировку кнопки
-                setTimeout(() => {
-                    btn.disabled = false;
-                }, 10000);
+            .catch(error => {
+                // Если произошла любая другая ошибка сети
+                console.error(error);
+                alert("Ошибка сети при обновлении кэша");
+
+                // Возвращаем исходный текст и разблокируем
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             });
         }
     </script>
