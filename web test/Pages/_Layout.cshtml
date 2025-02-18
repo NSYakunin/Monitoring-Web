@@ -5,51 +5,39 @@
     <title>@ViewData["Title"] - Мониторинг web</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Подключение Bootstrap (пример с CDN) -->
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-          integrity="sha384-..."
-          crossorigin="anonymous" />
+    <!-- Подключение CSS -->
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          crossorigin="anonymous">
 
-    <!-- Подключение стилей -->
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/rowreorder/1.4.1/css/rowReorder.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.7.0/css/select.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/select/1.7.0/css/select.dataTables.min.css">
 
-    <!-- Подключаем библиотеки для экспорта в PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Handsontable и jQuery UI стили (вынесено из Index) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css">
 
-    <!-- Наш собственный файл стилей -->
+    <!-- Собственные стили -->
     <link rel="stylesheet" href="~/css/site.css" />
+
+    @RenderSection("Styles", required: false)
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100">
     <header>
-        <!-- Общая шапка сайта -->
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container-fluid">
-                <!-- Имя учетной записи текущего пользователя Windows -->
                 <a class="navbar-brand" href="/">@System.Security.Principal.WindowsIdentity.GetCurrent().Name</a>
             </div>
         </nav>
     </header>
 
-    <div class="container-fluid">
+    <main class="container-fluid flex-grow-1">
         @RenderBody()
-
-        <!-- Подключение скриптов -->
-        <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.0.js"></script>
-        <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-        <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-        <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
-        <script type="text/javascript" src="https://cdn.datatables.net/select/1.7.0/js/dataTables.select.min.js"></script>
-
-        <!-- Важно: рендерим секцию Scripts, чтобы не было исключений -->
-        @RenderSection("Scripts", required: false)
-    </div>
+    </main>
 
     <footer class="main-footer mt-auto py-3">
         <div class="container text-center">
@@ -58,6 +46,33 @@
             </span>
         </div>
     </footer>
+
+    <!-- Подключение скриптов -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+    <!-- Bootstrap 5 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+            crossorigin="anonymous"></script>
+
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/select/1.7.0/js/dataTables.select.min.js"></script>
+    <script src="https://cdn.datatables.net/rowreorder/1.4.1/js/dataTables.rowReorder.min.js"></script>
+
+    <!-- Handsontable -->
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+
+    <!-- Дополнительные библиотеки -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Секция для скриптов отдельных страниц -->
+    @RenderSection("Scripts", required: false)
+
 
     <style>
         html, body {
@@ -86,12 +101,5 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
     </style>
-
-    <!-- Подключение Bootstrap JS (пример с CDN) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-..."
-            crossorigin="anonymous">
-    </script>
-    <script src="https://cdn.datatables.net/rowreorder/1.4.1/js/dataTables.rowReorder.min.js"></script>
 </body>
 </html>
