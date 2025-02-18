@@ -22,7 +22,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddTransient<INotificationService, NotificationService>();
 builder.Services.AddTransient<IWorkRequestService, WorkRequestService>();
 
-builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+//автоматически загружается при вызове 
+//builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
 QuestPDF.Settings.License = LicenseType.Community;
 

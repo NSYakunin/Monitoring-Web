@@ -14,21 +14,18 @@ namespace Monitoring.Infrastructure.Services
     /// </summary>
     public class WorkItemService : IWorkItemService
     {
-        private readonly IConfiguration _configuration;
         private readonly IMemoryCache _cache;
+        private readonly string _connectionString;
 
         public WorkItemService(IConfiguration configuration, IMemoryCache cache)
         {
-            _configuration = configuration;
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new ArgumentNullException("Connection string not found");
             _cache = cache;
         }
 
         public async Task<List<WorkItem>> GetAllWorkItemsAsync(int divisionId)
         {
-            // Например, получаем connection string из appsettings.json
-            // или хардкодим (не рекомендуется).
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
-
             // Ключ кэша, чтобы не гонять SQL при каждом вызове
             string cacheKey = $"AllWorkItems_{divisionId}";
 
@@ -37,7 +34,7 @@ namespace Monitoring.Infrastructure.Services
                 workItems = new List<WorkItem>();
 
                 // Тут твой код SQL (как раньше у тебя был LoadWorkItemsFromDatabaseAsync)
-                using (var conn = new SqlConnection(connectionString))
+                using (var conn = new SqlConnection(_connectionString))
                 {
                     string query = @"
                         SELECT 
@@ -198,14 +195,13 @@ namespace Monitoring.Infrastructure.Services
 
         public async Task<List<string>> GetExecutorsAsync(int divisionId)
         {
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
             string cacheKey = $"Executors_{divisionId}";
 
             if (!_cache.TryGetValue(cacheKey, out List<string> executors))
             {
                 executors = new List<string>();
 
-                using (var conn = new SqlConnection(connectionString))
+                using (var conn = new SqlConnection(_connectionString))
                 {
                     string query = @"
                         SELECT DISTINCT u.smallName AS ExecName
@@ -243,10 +239,9 @@ namespace Monitoring.Infrastructure.Services
         {
             // Это получение "названия подразделения"
             // Сюда можно тоже добавить кэш при желании
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
             string dev = $"Отдел #{divisionId}";
 
-            using (var conn = new SqlConnection(connectionString))
+            using (var conn = new SqlConnection(_connectionString))
             {
                 string query = @"SELECT smallNameDivision FROM Divisions WHERE idDivision = @divId";
                 using (var cmd = new SqlCommand(query, conn))
