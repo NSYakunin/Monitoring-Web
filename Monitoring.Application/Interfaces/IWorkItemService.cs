@@ -17,5 +17,7 @@ namespace Monitoring.Application.Interfaces
 
         // Можешь добавить здесь сигнатуры методов для фильтрации,
         // создания, обновления и т.п.
+
+        void ClearCache(int divisionId);
     }
 }

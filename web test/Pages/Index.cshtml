@@ -63,6 +63,12 @@
                            class="btn btn-logout">
                             Выход
                         </a>
+
+                        <!-- Кнопка обновить -->
+                        <button type="button" class="btn btn-sm btn-outline-info" id="refreshCacheBtn"
+                                onclick="refreshCache()">
+                            Обновить
+                        </button>
                     </div>
                 </form>
             </div>
@@ -554,6 +560,34 @@
                 }
             })
             .catch(e => console.error(e));
+        }
+
+                function refreshCache() {
+            // Блокируем кнопку
+            let btn = document.getElementById('refreshCacheBtn');
+            btn.disabled = true;
+
+            // Вызываем POST-запрос к хендлеру Index?handler=RefreshCache
+            fetch('@Url.Page("Index", "RefreshCache")', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    alert("Кэш очищен, данные будут обновлены!");
+                    // Вариант 1: просто перезагрузить страницу:
+                    location.reload();
+                } else {
+                    alert("Ошибка при очистке кэша: " + res.message);
+                }
+            })
+            .catch(e => console.error(e))
+            .finally(() => {
+                // Ставим таймер в 30 секунд на разблокировку кнопки
+                setTimeout(() => {
+                    btn.disabled = false;
+                }, 10000);
+            });
         }
     </script>
 }

@@ -49,5 +49,10 @@ namespace Monitoring.Infrastructure.Services.Fake
             // Например "Отдел #Test"
             return Task.FromResult("Отдел #Test");
         }
+
+        public void ClearCache(int divisionId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -261,5 +261,14 @@ namespace Monitoring.Infrastructure.Services
 
             return dev;
         }
+
+        public void ClearCache(int divisionId)
+        {
+            string cacheKey = $"AllWorkItems_{divisionId}";
+            _cache.Remove(cacheKey);
+
+            string exKey = $"Executors_{divisionId}";
+            _cache.Remove(exKey);
+        }
     }
 }

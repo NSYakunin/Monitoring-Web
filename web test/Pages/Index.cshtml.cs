@@ -371,6 +371,33 @@ namespace Monitoring.UI.Pages
             return new JsonResult(result);
         }
 
+        [IgnoreAntiforgeryToken] // либо добавить валидацию, если нужно
+        public async Task<IActionResult> OnPostRefreshCacheAsync()
+        {
+            try
+            {
+                // Предположим, в IWorkItemService есть метод ClearCache(int divisionId) или что-то похожее:
+                if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
+                    return new JsonResult(new { success = false, message = "No division cookie." });
+
+                int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+
+                // Сбрасываем кэш
+                _workItemService.ClearCache(divisionId);
+
+                // Дополнительно, можно заново подгрузить WorkItems и вернуть их в JSON, 
+                // но если вы всё равно перезагружаете всю страницу, это не обязательно.
+                // Например:
+                // await _workItemService.GetAllWorkItemsAsync(divisionId);
+
+                return new JsonResult(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
+
         public IActionResult OnGetLogout()
         {
             // Логаут

@@ -35,8 +35,8 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Middleware
-app.UseHttpsRedirection();
+// для https
+//app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
