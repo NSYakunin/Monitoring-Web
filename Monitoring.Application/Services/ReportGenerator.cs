@@ -23,7 +23,7 @@ namespace Monitoring.Application.Services
                 {
                     page.Size(PageSizes.A4.Landscape());
                     page.Margin(1, Unit.Centimetre);
-                    page.MarginVertical(8);
+                    //page.MarginVertical(8);
                     page.PageColor(Colors.White);
                     page.DefaultTextStyle(x => x.FontSize(7));
 

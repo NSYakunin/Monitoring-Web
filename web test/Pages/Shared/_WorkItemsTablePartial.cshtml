@@ -3,6 +3,7 @@
 <table class="table table-bordered table-hover" id="workItemsTable">
     <thead>
         <tr class="custom-header">
+            <th>№</th>
             <th>Наименование документа</th>
             <th>Наименование работы</th>
             <th>Исполнители</th>
@@ -38,6 +39,7 @@
             }
 
             <tr data-id="@item.DocumentNumber" class="@highlightClass">
+                <td></td>
                 <td>@item.DocumentName</td>
                 <td>@item.WorkName</td>
                 <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
