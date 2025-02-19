@@ -23,6 +23,7 @@ namespace Monitoring.Application.Services
                 {
                     page.Size(PageSizes.A4.Landscape());
                     page.Margin(1, Unit.Centimetre);
+                    page.MarginVertical(8);
                     page.PageColor(Colors.White);
                     page.DefaultTextStyle(x => x.FontSize(7));
 
@@ -47,9 +48,9 @@ namespace Monitoring.Application.Services
                                 columns.RelativeColumn(3);    // Номер (DocumentNumber)
                                 columns.RelativeColumn(7);    // Название документа (DocumentName)
                                 columns.RelativeColumn(6.5f); // Название работы (WorkName)
-                                columns.RelativeColumn(2.2f); // Исполнитель
-                                columns.RelativeColumn(2);    // Контроль
-                                columns.RelativeColumn(2.2f); // Принимающий
+                                columns.RelativeColumn(2.5f); // Исполнитель
+                                columns.RelativeColumn(2.5f);    // Контроль
+                                columns.RelativeColumn(2.5f); // Принимающий
                                 columns.RelativeColumn(1.5f); // План
                                 columns.RelativeColumn(1.5f); // Корр1
                                 columns.RelativeColumn(1.5f); // Корр2
@@ -92,9 +93,9 @@ namespace Monitoring.Application.Services
                                 table.Cell().Element(Block).AlignCenter().Text(item.DocumentNumber);
                                 table.Cell().Element(Block).Text(item.DocumentName);
                                 table.Cell().Element(Block).Text(item.WorkName);
-                                table.Cell().Element(Block).AlignCenter().Text(item.Executor);
-                                table.Cell().Element(Block).AlignCenter().Text(item.Controller);
-                                table.Cell().Element(Block).AlignCenter().Text(item.Approver);
+                                table.Cell().Element(Block).AlignCenter().Text(string.Join("\n", item.Executor.Split(',')));
+                                table.Cell().Element(Block).AlignCenter().Text(string.Join("\n", item.Controller.Split(',')));
+                                table.Cell().Element(Block).AlignCenter().Text(string.Join("\n", item.Approver.Split(',')));
                                 table.Cell().Element(Block).AlignCenter().Text(item.PlanDate?.ToString("dd.MM.yy") ?? "");
                                 table.Cell().Element(Block).AlignCenter().Text(item.Korrect1?.ToString("dd.MM.yy") ?? "");
                                 table.Cell().Element(Block).AlignCenter().Text(item.Korrect2?.ToString("dd.MM.yy") ?? "");
@@ -121,7 +122,7 @@ namespace Monitoring.Application.Services
                         .Column(column =>
                         {
                             // Номера страниц (на всех страницах)
-                            column.Item().AlignCenter().Text(text =>
+                            column.Item().AlignCenter().PaddingBottom(1).Text(text =>
                             {
                                 text.CurrentPageNumber();
                                 text.Span(" / ");
@@ -131,7 +132,7 @@ namespace Monitoring.Application.Services
                             // 2) Блок подписей (только на последней странице)
                             column.Item()
                                 .ShowIf(ctx => ctx.PageNumber == ctx.TotalPages)
-                                .PaddingTop(10)  // Добавим вертикальный отступ сверху
+                                //.PaddingTop(10)  // Добавим вертикальный отступ сверху
                                 .Row(row =>
                                 {
                                     // Увеличиваем расстояние слева и справа.
@@ -142,7 +143,6 @@ namespace Monitoring.Application.Services
 
                                     row.RelativeItem()
                                        .Element(x => x.PaddingLeft(20)) // Добавим отступ слева
-                                       .Element(x => x.PaddingBottom(15))
                                        .AlignRight()
                                        .Text("Ответственное лицо ИАЦ");
                                 });
@@ -151,11 +151,25 @@ namespace Monitoring.Application.Services
                                 .ShowIf(ctx => ctx.PageNumber == ctx.TotalPages)
                                 .Row(row =>
                                 {
-                                    // Здесь тоже добавим отступ
                                     row.AutoItem()
                                        .Element(x => x.PaddingRight(20))
                                        .AlignLeft()
-                                       .Text("_______________________/");
+                                       .Text("                            ");
+
+                                    row.RelativeItem()
+                                       .Element(x => x.PaddingLeft(20))
+                                       .AlignRight()
+                                       .Text("                            ");
+                                });
+
+                            column.Item()
+                                .ShowIf(ctx => ctx.PageNumber == ctx.TotalPages)
+                                .Row(row =>
+                                {
+                                    row.AutoItem()
+                                       .Element(x => x.PaddingRight(20))
+                                       .AlignLeft()
+                                       .Text("____________________________/");
 
                                     row.RelativeItem()
                                        .Element(x => x.PaddingLeft(20))
@@ -165,7 +179,7 @@ namespace Monitoring.Application.Services
                         });
                 });
             })
-            .GeneratePdf(); // Сохраняем файл в wwwroot/report.pdf
+            .GeneratePdf();
         }
     }
 }

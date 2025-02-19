@@ -40,7 +40,7 @@
             <tr data-id="@item.DocumentNumber" class="@highlightClass">
                 <td>@item.DocumentName</td>
                 <td>@item.WorkName</td>
-                <td>@item.Executor</td>
+                <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
                 <td>@item.Controller</td>
                 <td>@item.Approver</td>
                 <td>@item.PlanDate?.ToShortDateString()</td>
