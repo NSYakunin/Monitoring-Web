@@ -1,5 +1,4 @@
-﻿// Monitoring.Application/Services/ReportGenerator.cs
-using Monitoring.Domain.Entities;
+﻿using Monitoring.Domain.Entities;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -22,7 +21,7 @@ namespace Monitoring.Application.Services
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4.Landscape());
-                    page.Margin(1, Unit.Centimetre);
+                    page.Margin(5, Unit.Millimetre);
                     //page.MarginVertical(8);
                     page.PageColor(Colors.White);
                     page.DefaultTextStyle(x => x.FontSize(7));
@@ -106,6 +105,7 @@ namespace Monitoring.Application.Services
                                 rowIndex++; // Увеличиваем счётчик
                             }
                         });
+
                     static IContainer Block(IContainer container)
                     {
                         return container
@@ -117,17 +117,11 @@ namespace Monitoring.Application.Services
                             .PaddingHorizontal(1)
                             .PaddingLeft(2);
                     }
+
                     // Footer с номерами страниц
                     page.Footer()
                         .Column(column =>
                         {
-                            // Номера страниц (на всех страницах)
-                            column.Item().AlignCenter().PaddingBottom(1).Text(text =>
-                            {
-                                text.CurrentPageNumber();
-                                text.Span(" / ");
-                                text.TotalPages();
-                            });
 
                             // 2) Блок подписей (только на последней странице)
                             column.Item()
@@ -135,14 +129,12 @@ namespace Monitoring.Application.Services
                                 //.PaddingTop(10)  // Добавим вертикальный отступ сверху
                                 .Row(row =>
                                 {
-                                    // Увеличиваем расстояние слева и справа.
-                                    // Можно сделать через Element(...).PaddingLeft(...) и т.д.
                                     row.AutoItem()
-                                       .Element(x => x.PaddingRight(20)) // Добавим отступ справа
+                                       .Element(x => x.PaddingRight(20))
                                        .Text("Ответственное лицо");
 
                                     row.RelativeItem()
-                                       .Element(x => x.PaddingLeft(20)) // Добавим отступ слева
+                                       .Element(x => x.PaddingLeft(20))
                                        .AlignRight()
                                        .Text("Ответственное лицо ИАЦ");
                                 });
@@ -176,6 +168,13 @@ namespace Monitoring.Application.Services
                                        .AlignRight()
                                        .Text("____________________________/");
                                 });
+                            // Номера страниц (на всех страницах) -- центр, но больше отступ снизу
+                            column.Item().AlignCenter().PaddingBottom(1, Unit.Millimetre).Text(text =>
+                            {
+                                text.CurrentPageNumber();
+                                text.Span(" / ");
+                                text.TotalPages();
+                            });
                         });
                 });
             })

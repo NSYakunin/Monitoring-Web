@@ -181,11 +181,33 @@ namespace Monitoring.UI.Pages
                 }
             }
 
-            // Генерация pdfBytes (ReportGenerator - ваш сервис/утилита, не показан в коде)
-            var pdfBytes = ReportGenerator.GeneratePdf(WorkItems,
-                          $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+            string format = Request.Form["format"];
 
-            return File(pdfBytes, "application/pdf", $"Чек_{DateTime.Now:yyyyMMdd}.pdf");
+            if (format == "pdf")
+            {
+                // Генерация pdfBytes (ReportGenerator - ваш сервис/утилита, не показан в коде)
+                var pdfBytes = ReportGenerator.GeneratePdf(WorkItems,
+                              $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+                return File(pdfBytes, "application/pdf", $"Чек_{DateTime.Now:yyyyMMdd}.pdf");
+            }
+            else if (format == "word")
+            {
+                var docBytes = ReportGeneratorWord.GenerateWord(WorkItems, "Заголовок", "Отдел №17");
+                return File(docBytes,
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            $"Report_{DateTime.Now:yyyyMMdd}.docx");
+            }
+            else if (format == "excel")
+            {
+                var xlsxBytes = ReportGeneratorExcel.GenerateExcel(WorkItems, "Заголовок", "Отдел №17");
+                return File(xlsxBytes,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            $"Report_{DateTime.Now:yyyyMMdd}.xlsx");
+            }
+
+
+            // По умолчанию PDF
+            return Page();
         }
 
         private void ApplyFilters()
