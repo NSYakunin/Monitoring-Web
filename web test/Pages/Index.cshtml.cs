@@ -192,7 +192,7 @@ namespace Monitoring.UI.Pages
             }
             else if (format == "word")
             {
-                var docBytes = ReportGeneratorWord.GenerateWord(WorkItems, "Заголовок", "Отдел №17");
+                var docBytes = ReportGeneratorWord.GenerateWord(WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
                 return File(docBytes,
                             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                             $"Report_{DateTime.Now:yyyyMMdd}.docx");

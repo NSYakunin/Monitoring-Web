@@ -1,4 +1,4 @@
-﻿
+﻿@model Monitoring.UI.Pages.IndexModel
 
 <table class="table table-bordered table-hover" id="workItemsTable">
     <thead>
@@ -22,27 +22,24 @@
     </thead>
     <tbody>
         @{
-            int rowCounter = 1; // Добавляем счетчик
+            int num = 1;
         }
         @foreach (var item in Model.WorkItems)
         {
-            // Если где-то в OnGet прописать item.HighlightCssClass,
-            // он отразится тут, например table-warning / table-info
             string highlightClass = item.HighlightCssClass ?? "";
 
-            // Проверяем, является ли UserName исполнителем
             bool canSendRequest = false;
-            @if (!string.IsNullOrEmpty(Model.UserName) && !string.IsNullOrEmpty(item.Executor))
+            if (!string.IsNullOrEmpty(Model.UserName) && !string.IsNullOrEmpty(item.Executor))
             {
-                string execStr = (string)item.Executor;
-                string[] parts = execStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                var exList = parts.Select(x => x.Trim());
-
-                canSendRequest = exList.Contains((string)Model.UserName);
+                var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim());
+                canSendRequest = exList.Contains(Model.UserName);
             }
 
             <tr data-id="@item.DocumentNumber" class="@highlightClass">
-                <td>@rowCounter</td>
+                <!-- Первая колонка: пусть пока пустая, заполним на клиенте -->
+                <td class="row-index">@num</td>
+
                 <td>@item.DocumentName</td>
                 <td>@item.WorkName</td>
                 <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
@@ -52,13 +49,11 @@
                 <td>@item.Korrect1?.ToShortDateString()</td>
                 <td>@item.Korrect2?.ToShortDateString()</td>
                 <td>@item.Korrect3?.ToShortDateString()</td>
+
                 <td class="align-middle">
-                    <!-- Чекбокс для PDF -->
-                    <input type="checkbox" class="row-select"/>
-                    <!-- Иконка для сортировки -->
+                    <input type="checkbox" class="row-select" />
                     <span class="drag-handle">&#x2630;</span>
 
-                    <!-- Кнопка "Запрос" -->
                     @if (canSendRequest)
                     {
                         <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
@@ -74,7 +69,7 @@
                     }
                 </td>
             </tr>
-            rowCounter++; // Увеличиваем счетчик
+            num++;
         }
     </tbody>
 </table>

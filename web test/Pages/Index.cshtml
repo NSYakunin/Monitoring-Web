@@ -343,6 +343,14 @@
         function initSortableTable() {
             var $tableBody = $("#workItemsTable tbody");
 
+            // Функция, которая пробегается сверху вниз и ставит 1,2,3...
+            function reindexRows() {
+                $tableBody.find("tr").each(function(index, row) {
+                    // В первой ячейке с классом .row-index ставим (index+1)
+                    $(row).find(".row-index").text(index + 1);
+                });
+            }
+
             // Сортируем строки
             $tableBody.sortable({
                 handle: ".drag-handle",
@@ -355,6 +363,7 @@
                 },
                 update: function(event, ui) {
                     console.log('Порядок изменен');
+                    reindexRows(); // <-- вот здесь пере-индексация
                 }
             });
             $tableBody.disableSelection();
