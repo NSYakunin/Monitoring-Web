@@ -119,24 +119,38 @@
 
         <!-- Правая колонка: col-auto (или col-1) + d-flex + flex-column + justify-content-end -->
         <div class="col-auto d-flex flex-column justify-content-end">
-            <form method="post">
+            <form method="post" id="exportForm">
+                <!-- Скрытые поля (как и раньше) -->
                 <input type="hidden" asp-for="StartDate" />
                 <input type="hidden" asp-for="EndDate" />
                 <input type="hidden" asp-for="Executor" />
                 <input type="hidden" asp-for="SearchQuery" />
                 <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
 
+                <!-- Это поле будем менять через JS при выборе формата -->
+                <input type="hidden" name="format" id="formatInput" value="pdf" />
+
                 <div class="d-flex justify-content-end">
-                    <select name="format">
-                        <option value="pdf">PDF</option>
-                        <option value="excel">Excel</option>
-                        <option value="word">Word</option>
-                    </select>
-                    <button type="submit" class="btn btn-pdf" id="generatePdfBtn">
-                        <span class="spinner-border spinner-border-sm me-2"
-                              role="status" aria-hidden="true" style="display:none;"></span>
-                        Сдаточный чек
-                    </button>
+                    <!-- Группа кнопок с выпадающим списком -->
+                    <div class="btn-group dropup">
+                        <!-- Можно dropup/dropdown, как удобнее -->
+                        <button type="button"
+                                class="btn btn-pdf dropdown-toggle"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                                id="generatePdfBtn">
+                            <!-- Спиннер, который скрыт по умолчанию -->
+                            <span class="spinner-border spinner-border-sm me-2"
+                                  role="status" aria-hidden="true"
+                                  style="display:none;"></span>
+                            Сдаточный чек
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="generatePdfBtn">
+                            <li><a class="dropdown-item" href="#" onclick="setFormat('pdf')">PDF</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="setFormat('excel')">Excel</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="setFormat('word')">Word</a></li>
+                        </ul>
+                    </div>
                 </div>
             </form>
         </div>
@@ -622,6 +636,20 @@
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             });
+        }
+
+            // Функция для установки нужного формата и отправки формы
+                function setFormat(fmt) {
+            const spinner = document.querySelector('#generatePdfBtn .spinner-border');
+            spinner.style.display = 'inline-block';
+            document.getElementById('formatInput').value = fmt;
+
+            // Скрыть спиннер через 3 секунды
+            setTimeout(() => {
+                spinner.style.display = 'none';
+            }, 3000);
+
+            document.getElementById('exportForm').submit();
         }
     </script>
 }
