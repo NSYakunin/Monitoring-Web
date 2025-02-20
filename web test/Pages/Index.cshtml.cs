@@ -188,21 +188,28 @@ namespace Monitoring.UI.Pages
                 // Генерация pdfBytes (ReportGenerator - ваш сервис/утилита, не показан в коде)
                 var pdfBytes = ReportGenerator.GeneratePdf(WorkItems,
                               $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
-                return File(pdfBytes, "application/pdf", $"Чек_{DateTime.Now:yyyyMMdd}.pdf");
+
+                return File(pdfBytes, "application/pdf", $"Чек от: {DateTime.Now:dd.MM.yyyy}.pdf");
             }
+
             else if (format == "word")
             {
-                var docBytes = ReportGeneratorWord.GenerateWord(WorkItems, $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+                var docBytes = ReportGeneratorWord.GenerateWord(WorkItems,
+                              $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+
                 return File(docBytes,
                             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            $"Report_{DateTime.Now:yyyyMMdd}.docx");
+                            $"Чек от: {DateTime.Now:dd.MM.yyyy}.docx");
             }
+
             else if (format == "excel")
             {
-                var xlsxBytes = ReportGeneratorExcel.GenerateExcel(WorkItems, "Заголовок", "Отдел №17");
+                var xlsxBytes = ReportGeneratorExcel.GenerateExcel(WorkItems,
+                              $"Сдаточный чек от {DateTime.Now.ToShortDateString()}", dev);
+
                 return File(xlsxBytes,
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"Report_{DateTime.Now:yyyyMMdd}.xlsx");
+                            $"Чек от: {DateTime.Now:dd.MM.yyyy}.xlsx");
             }
 
 
