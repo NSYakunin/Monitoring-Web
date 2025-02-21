@@ -1,0 +1,305 @@
+﻿@page
+@using Monitoring.UI.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@model SettingsModel
+@{
+    ViewData["Title"] = "Настройки пользователей";
+}
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">Управление настройками и ролями пользователей</h2>
+
+    <!-- Кнопка "Зарегистрировать пользователя" -->
+    <button type="button" class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#registerUserModal">
+        Зарегистрировать пользователя
+    </button>
+
+    <div class="row">
+        <!-- Левая колонка: выбор пользователя -->
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="SelectedUser" class="form-label">Выберите пользователя:</label>
+                <select id="SelectedUser" name="SelectedUser" class="form-select" 
+                        onchange="onUserSelectionChanged(this.value)">
+                    <option value="">-- Не выбран --</option>
+                    @foreach (var usr in Model.AllUsers)
+                    {
+                        <option value="@usr.UserId"
+                                selected="@(Model.SelectedUserId == usr.UserId ? "selected" : null)">
+                            @usr.DisplayName
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <hr />
+
+            <!-- Подменю "Выбор подразделений для просмотра" -->
+            <h5>Выбор подразделений для просмотра</h5>
+            @if (Model.SelectedUserId != 0)
+            {
+                <div id="subdivisionList">
+                    @foreach (var sub in Model.Subdivisions)
+                    {
+                        // Если sub.Id есть в списке разрешенных для пользователя
+                        bool isChecked = Model.UserSelectedSubdivisions.Contains(sub.Id);
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                                   id="sub_@sub.Id"
+                                   value="@sub.Id"
+                                   @(isChecked ? "checked" : null) />
+                            <label class="form-check-label" for="sub_@sub.Id">@sub.Name</label>
+                        </div>
+                    }
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm mt-2"
+                        onclick="saveSubdivisions()">
+                    Сохранить подразделения
+                </button>
+            }
+            else
+            {
+                <p class="text-muted">Сначала выберите пользователя</p>
+            }
+        </div>
+
+        <!-- Правая колонка: таблица с настройками -->
+        <div class="col-md-8">
+            <h5>Настройки приватности</h5>
+            @if (Model.SelectedUserId != 0)
+            {
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Параметр</th>
+                            <th>Разрешено?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Возможность закрывать работы</td>
+                            <td>
+                                <input type="checkbox"
+                                       id="canCloseWork"
+                                       @(Model.CurrentPrivacySettings.CanCloseWork ? "checked" : "") />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Возможность отправлять заявки на закрытие работы</td>
+                            <td>
+                                <input type="checkbox"
+                                       id="canSendCloseRequest"
+                                       @(Model.CurrentPrivacySettings.CanSendCloseRequest ? "checked" : "") />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Доступ к настройкам</td>
+                            <td>
+                                <input type="checkbox"
+                                       id="canAccessSettings"
+                                       @(Model.CurrentPrivacySettings.CanAccessSettings ? "checked" : "") />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <button class="btn btn-success" onclick="savePrivacySettings()">Сохранить</button>
+            }
+            else
+            {
+                <p class="text-muted">Выберите пользователя слева, чтобы отобразить его настройки</p>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно "Регистрация пользователя" -->
+<div class="modal fade" id="registerUserModal" tabindex="-1" aria-labelledby="registerUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="registerUserModalLabel" class="modal-title">Регистрация пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                
+                <div class="mb-3">
+                    <label for="newUserFio" class="form-label">ФИО:</label>
+                    <input type="text" id="newUserFio" class="form-control" placeholder="Иванов Иван Иванович" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="newUserLogin" class="form-label">Логин:</label>
+                    <input type="text" id="newUserLogin" class="form-control" placeholder="ivanov" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="newUserPassword" class="form-label">Пароль:</label>
+                    <input type="password" id="newUserPassword" class="form-control" placeholder="******" />
+                </div>
+
+                <!-- Пример дополнительных настроек приватности -->
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="newUserCanCloseWork" />
+                    <label class="form-check-label" for="newUserCanCloseWork">
+                        Может закрывать работы
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="newUserCanSendCloseRequest" />
+                    <label class="form-check-label" for="newUserCanSendCloseRequest">
+                        Может отправлять заявки на закрытие
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="newUserCanAccessSettings" />
+                    <label class="form-check-label" for="newUserCanAccessSettings">
+                        Имеет доступ к настройкам
+                    </label>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="registerNewUser()">Зарегистрировать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    // При выборе пользователя из списка
+    function onUserSelectionChanged(userId) {
+        if (userId) {
+            // Просто перезагрузим страницу с параметром userId (чтобы обновить модель)
+            window.location.href = '?userId=' + userId;
+        } else {
+            // userId = 0 => Ничего не выбрано
+            window.location.href = '?userId=0';
+        }
+    }
+
+    // Сохранение чекбоксов &laquo;настройки приватности&raquo;
+    function savePrivacySettings() {
+        let userId = document.getElementById("SelectedUser").value;
+        if (!userId) {
+            alert("Сначала выберите пользователя");
+            return;
+        }
+        let canCloseWork = document.getElementById("canCloseWork").checked;
+        let canSendCloseRequest = document.getElementById("canSendCloseRequest").checked;
+        let canAccessSettings = document.getElementById("canAccessSettings").checked;
+
+        // Отправим POST-запрос на хендлер OnPostSavePrivacySettings
+        let data = {
+            userId: parseInt(userId),
+            canCloseWork: canCloseWork,
+            canSendCloseRequest: canSendCloseRequest,
+            canAccessSettings: canAccessSettings
+        };
+
+        fetch('?handler=SavePrivacySettings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                alert("Настройки успешно сохранены!");
+                // Можно перезагрузить или обновить страницу
+                location.reload();
+            } else {
+                alert("Ошибка при сохранении: " + res.message);
+            }
+        })
+        .catch(e => console.error(e));
+    }
+
+    // Сохранение &laquo;Выбор подразделений для просмотра&raquo;
+    function saveSubdivisions() {
+        let userId = document.getElementById("SelectedUser").value;
+        if (!userId) {
+            alert("Сначала выберите пользователя");
+            return;
+        }
+
+        let checks = document.querySelectorAll("#subdivisionList input[type=checkbox]");
+        let selectedSubs = [];
+        checks.forEach(ch => {
+            if (ch.checked) {
+                selectedSubs.push(parseInt(ch.value));
+            }
+        });
+
+        let data = {
+            userId: parseInt(userId),
+            subdivisions: selectedSubs
+        };
+
+        fetch('?handler=SaveSubdivisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                alert("Подразделения обновлены.");
+            } else {
+                alert("Ошибка: " + res.message);
+            }
+        })
+        .catch(e => console.error(e));
+    }
+
+    // Регистрация нового пользователя
+    function registerNewUser() {
+        let fio = document.getElementById("newUserFio").value;
+        let login = document.getElementById("newUserLogin").value;
+        let password = document.getElementById("newUserPassword").value;
+        let canClose = document.getElementById("newUserCanCloseWork").checked;
+        let canSend = document.getElementById("newUserCanSendCloseRequest").checked;
+        let canSettings = document.getElementById("newUserCanAccessSettings").checked;
+
+        // Простая проверка
+        if (!fio || !login || !password) {
+            alert("Пожалуйста, заполните ФИО, логин и пароль.");
+            return;
+        }
+
+        let data = {
+            fullName: fio,
+            login: login,
+            password: password,
+            canCloseWork: canClose,
+            canSendCloseRequest: canSend,
+            canAccessSettings: canSettings
+        };
+
+        fetch('?handler=RegisterUser', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                alert("Пользователь зарегистрирован!");
+                // Закроем модалку
+                let modalEl = document.getElementById('registerUserModal');
+                let modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+
+                // Можно обновить страницу, чтобы увидеть нового пользователя в списке
+                location.reload();
+            } else {
+                alert("Ошибка регистрации: " + res.message);
+            }
+        })
+        .catch(e => console.error(e));
+    }
+</script>
