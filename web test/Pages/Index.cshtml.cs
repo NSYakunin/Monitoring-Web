@@ -55,7 +55,7 @@ namespace Monitoring.UI.Pages
         public List<Notification> Notifications { get; set; } = new List<Notification>();
 
         [BindProperty(SupportsGet = true)]
-        public int? SelectedDivision { get; set; } // выбранный отдел (в фильтрах)
+        public int? SelectedDivision { get; set; } // выбранный отдел (для фильтров)
 
         // Список отделов, к которым пользователь имеет доступ:
         public List<DivisionDto> AllowedDivisions { get; set; } = new();
@@ -72,8 +72,8 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // Читаем текущий "родной" отдел из куки + userName
-            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+            // Читаем "родной" отдел из куки + userName
+            int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
             // 1) Получаем idUser по userName 
@@ -88,14 +88,14 @@ namespace Monitoring.UI.Pages
             // 2) Проверяем право на настройки
             HasSettingsAccess = await _userSettingsService.HasAccessToSettingsAsync(userId.Value);
 
-            // 3) Получаем список всех "разрешённых" отделов:
+            // 3) Получаем список всех "разрешённых" отделов (UserAllowedDivisions):
             var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
 
             // 4) Если у пользователя "нет" записей в UserAllowedDivisions,
-            //    значит он может видеть только свой "родной" divisionId (из куки).
+            //    значит он может видеть только свой "родной" отдел (homeDivisionId).
             if (userDivIds.Count == 0)
             {
-                userDivIds.Add(divisionId);
+                userDivIds.Add(homeDivisionId);
             }
 
             // 5) Извлекаем из таблицы Divisions только те, что в userDivIds
@@ -105,11 +105,20 @@ namespace Monitoring.UI.Pages
                 .ToList();
 
             // 6) Определяем SelectedDivision:
-            //    если пользователь не выбрал руками (null),
-            //    то берём первый из списка
-            if (!SelectedDivision.HasValue && AllowedDivisions.Count > 0)
+            //    - если пользователь не выбрал руками (SelectedDivision == null)
+            //      то ставим по умолчанию "родной" отдел, если он входит в AllowedDivisions,
+            //      иначе — первый доступный из списка AllowedDivisions.
+            if (!SelectedDivision.HasValue)
             {
-                SelectedDivision = AllowedDivisions.First().IdDivision;
+                if (AllowedDivisions.Any(d => d.IdDivision == homeDivisionId))
+                {
+                    SelectedDivision = homeDivisionId;
+                }
+                else if (AllowedDivisions.Count > 0)
+                {
+                    SelectedDivision = AllowedDivisions.First().IdDivision;
+                }
+                // если вообще нет AllowedDivisions, SelectedDivision останется null
             }
 
             // Установка дат по умолчанию
@@ -123,26 +132,25 @@ namespace Monitoring.UI.Pages
             // Деактивируем старые уведомления (например, > 90 дней)
             await _notificationService.DeactivateOldNotificationsAsync(90);
 
-            // Получаем активные уведомления для divisionId (или настраиваем логику)
-            Notifications = await _notificationService.GetActiveNotificationsAsync(divisionId);
+            // Определяем, по какому отделу грузить уведомления
+            int divisionForNotifications = SelectedDivision ?? homeDivisionId;
+            Notifications = await _notificationService.GetActiveNotificationsAsync(divisionForNotifications);
 
-            // Загружаем список исполнителей (пока для одного отделения)
-            Executors = await _workItemService.GetExecutorsAsync(divisionId);
+            // Определяем "актуальный" отдел, по которому будем грузить исполнителей и работы
+            int actualDivisionId = SelectedDivision ?? homeDivisionId;
 
-            // 7) Загружаем WorkItems, используя "новый" метод, принимающий список подразделений.
-            //    Т.к. пользователь выбрал конкретный division (SelectedDivision),
-            //    передаём его в список. Или, если нужно ВСЕ отделы, используйте userDivIds.
+            // Загружаем список исполнителей для "актуального" подразделения
+            Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
+
+            // Загружаем WorkItems именно для этого же подразделения
             WorkItems = await _workItemService.GetAllWorkItemsAsync(
-                new List<int> { SelectedDivision.Value }
+                new List<int> { actualDivisionId }
             );
 
-            // (Альтернативный вариант для всех доступных отделов разом):
-            //WorkItems = await _workItemService.GetAllWorkItemsAsync(userDivIds);
+            // Считываем название отдела (smallNameDivision) тоже для него
+            DepartmentName = await _workItemService.GetDevAsync(actualDivisionId);
 
-            // Считываем название отдела (по куке, например)
-            DepartmentName = await _workItemService.GetDevAsync(divisionId);
-
-            // Применяем фильтры к WorkItems (StartDate, EndDate, Executor, SearchQuery)
+            // Применяем фильтры (даты, поиск, исполнитель)
             ApplyFilters();
 
             // Подсвечиваем строки с незавершёнными заявками (если есть)
@@ -150,44 +158,75 @@ namespace Monitoring.UI.Pages
         }
 
         /// <summary>
-        /// AJAX-обработчик, вызываемый при изменении фильтров (startDate, endDate, executor, searchQuery).
+        /// AJAX-обработчик, вызываемый при изменении фильтров (startDate, endDate, executor, searchQuery, selectedDivision).
         /// Возвращает Partial с таблицей.
         /// </summary>
         public async Task<IActionResult> OnGetFilterAsync(
             DateTime? startDate,
             DateTime? endDate,
             string? executor,
-            string? searchQuery)
+            string? searchQuery,
+            int? selectedDivision // <-- добавили параметр для подразделения
+        )
         {
             // 1) Проверяем куки
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
                 return new JsonResult(new { error = "Не найдены куки divisionId" });
 
-            // 2) Считываем всё то же, что и в OnGet
-            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+            // 2) Считываем userName из куки (можно проверить и userId)
             UserName = HttpContext.Request.Cookies["userName"];
+            int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
 
             // 3) Устанавливаем поля модели
             StartDate = startDate ?? new DateTime(2014, 1, 1);
             EndDate = endDate ?? DateTime.Now;
             Executor = executor;
             SearchQuery = searchQuery;
+            SelectedDivision = selectedDivision;
 
-            // 4) Загружаем исполнителей, WorkItems и DepartmentName
-            Executors = await _workItemService.GetExecutorsAsync(divisionId);
+            // 4) Нужно заново определить AllowedDivisions
+            int? userId = await _loginService.GetUserIdByNameAsync(UserName);
+            if (userId == null)
+            {
+                return new JsonResult(new { error = "Пользователь не найден" });
+            }
+            var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
+            if (userDivIds.Count == 0)
+            {
+                userDivIds.Add(homeDivisionId);
+            }
+            var allDivisions = await _userSettingsService.GetAllDivisionsAsync();
+            AllowedDivisions = allDivisions
+                .Where(d => userDivIds.Contains(d.IdDivision))
+                .ToList();
 
-            // Т.к. метод теперь принимает список, передаём в него [divisionId]
-            WorkItems = await _workItemService.GetAllWorkItemsAsync(
-                new List<int> { divisionId }
-            );
+            // Если SelectedDivision не задан (или недопустим), берём первый из AllowedDivisions
+            if (!SelectedDivision.HasValue || !AllowedDivisions.Any(d => d.IdDivision == SelectedDivision.Value))
+            {
+                if (AllowedDivisions.Any(d => d.IdDivision == homeDivisionId))
+                {
+                    SelectedDivision = homeDivisionId;
+                }
+                else if (AllowedDivisions.Count > 0)
+                {
+                    SelectedDivision = AllowedDivisions.First().IdDivision;
+                }
+            }
 
-            DepartmentName = await _workItemService.GetDevAsync(divisionId);
+            int actualDivisionId = SelectedDivision ?? homeDivisionId;
 
-            // 5) Применяем фильтры и подсветку
+            // 5) Загружаем исполнителей и работы для выбранного подразделения
+            Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
+            WorkItems = await _workItemService.GetAllWorkItemsAsync(new List<int> { actualDivisionId });
+
+            // Название отдела (smallNameDivision)
+            DepartmentName = await _workItemService.GetDevAsync(actualDivisionId);
+
+            // 6) Применяем фильтры и подсветку
             ApplyFilters();
             HighlightRows();
 
-            // 6) Возвращаем partial (HTML-фрагмент) с таблицей
+            // 7) Возвращаем partial (HTML-фрагмент) с таблицей
             return Partial("_WorkItemsTablePartial", this);
         }
 
@@ -210,16 +249,20 @@ namespace Monitoring.UI.Pages
                 if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
                     return new JsonResult(new { success = false, message = "No division cookie." });
 
-                int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+                int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
                 UserName = HttpContext.Request.Cookies["userName"];
 
-                // Загружаем список исполнителей и WorkItems для данного divisionId
-                Executors = await _workItemService.GetExecutorsAsync(divisionId);
+                // При POST тут SelectedDivision может не прийти,
+                // но если нужно, можем брать из "предыдущей" логики.
+                int actualDivisionId = SelectedDivision ?? homeDivisionId;
+
+                // Загружаем список исполнителей и WorkItems для нужного division
+                Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
                 WorkItems = await _workItemService.GetAllWorkItemsAsync(
-                    new List<int> { divisionId }
+                    new List<int> { actualDivisionId }
                 );
 
-                DepartmentName = await _workItemService.GetDevAsync(divisionId);
+                DepartmentName = await _workItemService.GetDevAsync(actualDivisionId);
 
                 // Ищем нужный WorkItem по DocumentNumber
                 var witem = WorkItems.FirstOrDefault(x => x.DocumentNumber == dto.DocumentNumber);
@@ -350,7 +393,7 @@ namespace Monitoring.UI.Pages
         }
 
         /// <summary>
-        /// POST: сброс кэша (пример).
+        /// POST: сброс кэша
         /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostRefreshCacheAsync()
@@ -393,15 +436,19 @@ namespace Monitoring.UI.Pages
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId"))
                 return RedirectToPage("/Login");
 
-            int divisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+            int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
+            UserName = HttpContext.Request.Cookies["userName"];
+
+            // Используем SelectedDivision, если оно задано и доступно
+            int actualDivisionId = SelectedDivision ?? homeDivisionId;
 
             // Загружаем исполнителей и WorkItems для одного отдела:
-            Executors = await _workItemService.GetExecutorsAsync(divisionId);
+            Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
             WorkItems = await _workItemService.GetAllWorkItemsAsync(
-                new List<int> { divisionId }
+                new List<int> { actualDivisionId }
             );
 
-            string dev = await _workItemService.GetDevAsync(divisionId);
+            string dev = await _workItemService.GetDevAsync(actualDivisionId);
 
             // Применяем фильтры
             ApplyFilters();
@@ -496,7 +543,7 @@ namespace Monitoring.UI.Pages
                 );
             }
 
-            // Фильтр по дате (EndDate)
+            // Фильтр по дате (конкретно EndDate)
             if (EndDate.HasValue)
             {
                 filtered = filtered.Where(x =>
@@ -525,9 +572,9 @@ namespace Monitoring.UI.Pages
                     bool hasCorr = pendingRequests.Any(r => r.RequestType.StartsWith("корр"));
 
                     if (hasFact)
-                        item.HighlightCssClass = "table-info";
+                        item.HighlightCssClass = "table-info";    // голубая подсветка
                     else if (hasCorr)
-                        item.HighlightCssClass = "table-warning";
+                        item.HighlightCssClass = "table-warning"; // желтоватая подсветка
                 }
             }
         }

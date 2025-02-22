@@ -36,6 +36,33 @@ namespace Monitoring.UI.Pages
 
         public void OnGet()
         {
+            // Предположим, вы берёте userName из куки
+            if (!HttpContext.Request.Cookies.ContainsKey("userName"))
+            {
+                Response.Redirect("/Login");
+                return;
+            }
+
+            string userName = HttpContext.Request.Cookies["userName"];
+            // Нужен userId
+            int? userIdP = _loginService.GetUserIdByNameAsync(userName).Result;
+            if (userIdP == null)
+            {
+                Response.Redirect("/Login");
+                return;
+            }
+
+            // Проверяем право
+            bool canAccess = _userSettingsService.HasAccessToSettingsAsync(userIdP.Value).Result;
+            if (!canAccess)
+            {
+                // Можно редиректить на главную, либо возвращать 403 (Forbidden)
+                // Пример:
+                Response.Redirect("/Index");  // или
+                                              // return Forbid(); 
+                return;
+            }
+
             // 1. Список всех пользователей
             AllUsers = _loginService.GetAllUsersAsync().Result;
 
@@ -71,9 +98,9 @@ namespace Monitoring.UI.Pages
                     return new JsonResult(new { success = false, message = "Невалидный JSON" });
 
                 string userName = data["userName"].ToString();
-                bool canClose = Convert.ToBoolean(data["canCloseWork"]);
-                bool canSend = Convert.ToBoolean(data["canSendCloseRequest"]);
-                bool canAccess = Convert.ToBoolean(data["canAccessSettings"]);
+                bool canClose = ((JsonElement)data["canCloseWork"]).GetBoolean();
+                bool canSend = ((JsonElement)data["canSendCloseRequest"]).GetBoolean();
+                bool canAccess = ((JsonElement)data["canAccessSettings"]).GetBoolean();
 
                 int? userId = _loginService.GetUserIdByNameAsync(userName).Result;
                 if (userId == null)

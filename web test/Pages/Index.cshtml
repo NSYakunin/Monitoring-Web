@@ -2,16 +2,15 @@
 @using Monitoring.UI.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @model IndexModel
+
 @{
     ViewData["Title"] = "Главная страница";
 }
 
-<!-- Подключение необходимых стилей (можно часть вынести в Layout) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css" />
 <link rel="stylesheet" href="css/index.css" />
-
 
 <div class="container-fluid mt-4">
     <!-- Шапка: подразделение, пользователь, фильтры -->
@@ -37,6 +36,24 @@
                                value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
 
+                    <!-- NEW for Division filter -->
+                    <!-- Выпадающий список для выбора подразделения (AllowedDivisions) -->
+                    <div class="d-flex flex-column">
+                        <label for="divisionSelect" class="form-label">Подразделение:</label>
+                        <select id="divisionSelect" name="SelectedDivision" class="form-select">
+                            <!-- Можно, например, показать "Все" или не показывать -->
+                            @* <option value="">Все подразделения</option> *@
+
+                            @foreach (var div in Model.AllowedDivisions)
+                            {
+                                <option value="@div.IdDivision"
+                                        selected="@(div.IdDivision == Model.SelectedDivision ? "selected" : null)">
+                                    @div.SmallNameDivision
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <!-- END NEW for Division filter -->
                     <!-- Выпадающий список для выбора исполнителя -->
                     <div class="d-flex flex-column">
                         <label for="executor" class="form-label">Исполнитель:</label>
@@ -60,12 +77,11 @@
 
                     <div class="d-flex justify-content-end gap-3 mb-4">
                         <!-- Кнопка выхода -->
-                        <a asp-page="./Index" asp-page-handler="Logout"
-                           class="btn btn-logout">
+                        <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-logout">
                             Выход
                         </a>
 
-                        <!-- Кнопка обновить -->
+                        <!-- Кнопка "Обновить" (очистка кэша) -->
                         <button type="button" class="btn btn-sm btn-outline-info" id="refreshCacheBtn"
                                 onclick="refreshCache()">
                             Обновить
@@ -78,7 +94,7 @@
 
     <!-- Внешний контейнер с отступом снизу и горизонтальными отступами gx-3 -->
     <div class="row mb-3 gx-3" style="min-height: 50px;">
-        <!-- Левая колонка: д-flex, flex-column для &laquo;растягивания&raquo; карточки -->
+        <!-- Левая колонка: д-flex, flex-column для "растягивания" карточки -->
         <div class="col d-flex flex-column">
             <div class="card shadow-sm flex-fill" style="min-width: 300px;">
                 <div class="card-header bg-warning">
@@ -90,7 +106,7 @@
                         <table class="table table-sm table-bordered table-hover align-middle mb-0" style="font-size:0.85rem;">
                             <thead class="table-secondary">
                                 <tr>
-                                    @* <th style="width: 45px;">№</th> *@
+                                    <!-- <th style="width: 45px;">№</th> -->
                                     <th>Заголовок</th>
                                     <th style="width: 100px;">Кому</th>
                                     <th style="width: 90px;">Дата</th>
@@ -100,7 +116,7 @@
                                 @foreach (var note in Model.Notifications)
                                 {
                                     <tr>
-                                        @* <td>@note.Id</td> *@
+                                        <!-- <td>@note.Id</td> -->
                                         <td>@note.Title</td>
                                         <td>@note.UserName</td>
                                         <td>@note.DateSetInSystem.ToShortDateString()</td>
@@ -120,12 +136,15 @@
         <!-- Правая колонка: col-auto (или col-1) + d-flex + flex-column + justify-content-end -->
         <div class="col-auto d-flex flex-column justify-content-end">
             <form method="post" id="exportForm">
-                <!-- Скрытые поля (как и раньше) -->
+                <!-- Скрытые поля, чтобы при POST-е на PDF/Excel/Word сохранить текущее состояние фильтров -->
                 <input type="hidden" asp-for="StartDate" />
                 <input type="hidden" asp-for="EndDate" />
                 <input type="hidden" asp-for="Executor" />
                 <input type="hidden" asp-for="SearchQuery" />
                 <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
+
+                <!-- Добавляем скрытое поле для выбранного подразделения -->
+                <input type="hidden" asp-for="SelectedDivision" />
 
                 <!-- Это поле будем менять через JS при выборе формата -->
                 <input type="hidden" name="format" id="formatInput" value="pdf" />
@@ -360,24 +379,20 @@
             // Функция, которая пробегается сверху вниз и ставит 1,2,3...
             function reindexRows() {
                 $tableBody.find("tr").each(function(index, row) {
-                    // В первой ячейке с классом .row-index ставим (index+1)
                     $(row).find(".row-index").text(index + 1);
                 });
             }
 
-            // Сортируем строки
             $tableBody.sortable({
                 handle: ".drag-handle",
                 axis: "y",
                 cursor: "move",
                 start: function(event, ui) {
-                    // При начале перетаскивания отмечаем чекбокс
                     ui.item.find('.row-select').prop('checked', true);
                     ui.item.addClass('selected-row');
                 },
                 update: function(event, ui) {
-                    console.log('Порядок изменен');
-                    reindexRows(); // <-- вот здесь пере-индексация
+                    reindexRows();
                 }
             });
             $tableBody.disableSelection();
@@ -400,7 +415,7 @@
             initSortableTable();
 
             // AJAX-фильтр: при изменении полей
-            $('#startDate, #endDate, #executor, #search').on('change keyup', function() {
+            $('#startDate, #endDate, #executor, #search, #divisionSelect').on('change keyup', function() {
                 $.ajax({
                     url: '@Url.Page("Index", "Filter")',
                     type: 'GET',
@@ -408,22 +423,24 @@
                         startDate: $('#startDate').val(),
                         endDate: $('#endDate').val(),
                         executor: $('#executor').val(),
-                        searchQuery: $('#search').val()
+                        searchQuery: $('#search').val(),
+                        selectedDivision: $('#divisionSelect').val() // передаём выбранное подразделение
                     },
                     success: function(result) {
                         $('#workItemsTableContainer').html(result);
                         initSortableTable();
 
-                        // Передаём в скрытые поля для POST
+                        // Обновляем скрытые поля
                         $('input[name="StartDate"]').val($('#startDate').val());
                         $('input[name="EndDate"]').val($('#endDate').val());
                         $('input[name="Executor"]').val($('#executor').val());
                         $('input[name="SearchQuery"]').val($('#search').val());
+                        $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
                     }
                 });
             });
 
-            // Обработка кнопки "Сгенерировать PDF" (формирование SelectedItemsOrder)
+            // Обработка кнопки "Сгенерировать PDF/Excel/Word"
             $('#generatePdfBtn').on('click', function() {
                 let rows = document.querySelectorAll("#workItemsTable tbody tr");
                 let result = [];
@@ -451,19 +468,16 @@
             let receiverSelect = document.getElementById('receiverSelect');
             receiverSelect.innerHTML = "";
 
-            // Добавим "Контролирующий"
             let optCtrl = document.createElement('option');
             optCtrl.value = controller;
             optCtrl.textContent = `Контролирующий (${controller})`;
             receiverSelect.appendChild(optCtrl);
 
-            // Добавим "Принимающий"
             let optAppr = document.createElement('option');
             optAppr.value = approver;
             optAppr.textContent = `Принимающий (${approver})`;
             receiverSelect.appendChild(optAppr);
 
-            // Открываем модалку
             let modal = new bootstrap.Modal(document.getElementById('requestModal'));
             modal.show();
         }
@@ -474,13 +488,11 @@
         function sendWorkRequest() {
             let docNumber = $('#hiddenDocNumber').val();
             let requestType = $('#requestTypeSelect').val();
-            let proposedDate = $('#proposedDate').val(); // string (YYYY-MM-DD)
+            let proposedDate = $('#proposedDate').val();
             let receiver = $('#receiverSelect').val();
             let note = $('#requestNote').val();
             let sender = '@Model.UserName';
 
-            // Преобразуем proposedDate в формат, который десериализуется как DateTime
-            // Если пустая строка -> null
             let dateObj = proposedDate ? new Date(proposedDate + "T00:00:00") : null;
 
             let data = {
@@ -505,13 +517,12 @@
                     let modal = bootstrap.Modal.getInstance(modalEl);
                     modal.hide();
 
-                    // Подсветим строку
                     let row = document.querySelector(`tr[data-id="${docNumber}"]`);
                     if (row) {
                         if (requestType.startsWith('корр'))
-                            row.classList.add('table-warning'); // коричневато-жёлтый
+                            row.classList.add('table-warning');
                         else if (requestType === 'fact')
-                            row.classList.add('table-info');    // голубой
+                            row.classList.add('table-info');
                     }
                 } else {
                     alert("Ошибка: " + res.message);
@@ -522,11 +533,8 @@
 
         // ----------------------------------------------------
         // Загрузка моих входящих заявок (Receiver == @Model.UserName)
-        // и их отображение в таблице
         // ----------------------------------------------------
         function loadMyPendingRequests() {
-            // AJAX GET: Index?handler=GetMyRequests
-            // (В IndexModel написать методOnGetMyRequestsAsync, который вернёт JSON заявок)
             fetch('@Url.Page("Index", "MyRequests")')
             .then(r => r.json())
             .then(data => {
@@ -577,7 +585,6 @@
             .then(res => {
                 if (res.success) {
                     alert("Статус обновлён: " + newStatus);
-                    // Перезагрузить список заявок
                     loadMyPendingRequests();
                 } else {
                     alert("Ошибка: " + res.message);
@@ -586,65 +593,54 @@
             .catch(e => console.error(e));
         }
 
-                function refreshCache() {
-            // Получаем саму кнопку
+        // ----------------------------------------------------
+        // Обновление кэша
+        // ----------------------------------------------------
+        function refreshCache() {
             let btn = document.getElementById('refreshCacheBtn');
-
-            // Сохраняем исходный текст (на случай, если нужно будет вернуть)
             let originalText = btn.innerHTML;
 
-            // Блокируем кнопку сразу, чтобы пользователь не нажимал её повторно
             btn.disabled = true;
-
-            // Меняем текст на &laquo;Обновляю…&raquo; (можно добавить иконку-спиннер, например)
             btn.innerHTML = "Обновляю...";
 
-            // Делаем POST запрос к хендлеру RefreshCache
             fetch('@Url.Page("Index", "RefreshCache")', {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(res => {
                 if (res.success) {
-                    // Если всё ок, запускаем обратный счёт перед перезагрузкой:
-                    let countdown = 5; // количество секунд
+                    let countdown = 5;
                     let timerId = setInterval(() => {
                         countdown--;
-                        // Меняем текст в кнопке, чтобы было видно, сколько осталось
                         btn.innerHTML = `Ожидайте ${countdown}c`;
-
                         if (countdown <= 0) {
                             clearInterval(timerId);
-                            // Когда счёт дошёл до нуля — перезагружаем страницу
                             location.reload();
                         }
                     }, 1000);
                 } else {
-                    // Если пришёл ответ с ошибкой
                     alert("Ошибка при очистке кэша: " + res.message);
-                    // Возвращаем исходный текст и разблокируем кнопку
                     btn.innerHTML = originalText;
                     btn.disabled = false;
                 }
             })
             .catch(error => {
-                // Если произошла любая другая ошибка сети
                 console.error(error);
                 alert("Ошибка сети при обновлении кэша");
-
-                // Возвращаем исходный текст и разблокируем
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             });
         }
 
-            // Функция для установки нужного формата и отправки формы
-                function setFormat(fmt) {
+        // ----------------------------------------------------
+        // Установка формата экспорта и отправка формы
+        // ----------------------------------------------------
+        function setFormat(fmt) {
             const spinner = document.querySelector('#generatePdfBtn .spinner-border');
             spinner.style.display = 'inline-block';
             document.getElementById('formatInput').value = fmt;
 
-            // Скрыть спиннер через 3 секунды
+            // Скрыть спиннер через 3 секунды (просто для вида)
             setTimeout(() => {
                 spinner.style.display = 'none';
             }, 3000);
