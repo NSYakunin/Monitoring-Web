@@ -19,6 +19,8 @@ builder.Services.AddMemoryCache();
  builder.Services.AddScoped<ILoginService, LoginService>();
 //builder.Services.AddScoped<ILoginService, FakeLoginService>();
 
+builder.Services.AddScoped<IUserSettingsService, UserSettingsService>(); 
+
 builder.Services.AddTransient<INotificationService, NotificationService>();
 builder.Services.AddTransient<IWorkRequestService, WorkRequestService>();
 

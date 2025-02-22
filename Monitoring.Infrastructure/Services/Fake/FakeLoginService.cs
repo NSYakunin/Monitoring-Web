@@ -24,5 +24,10 @@ namespace Monitoring.Infrastructure.Services.Fake
 
             return Task.FromResult<(int?, bool)>((999, true));
         }
+
+        public Task<int> GetUserIdByNameAsync(string userName)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

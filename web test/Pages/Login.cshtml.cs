@@ -1,4 +1,3 @@
-// Monitoring.UI/Pages/Login.cshtml.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Monitoring.Application.Interfaces;

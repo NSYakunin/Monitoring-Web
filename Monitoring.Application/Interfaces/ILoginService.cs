@@ -25,5 +25,11 @@ namespace Monitoring.Application.Interfaces
             string selectedUser,
             string password
         );
+
+        /// <summary>
+        /// Возвращает idUser, соответствующий полю smallName = userName.
+        /// Если пользователь не найден, вернёт null.
+        /// </summary>
+        Task<int> GetUserIdByNameAsync(string userName);
     }
 }

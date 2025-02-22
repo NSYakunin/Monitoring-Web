@@ -9,7 +9,7 @@ namespace Monitoring.Application.Interfaces
     /// </summary>
     public interface IWorkItemService
     {
-        Task<List<WorkItem>> GetAllWorkItemsAsync(int divisionId);
+        Task<List<WorkItem>> GetAllWorkItemsAsync(List<int> divisionIds);
 
         Task<List<string>> GetExecutorsAsync(int divisionId);
 

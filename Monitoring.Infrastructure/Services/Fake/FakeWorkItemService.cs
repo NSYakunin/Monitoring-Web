@@ -54,5 +54,10 @@ namespace Monitoring.Infrastructure.Services.Fake
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<WorkItem>> GetAllWorkItemsAsync(List<int> divisionIds)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -1,13 +1,15 @@
-﻿// Monitoring.Infrastructure/Services/LoginService.cs
-using Monitoring.Application.Interfaces;
+﻿using Monitoring.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace Monitoring.Infrastructure.Services
 {
     /// <summary>
     /// Реализация ILoginService.
-    /// Код, напрямую работающий с БД Users.
+    /// Код, напрямую работающий с БД [Users].
     /// </summary>
     public class LoginService : ILoginService
     {
@@ -18,6 +20,9 @@ namespace Monitoring.Infrastructure.Services
             _configuration = configuration;
         }
 
+        /// <summary>
+        /// Получить список smallName всех активных пользователей (Isvalid=1).
+        /// </summary>
         public async Task<List<string>> GetAllUsersAsync()
         {
             var users = new List<string>();
@@ -25,7 +30,12 @@ namespace Monitoring.Infrastructure.Services
 
             using (SqlConnection conn = new SqlConnection(connStr))
             {
-                string query = @"SELECT smallName FROM [Users] WHERE Isvalid = 1 ORDER BY smallName";
+                string query = @"
+                    SELECT [smallName]
+                    FROM [DocumentControl].[dbo].[Users]
+                    WHERE [Isvalid] = 1
+                    ORDER BY [smallName]
+                ";
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     await conn.OpenAsync();
@@ -42,6 +52,9 @@ namespace Monitoring.Infrastructure.Services
             return users;
         }
 
+        /// <summary>
+        /// Фильтрует пользователей по подстроке (LIKE '%query%').
+        /// </summary>
         public async Task<List<string>> FilterUsersAsync(string query)
         {
             if (query == null) query = "";
@@ -52,12 +65,12 @@ namespace Monitoring.Infrastructure.Services
             using (SqlConnection conn = new SqlConnection(connStr))
             {
                 string sql = @"
-                        SELECT smallName 
-                        FROM [Users] 
-                        WHERE Isvalid = 1
-                          AND smallName LIKE '%' + @q + '%'
-                        ORDER BY smallName
-                    ";
+                    SELECT [smallName]
+                    FROM [DocumentControl].[dbo].[Users]
+                    WHERE [Isvalid] = 1
+                      AND [smallName] LIKE '%' + @q + '%'
+                    ORDER BY [smallName]
+                ";
 
                 using (SqlCommand cmd = new SqlCommand(sql, conn))
                 {
@@ -68,7 +81,7 @@ namespace Monitoring.Infrastructure.Services
                     {
                         while (await reader.ReadAsync())
                         {
-                            matchedUsers.Add(reader["smallName"].ToString());
+                            matchedUsers.Add(reader["smallName"]?.ToString() ?? "");
                         }
                     }
                 }
@@ -77,7 +90,14 @@ namespace Monitoring.Infrastructure.Services
             return matchedUsers;
         }
 
-        public async Task<(int? divisionId, bool isValid)> CheckUserCredentialsAsync(string selectedUser, string password)
+        /// <summary>
+        /// Проверяет логин/пароль, возвращая (idDivision, isValid).
+        /// Если всё ок, isValid = true и возвращается divisionId пользователя.
+        /// </summary>
+        public async Task<(int? divisionId, bool isValid)> CheckUserCredentialsAsync(
+            string selectedUser,
+            string password
+        )
         {
             if (string.IsNullOrEmpty(selectedUser) || string.IsNullOrEmpty(password))
                 return (null, false);
@@ -91,10 +111,10 @@ namespace Monitoring.Infrastructure.Services
             {
                 // Выбираем пароль и idDivision по выбранному smallName
                 string query = @"
-                    SELECT Password, idDivision 
-                    FROM [Users]
-                    WHERE smallName = @userName
-                      AND Isvalid = 1
+                    SELECT [Password], [idDivision]
+                    FROM [DocumentControl].[dbo].[Users]
+                    WHERE [smallName] = @userName
+                      AND [Isvalid] = 1
                 ";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -122,6 +142,38 @@ namespace Monitoring.Infrastructure.Services
                 return (divisionIdFromDb, true);
 
             return (null, false);
+        }
+
+        /// <summary>
+        /// Возвращает idUser по полю smallName.
+        /// Если такой пользователь не найден — вернёт null.
+        /// </summary>
+        public async Task<int> GetUserIdByNameAsync(string userName)
+        {
+            int userId = 0;
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+
+            using (var conn = new SqlConnection(connStr))
+            {
+                string query = @"
+                    SELECT [idUser]
+                    FROM [DocumentControl].[dbo].[Users]
+                    WHERE [smallName] = @UserName
+                ";
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@UserName", userName);
+                    await conn.OpenAsync();
+
+                    object result = await cmd.ExecuteScalarAsync();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        userId = Convert.ToInt32(result);
+                    }
+                }
+            }
+
+            return userId;
         }
     }
 }
