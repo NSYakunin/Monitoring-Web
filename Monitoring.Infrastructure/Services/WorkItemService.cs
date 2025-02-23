@@ -53,11 +53,6 @@ namespace Monitoring.Infrastructure.Services
                 // Соберём IN (@div0, @div1, ...)
                 string inClause = string.Join(", ", paramNames);
 
-                // Пример SQL:
-                //   SELECT ...
-                //   FROM ...
-                //   WHERE wu.dateFact IS NULL
-                //         AND wu.idUser IN (SELECT idUser FROM Users WHERE idDivision IN (@div0, @div1, ...))
                 string query = $@"
                     SELECT 
                         d.Number,

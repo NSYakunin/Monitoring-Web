@@ -36,14 +36,10 @@
                                value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
 
-                    <!-- NEW for Division filter -->
-                    <!-- Выпадающий список для выбора подразделения (AllowedDivisions) -->
+                    <!-- Выпадающий список для выбора подразделения -->
                     <div class="d-flex flex-column">
                         <label for="divisionSelect" class="form-label">Подразделение:</label>
                         <select id="divisionSelect" name="SelectedDivision" class="form-select">
-                            <!-- Можно, например, показать "Все" или не показывать -->
-                            @* <option value="">Все подразделения</option> *@
-
                             @foreach (var div in Model.AllowedDivisions)
                             {
                                 <option value="@div.IdDivision"
@@ -53,11 +49,12 @@
                             }
                         </select>
                     </div>
-                    <!-- END NEW for Division filter -->
+
                     <!-- Выпадающий список для выбора исполнителя -->
                     <div class="d-flex flex-column">
                         <label for="executor" class="form-label">Исполнитель:</label>
                         <select id="executor" name="executor" class="form-select">
+                            <!-- Начальное заполнение (на OnGet) -->
                             <option value="">Все исполнители</option>
                             @foreach (var item in Model.Executors)
                             {
@@ -94,7 +91,7 @@
 
     <!-- Внешний контейнер с отступом снизу и горизонтальными отступами gx-3 -->
     <div class="row mb-3 gx-3" style="min-height: 50px;">
-        <!-- Левая колонка: д-flex, flex-column для "растягивания" карточки -->
+        <!-- Левая колонка: d-flex, flex-column для "растягивания" карточки -->
         <div class="col d-flex flex-column">
             <div class="card shadow-sm flex-fill" style="min-width: 300px;">
                 <div class="card-header bg-warning">
@@ -106,7 +103,6 @@
                         <table class="table table-sm table-bordered table-hover align-middle mb-0" style="font-size:0.85rem;">
                             <thead class="table-secondary">
                                 <tr>
-                                    <!-- <th style="width: 45px;">№</th> -->
                                     <th>Заголовок</th>
                                     <th style="width: 100px;">Кому</th>
                                     <th style="width: 90px;">Дата</th>
@@ -116,7 +112,6 @@
                                 @foreach (var note in Model.Notifications)
                                 {
                                     <tr>
-                                        <!-- <td>@note.Id</td> -->
                                         <td>@note.Title</td>
                                         <td>@note.UserName</td>
                                         <td>@note.DateSetInSystem.ToShortDateString()</td>
@@ -133,32 +128,28 @@
             </div>
         </div>
 
-        <!-- Правая колонка: col-auto (или col-1) + d-flex + flex-column + justify-content-end -->
+        <!-- Правая колонка: col-auto + d-flex + flex-column + justify-content-end -->
         <div class="col-auto d-flex flex-column justify-content-end">
             <form method="post" id="exportForm">
-                <!-- Скрытые поля, чтобы при POST-е на PDF/Excel/Word сохранить текущее состояние фильтров -->
+                <!-- Скрытые поля для сохранения текущих фильтров при экспорте -->
                 <input type="hidden" asp-for="StartDate" />
                 <input type="hidden" asp-for="EndDate" />
                 <input type="hidden" asp-for="Executor" />
                 <input type="hidden" asp-for="SearchQuery" />
                 <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
-
-                <!-- Добавляем скрытое поле для выбранного подразделения -->
                 <input type="hidden" asp-for="SelectedDivision" />
 
-                <!-- Это поле будем менять через JS при выборе формата -->
+                <!-- Поле для формата (pdf/excel/word) -->
                 <input type="hidden" name="format" id="formatInput" value="pdf" />
 
                 <div class="d-flex justify-content-end">
                     <!-- Группа кнопок с выпадающим списком -->
                     <div class="btn-group dropup">
-                        <!-- Можно dropup/dropdown, как удобнее -->
                         <button type="button"
                                 class="btn btn-pdf dropdown-toggle"
                                 data-bs-toggle="dropdown"
                                 aria-expanded="false"
                                 id="generatePdfBtn">
-                            <!-- Спиннер, который скрыт по умолчанию -->
                             <span class="spinner-border spinner-border-sm me-2"
                                   role="status" aria-hidden="true"
                                   style="display:none;"></span>
@@ -281,13 +272,6 @@
         .handsontable {
             box-sizing: border-box;
         }
-
-            .handsontable colHeader {
-                position: sticky;
-                top: 0;
-                background-color: #f8f9fa;
-                z-index: 1;
-            }
 
         /* Подсветка выбранной (чекбоксом) строки */
         .selected-row {
@@ -416,50 +400,85 @@
 
             // AJAX-фильтр: при изменении полей
             $('#startDate, #endDate, #executor, #search, #divisionSelect').on('change keyup', function() {
+
+                // Сохраняем id изменённого элемента
+                var changedElementId = this.id;
+
                 $.ajax({
-                    url: '@Url.Page("Index", "Filter")',
+                    url: '@Url.Page("Index", "Filter")', // OnGetFilterAsync
                     type: 'GET',
                     data: {
                         startDate: $('#startDate').val(),
                         endDate: $('#endDate').val(),
                         executor: $('#executor').val(),
                         searchQuery: $('#search').val(),
-                        selectedDivision: $('#divisionSelect').val() // передаём выбранное подразделение
+                        selectedDivision: $('#divisionSelect').val()
                     },
                     success: function(result) {
+                        // 1) Обновляем таблицу
                         $('#workItemsTableContainer').html(result);
                         initSortableTable();
 
-                        // Обновляем скрытые поля
+                        // 2) Обновляем скрытые поля (чтобы при экспорте подхватывались)
                         $('input[name="StartDate"]').val($('#startDate').val());
                         $('input[name="EndDate"]').val($('#endDate').val());
                         $('input[name="Executor"]').val($('#executor').val());
                         $('input[name="SearchQuery"]').val($('#search').val());
                         $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
+
+                        // 3) Если мы поменяли именно "подразделение" — подгружаем новый список исполнителей
+                        if (changedElementId === 'divisionSelect') {
+                            loadExecutors($('#divisionSelect').val());
+                        }
                     }
                 });
             });
 
-            // Обработка кнопки "Сгенерировать PDF/Excel/Word"
-            $('#generatePdfBtn').on('click', function() {
-                let rows = document.querySelectorAll("#workItemsTable tbody tr");
-                let result = [];
-                rows.forEach((row) => {
-                    let checkbox = row.querySelector("input.row-select");
-                    if (checkbox && checkbox.checked) {
-                        result.push(row.getAttribute("data-id") || "");
-                    }
-                });
-                $("#SelectedItemsOrder").val(JSON.stringify(result));
-            });
-
-            // Загрузим "мои заявки" (pending)
+            // При загрузке страницы - подгружаем "мои заявки"
             loadMyPendingRequests();
         });
 
-        // ----------------------------------------------------
+
+        // Функция для AJAX-запроса списка исполнителей и обновления селекта #executor
+        function loadExecutors(divisionId) {
+            $.ajax({
+                url: '@Url.Page("Index", "Executors")', // OnGetExecutorsAsync
+                type: 'GET',
+                data: { divisionId: divisionId },
+                success: function(executors) {
+                    let $execSelect = $('#executor');
+                    // Очищаем список
+                    $execSelect.empty();
+                    // Добавляем пункт "Все исполнители"
+                    $execSelect.append('<option value="">Все исполнители</option>');
+
+                    // Заполняем новыми
+                    $.each(executors, function(index, name) {
+                        $execSelect.append($('<option>').val(name).text(name));
+                    });
+
+                    // По желанию можно сразу отправить еще раз фильтр
+                    // $execSelect.trigger('change');
+                }
+            });
+        }
+
+
+        // Обработка кнопки "Сгенерировать PDF/Excel/Word"
+        $('#generatePdfBtn').on('click', function() {
+            let rows = document.querySelectorAll("#workItemsTable tbody tr");
+            let result = [];
+            rows.forEach((row) => {
+                let checkbox = row.querySelector("input.row-select");
+                if (checkbox && checkbox.checked) {
+                    result.push(row.getAttribute("data-id") || "");
+                }
+            });
+            $("#SelectedItemsOrder").val(JSON.stringify(result));
+        });
+
+
         // Модальное окно: заполнение полей, открытие
-        // ----------------------------------------------------
         function openRequestModal(docNumber, controller, approver) {
             $('#hiddenDocNumber').val(docNumber);
             $('#proposedDate').val("");
@@ -482,9 +501,7 @@
             modal.show();
         }
 
-        // ----------------------------------------------------
-        // Отправка заявки (создание)
-        // ----------------------------------------------------
+        // Отправка заявки
         function sendWorkRequest() {
             let docNumber = $('#hiddenDocNumber').val();
             let requestType = $('#requestTypeSelect').val();
@@ -517,6 +534,7 @@
                     let modal = bootstrap.Modal.getInstance(modalEl);
                     modal.hide();
 
+                    // Подсветим строку
                     let row = document.querySelector(`tr[data-id="${docNumber}"]`);
                     if (row) {
                         if (requestType.startsWith('корр'))
@@ -531,9 +549,7 @@
             .catch(e => console.error(e));
         }
 
-        // ----------------------------------------------------
         // Загрузка моих входящих заявок (Receiver == @Model.UserName)
-        // ----------------------------------------------------
         function loadMyPendingRequests() {
             fetch('@Url.Page("Index", "MyRequests")')
             .then(r => r.json())
@@ -570,6 +586,7 @@
             .catch(e => console.error(e));
         }
 
+        // Принять/Отклонить заявку
         function setRequestStatus(requestId, docNumber, newStatus) {
             let bodyData = {
                 RequestId: requestId,
@@ -593,9 +610,7 @@
             .catch(e => console.error(e));
         }
 
-        // ----------------------------------------------------
         // Обновление кэша
-        // ----------------------------------------------------
         function refreshCache() {
             let btn = document.getElementById('refreshCacheBtn');
             let originalText = btn.innerHTML;
@@ -632,15 +647,13 @@
             });
         }
 
-        // ----------------------------------------------------
         // Установка формата экспорта и отправка формы
-        // ----------------------------------------------------
         function setFormat(fmt) {
             const spinner = document.querySelector('#generatePdfBtn .spinner-border');
             spinner.style.display = 'inline-block';
             document.getElementById('formatInput').value = fmt;
 
-            // Скрыть спиннер через 3 секунды (просто для вида)
+            // Скрыть спиннер через 3 секунды (визуальный эффект)
             setTimeout(() => {
                 spinner.style.display = 'none';
             }, 3000);

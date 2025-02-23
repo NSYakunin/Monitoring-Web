@@ -7,7 +7,7 @@
     <title>@ViewData["Title"] - Мониторинг web</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Подключение CSS (Bootstrap 5 + прочие) -->
+    <!-- Подключение CSS (Bootstrap 5) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
           rel="stylesheet"
           crossorigin="anonymous">
@@ -18,9 +18,12 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/select/1.7.0/css/select.dataTables.min.css">
 
-    <!-- Handsontable и jQuery UI стили (вынесено из Index) -->
+    <!-- Handsontable и jQuery UI стили -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css">
+
+    <!-- Animate.css для анимаций (дополнительно) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" />
 
     <!-- Собственные стили -->
     <link rel="stylesheet" href="~/css/site.css" />
@@ -29,18 +32,19 @@
 </head>
 <body class="d-flex flex-column min-vh-100">
 
+    <!-- Шапка сайта -->
     <header>
-        <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+        <nav class="navbar navbar-expand-sm navbar-dark bg-dark shadow">
             <div class="container-fluid">
                 <!-- Логотип/название -->
-                <a class="navbar-brand" href="/">
+                <a class="navbar-brand d-flex align-items-center" href="/">
                     <img src="/images/logom.png" alt="Мониторинг" style="height: 50px;">
                 </a>
 
                 <!-- Блок, который выталкивает кнопку &laquo;Настройки&raquo; вправо -->
                 <div class="ms-auto d-flex align-items-center">
                     <!-- Кнопка &laquo;Настройки&raquo; -->
-                    <a asp-page="/Settings" class="btn btn-settings me-2">
+                    <a asp-page="/Settings" class="btn btn-settings me-2 animate__animated animate__pulse animate__infinite">
                         Настройки
                     </a>
                 </div>
@@ -48,10 +52,12 @@
         </nav>
     </header>
 
-    <main class="container-fluid flex-grow-1">
+    <!-- Основная часть страницы -->
+    <main class="container-fluid flex-grow-1 content py-4">
         @RenderBody()
     </main>
 
+    <!-- Подвал (footer) -->
     <footer class="main-footer mt-auto py-3">
         <div class="container text-center">
             <span class="footer-text">
@@ -78,7 +84,9 @@
 
     @RenderSection("Scripts", required: false)
 
+    <!-- Дополнительные стили -->
     <style>
+        /* Общее выравнивание */
         html, body {
             height: 100%;
             margin: 0;
@@ -88,14 +96,17 @@
 
         .content {
             flex: 1;
-            padding: 20px;
         }
 
+        /* Шапка */
+        .navbar {
+            background-color: #2c3e50 !important;
+        }
+
+        /* Футер */
         .main-footer {
             background: linear-gradient(145deg, #2c3e50, #34495e);
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
             margin-top: auto;
-            padding: 20px 0;
         }
 
         .footer-text {
@@ -105,12 +116,7 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
 
-        .navbar {
-            background-color: #2c3e50 !important;
-            padding: 0.5rem 1rem;
-        }
-
-        /* Стили для кнопки &laquo;Настройки&raquo; */
+        /* Кнопка &laquo;Настройки&raquo; */
         .btn-settings {
             background: linear-gradient(145deg, #2980b9, #3498db);
             color: #fff;
@@ -133,7 +139,70 @@
                 transform: translateY(1px);
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
-    </style>
 
+        /* Общие стили для card */
+        .custom-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+            .custom-card:hover {
+                transform: scale(1.01);
+            }
+
+        .custom-card-header {
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            color: #fff;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            padding: 1rem;
+        }
+
+        .custom-card-body {
+            padding: 1rem;
+            background-color: #ffffff;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        /* Стили для таблиц */
+        .table-custom {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            animation: fadeInTable 0.6s ease;
+        }
+
+        fadeInTable {
+            from { opacity: 0; transform: translateY(10px);}
+            to { opacity: 1; transform: translateY(0);}
+
+        }
+
+        .table-custom thead {
+            background: #f2f2f2;
+        }
+
+        /* Для чекбоксов в подразделениях */
+        .form-check-label {
+            cursor: pointer;
+        }
+
+        /* Для 2-колоночного расположения чекбоксов — можно использовать row-cols */
+        .subdivisions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 2 столбца */
+            gap: 0.5rem;
+        }
+
+        /* Увеличим хитбокс чекбоксов слегка */
+        .form-check-input {
+            transform: scale(1.2);
+            margin-right: 8px;
+        }
+    </style>
 </body>
 </html>
