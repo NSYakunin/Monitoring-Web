@@ -6,7 +6,7 @@
     ViewData["Title"] = "Настройки пользователей";
 }
 
-<div class="container mt-4 animate__animated animate__fadeIn">
+<div class="container-lg mt-4" style="max-width: 1200px;">
     <!-- Заголовок страницы -->
     <h2 class="mb-4 text-center">Управление настройками и ролями пользователей</h2>
 
@@ -26,18 +26,27 @@
                     <h5 class="mb-0">Выберите пользователя</h5>
                 </div>
                 <div class="custom-card-body">
-                    <label for="SelectedUser" class="form-label">Пользователь:</label>
-                    <select id="SelectedUser" name="SelectedUser" class="form-select"
-                            onchange="onUserSelectionChanged(this.value)">
-                        <option value="">-- Не выбран --</option>
-                        @foreach (var usr in Model.AllUsers)
-                        {
-                            <option value="@usr"
-                                    selected="@(Model.SelectedUserName == usr ? "selected" : null)">
-                                @usr
-                            </option>
-                        }
-                    </select>
+
+                    <!-- Разделяем "Пользователь:" на 2 столбца (деловая разметка) -->
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-sm-4 text-end">
+                            <label for="SelectedUser" class="col-form-label">Пользователь:</label>
+                        </div>
+                        <div class="col-sm-8">
+                            <select id="SelectedUser" name="SelectedUser" class="form-select"
+                                    onchange="onUserSelectionChanged(this.value)">
+                                <option value="">-- Не выбран --</option>
+                                @foreach (var usr in Model.AllUsers)
+                                {
+                                    <option value="@usr"
+                                            selected="@(Model.SelectedUserName == usr ? "selected" : null)">
+                                        @usr
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -53,7 +62,7 @@
                         <div id="subdivisionList" class="subdivisions-grid">
                             @* 
                               Для демонстрации — просто выводим все подряд 
-                              с помощью grid-template-columns: 1fr 1fr (см. стили в _Layout)
+                              с помощью grid-template-columns: 1fr 1fr (см. стили ниже)
                             *@
                             @foreach (var sub in Model.Subdivisions)
                             {
@@ -146,9 +155,12 @@
     </div>
 </div>
 
-<!-- Модальное окно "Регистрация пользователя" -->
+<!-- Модальное окно "Регистрация пользователя"
+     Убраны анимации animate__jackInTheBox,
+     оставлена стандартная Bootstrap-анимация для модалок (fade).
+-->
 <div class="modal fade" id="registerUserModal" tabindex="-1" aria-labelledby="registerUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered animate__animated animate__jackInTheBox">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 id="registerUserModalLabel" class="modal-title">Регистрация пользователя</h5>
@@ -192,7 +204,6 @@
                         Имеет доступ к настройкам
                     </label>
                 </div>
-
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -327,4 +338,63 @@
             .catch(e => console.error(e));
         }
     </script>
+
+    <!-- Стили, специфичные только для страницы "Settings" (деловой стиль) -->
+    <style>
+        /* Общие стили для card в настройках */
+        .custom-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+            .custom-card:hover {
+                transform: scale(1.005);
+            }
+
+        .custom-card-header {
+            /* Деловая сдержанная заливка, без ярких переходов */
+            background-color: #495057;
+            color: #fff;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            padding: 1rem;
+        }
+
+        .custom-card-body {
+            padding: 1rem;
+            background-color: #ffffff;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .table-custom {
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+            .table-custom thead {
+                background: #e9ecef;
+            }
+
+        /* Для чекбоксов в подразделениях */
+        .form-check-label {
+            cursor: pointer;
+        }
+
+        /* Для 2-колоночного расположения чекбоксов — можно использовать row-cols, либо grid, как тут */
+        .subdivisions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 2 столбца */
+            gap: 0.5rem;
+        }
+
+        /* Увеличим хитбокс чекбоксов слегка */
+        .form-check-input {
+            transform: scale(1.1);
+            margin-right: 8px;
+        }
+    </style>
 }
