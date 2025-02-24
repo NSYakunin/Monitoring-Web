@@ -9,16 +9,17 @@ namespace Monitoring.Infrastructure.Services
     public class WorkRequestService : IWorkRequestService
     {
         private readonly IConfiguration _config;
+        private readonly string _connectionString;
 
-        public WorkRequestService(IConfiguration config)
+        public WorkRequestService(IConfiguration configuration)
         {
-            _config = config;
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                        ?? throw new ArgumentNullException("Connection string not found");
         }
 
         public async Task CreateRequestAsync(WorkRequest request)
         {
-            string connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
+            using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
 
             string sql = @"
@@ -47,8 +48,7 @@ namespace Monitoring.Infrastructure.Services
         public async Task<List<WorkRequest>> GetRequestsByDocumentNumberAsync(string docNumber)
         {
             var list = new List<WorkRequest>();
-            string connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
+            using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
 
             string sql = @"
@@ -84,8 +84,7 @@ namespace Monitoring.Infrastructure.Services
 
         public async Task SetRequestStatusAsync(int requestId, string newStatus)
         {
-            string connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
+            using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
 
             // Если принимаем/отклоняем — заявка становится "Done"
@@ -115,8 +114,7 @@ namespace Monitoring.Infrastructure.Services
         public async Task<List<WorkRequest>> GetAllRequestsAsync()
         {
             var listRequest = new List<WorkRequest>();
-            string connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
+            using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
 
             // Старый запрос был:
