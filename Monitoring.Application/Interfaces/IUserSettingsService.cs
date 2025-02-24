@@ -33,5 +33,10 @@ namespace Monitoring.Application.Interfaces
         );
 
         Task ChangeUserPasswordAsync(int userId, string newPassword);
+
+        /// <summary>
+        /// Получить текущий пароль пользователя (из таблицы Users.Password)
+        /// </summary>
+        Task<string?> GetUserCurrentPasswordAsync(int userId);
     }
 }

@@ -4,6 +4,7 @@ using System.Data.SqlClient;
 using Monitoring.Application.DTO;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System;
 
 namespace Monitoring.Infrastructure.Services
 {
@@ -16,19 +17,16 @@ namespace Monitoring.Infrastructure.Services
             _configuration = configuration;
         }
 
-        /// <summary>Проверяет, есть ли у пользователя доступ к настройкам</summary>
         public async Task<bool> HasAccessToSettingsAsync(int userId)
         {
             var settings = await GetPrivacySettingsAsync(userId);
             return settings != null && settings.CanAccessSettings;
         }
 
-        /// <summary>Получает объект PrivacySettingsDto из таблицы UserPrivacy</summary>
         public async Task<PrivacySettingsDto> GetPrivacySettingsAsync(int userId)
         {
             var result = new PrivacySettingsDto
             {
-                // По умолчанию все false
                 CanCloseWork = false,
                 CanSendCloseRequest = false,
                 CanAccessSettings = false
@@ -63,11 +61,8 @@ namespace Monitoring.Infrastructure.Services
             return result;
         }
 
-        /// <summary>Сохранить настройки приватности (CanCloseWork / CanSendCloseRequest / CanAccessSettings)</summary>
         public async Task SavePrivacySettingsAsync(int userId, PrivacySettingsDto dto)
         {
-            // Нужно проверить, есть ли запись в таблице UserPrivacy
-            // Если нет, сделать INSERT, если да — UPDATE.
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             using (var conn = new SqlConnection(connStr))
             {
@@ -119,7 +114,6 @@ namespace Monitoring.Infrastructure.Services
             }
         }
 
-        /// <summary>Загрузить список ВСЕХ подразделений (Divisions) из таблицы Divisions</summary>
         public async Task<List<DivisionDto>> GetAllDivisionsAsync()
         {
             var list = new List<DivisionDto>();
@@ -162,7 +156,6 @@ namespace Monitoring.Infrastructure.Services
             return list;
         }
 
-        /// <summary>Получить список idDivision, к которым у пользователя есть доступ (UserAllowedDivisions)</summary>
         public async Task<List<int>> GetUserAllowedDivisionsAsync(int userId)
         {
             var list = new List<int>();
@@ -190,14 +183,12 @@ namespace Monitoring.Infrastructure.Services
             return list;
         }
 
-        /// <summary>Сохранить список подразделений, разрешённых пользователю.</summary>
         public async Task SaveUserAllowedDivisionsAsync(int userId, List<int> divisionIds)
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             using (var conn = new SqlConnection(connStr))
             {
                 await conn.OpenAsync();
-                // Начнём транзакцию, чтобы все операции прошли атомарно.
                 using (var transaction = conn.BeginTransaction())
                 {
                     try
@@ -213,7 +204,7 @@ namespace Monitoring.Infrastructure.Services
                             await cmdDel.ExecuteNonQueryAsync();
                         }
 
-                        // 2) Вставляем заново все новые
+                        // 2) Вставляем новые
                         string insertSql = @"
                             INSERT INTO [UserAllowedDivisions]([idUser],[idDivision])
                             VALUES(@u, @d)
@@ -239,7 +230,6 @@ namespace Monitoring.Infrastructure.Services
             }
         }
 
-        /// <summary>Сменить пароль пользователю в таблице [Users]</summary>
         public async Task ChangeUserPasswordAsync(int userId, string newPassword)
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
@@ -261,14 +251,38 @@ namespace Monitoring.Infrastructure.Services
         }
 
         /// <summary>
-        /// Регистрация нового пользователя в таблице [Users] 
-        /// + создание записи в [UserPrivacy].
-        /// Возвращает idUser вставленной записи.
+        /// Получить текущий пароль из таблицы [Users].
         /// </summary>
+        public async Task<string?> GetUserCurrentPasswordAsync(int userId)
+        {
+            string? password = null;
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            using (var conn = new SqlConnection(connStr))
+            {
+                await conn.OpenAsync();
+                string sql = @"
+                    SELECT [Password]
+                    FROM [Users]
+                    WHERE [idUser] = @u
+                ";
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@u", userId);
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            password = reader.IsDBNull(0) ? null : reader.GetString(0);
+                        }
+                    }
+                }
+            }
+            return password;
+        }
+
         public async Task<int> RegisterUserInDbAsync(
             string fullName,
             string smallName,
-            //string login,
             string password,
             int? idDivision,
             bool canCloseWork,
@@ -276,16 +290,6 @@ namespace Monitoring.Infrastructure.Services
             bool canAccessSettings
         )
         {
-            // По условию:
-            //   idTypeUser = 2
-            //   Isvalid = 1 (bit)
-            //   Name = fullName
-            //   smallName = smallName
-            //   Password = password
-            //   idDivision = idDivision (может быть NULL)
-            //   вставляем в [Users], получаем новый idUser
-            //   затем вставляем в [UserPrivacy]
-
             int newUserId = 0;
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             using (var conn = new SqlConnection(connStr))
@@ -306,10 +310,10 @@ namespace Monitoring.Infrastructure.Services
                         using (var cmd = new SqlCommand(insertUserSql, conn, transaction))
                         {
                             cmd.Parameters.AddWithValue("@name", fullName);
-                            cmd.Parameters.AddWithValue("@smallName", (object?)smallName ?? (object)DBNull.Value);
-                            cmd.Parameters.AddWithValue("@idDiv", (object?)idDivision ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@smallName", (object?)smallName ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@idDiv", (object?)idDivision ?? DBNull.Value);
                             cmd.Parameters.AddWithValue("@pwd", password);
-                            // idTypeUser=2, Isvalid=1 захардкожены в SQL
+
                             object newIdObj = await cmd.ExecuteScalarAsync();
                             newUserId = Convert.ToInt32(newIdObj);
                         }

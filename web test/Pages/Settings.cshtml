@@ -6,9 +6,11 @@
     ViewData["Title"] = "Настройки пользователей";
 }
 
-<!-- Сделаем контейнер чуть шире, чтобы удобнее помещался двухколоночный список пользователей -->
+<!--
+    Контейнер, где располагается весь контент.
+    Увеличиваем max-width, чтобы разместить 2-3 колонки удобнее.
+-->
 <div class="container mt-4" style="max-width: 1400px;">
-    <!-- Заголовок страницы -->
     <h2 class="mb-4 text-center">Управление настройками и ролями пользователей</h2>
 
     <!-- Кнопка "Зарегистрировать пользователя" -->
@@ -27,8 +29,6 @@
                     <h5 class="mb-0">Выберите пользователя</h5>
                 </div>
                 <div class="custom-card-body">
-
-                    <!-- Разделяем "Пользователь:" на 2 столбца (деловая разметка) -->
                     <div class="row mb-3 align-items-center">
                         <div class="col-sm-4 text-end">
                             <label for="SelectedUser" class="col-form-label">Пользователь:</label>
@@ -46,7 +46,6 @@
                             </select>
                         </div>
                     </div>
-
                 </div>
             </div>
 
@@ -60,10 +59,6 @@
                     {
                         <!-- Список чекбоксов в 3 столбца -->
                         <div id="subdivisionList" class="subdivisions-grid-3">
-                            @* 
-                              Выводим все подразделения в три колонки 
-                              (grid-template-columns: repeat(3, 1fr)) 
-                            *@
                             @foreach (var sub in Model.Subdivisions)
                             {
                                 bool isChecked = Model.UserSelectedDivisionIds.Contains(sub.IdDivision);
@@ -101,7 +96,7 @@
                             <thead>
                                 <tr>
                                     <th>Параметр</th>
-                                    <th>Разрешено?</th>
+                                    <th class="text-center">Разрешено?</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -132,15 +127,30 @@
                             </tbody>
                         </table>
 
-                        <!-- Поле для смены пароля -->
+                        <!-- Поле для отображения текущего пароля -->
+                        <div class="mb-3">
+                            <label for="currentPasswordForSelectedUser" class="form-label">Текущий пароль:</label>
+                            <input type="text"
+                                   id="currentPasswordForSelectedUser"
+                                   class="form-control"
+                                   value="@Model.CurrentPasswordForSelectedUser"
+                                   readonly />
+                        </div>
+
+                        <!-- Поле для изменения пароля (с глазиком для показа/скрытия) -->
                         <div class="mb-3">
                             <label for="newPasswordForSelectedUser" class="form-label">Новый пароль (если нужно сменить):</label>
-                            <input type="password" id="newPasswordForSelectedUser" class="form-control" />
+                            <div class="input-group">
+                                <input type="password" id="newPasswordForSelectedUser" class="form-control" />
+                                <button class="btn btn-outline-secondary" type="button" onclick="toggleNewPasswordVisibility()">
+                                    <i class="bi bi-eye-slash-fill" id="toggleNewPassIcon"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Кнопка сохранения всех настроек (приватность, подразделения, пароль) -->
                         <div class="text-end">
-                            <button class="btn btn-success shadow-sm" onclick="saveAllSettings()">Сохранить</button>
+                            <button class="btn btn-success shadow-sm" onclick="prepareSaveAllSettings()">Сохранить</button>
                         </div>
                     }
                     else
@@ -168,10 +178,10 @@
                     <input type="text" id="newUserFio" class="form-control" placeholder="Иванов Иван Иванович" />
                 </div>
 
-                <!-- Малое имя (smallName) -->
+                <!-- Малое имя (smallName, логин) -->
                 <div class="mb-3">
-                    <label for="newUserSmallName" class="form-label">Коротная запись (login):</label>
-                    <input type="text" id="newUserSmallName" class="form-control" placeholder="ivanov_i" />
+                    <label for="newUserSmallName" class="form-label">Короткая запись (login):</label>
+                    <input type="text" id="newUserSmallName" class="form-control" placeholder="ivanov" />
                 </div>
 
                 <!-- Выбор подразделения -->
@@ -179,19 +189,12 @@
                     <label for="newUserDivision" class="form-label">Подразделение:</label>
                     <select id="newUserDivision" class="form-select">
                         <option value="">-- Не выбрано --</option>
-                        @* Используем те же Subdivisions, что и на основной странице *@
                         @foreach (var d in Model.Subdivisions)
                         {
                             <option value="@d.IdDivision">@d.SmallNameDivision</option>
                         }
                     </select>
                 </div>
-
-                <!-- Логин -->
-                @* <div class="mb-3"> *@
-                @*     <label for="newUserLogin" class="form-label">Логин:</label> *@
-                @*     <input type="text" id="newUserLogin" class="form-control" placeholder="ivanov" /> *@
-                @* </div> *@
 
                 <!-- Пароль -->
                 <div class="mb-3">
@@ -227,9 +230,35 @@
     </div>
 </div>
 
+<!-- Модальное окно подтверждения сохранения настроек -->
+<div class="modal fade" id="confirmSaveModal" tabindex="-1" aria-labelledby="confirmSaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 id="confirmSaveModalLabel" class="modal-title">Подтверждение сохранения</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Вы действительно хотите сохранить изменения?</strong></p>
+                <p>Пользователь: <span id="confirmUserName"></span></p>
+                <p>Текущий пароль: <span id="confirmOldPass"></span></p>
+                <p>Новый пароль: <span id="confirmNewPass"></span></p>
+                <p>Может закрывать работы? <span id="confirmCanClose"></span></p>
+                <p>Может отправлять заявки на закрытие работ? <span id="confirmCanSend"></span></p>
+                <p>Доступ к настройкам <span id="confirmCanAccess"></span></p>
+                <p>Подразделения (ID): <span id="confirmSubdivisions"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Нет</button>
+                <button type="button" class="btn btn-success" onclick="saveAllSettings()">Да, сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        // Смена выбранного пользователя в выпадающем меню
+        // --- Переключение пользователя в селекте ---
         function onUserSelectionChanged(userName) {
             if (userName) {
                 window.location.href = '?SelectedUserName=' + encodeURIComponent(userName);
@@ -238,21 +267,67 @@
             }
         }
 
-        // Единая функция, которая сохраняет:
-        // 1) настройки приватности
-        // 2) выбранные подразделения
-        // 3) (опционально) новый пароль
-        // последовательно, одной кнопкой.
-        function saveAllSettings() {
+        // --- Показ/скрытие нового пароля при нажатии на "глазик" ---
+        function toggleNewPasswordVisibility() {
+            let passInput = document.getElementById("newPasswordForSelectedUser");
+            let icon = document.getElementById("toggleNewPassIcon");
+            if (passInput.type === "password") {
+                passInput.type = "text";
+                icon.classList.remove("bi-eye-slash-fill");
+                icon.classList.add("bi-eye-fill");
+            } else {
+                passInput.type = "password";
+                icon.classList.remove("bi-eye-fill");
+                icon.classList.add("bi-eye-slash-fill");
+            }
+        }
+
+        // --- Подготовка данных и показ модального окна подтверждения ---
+        function prepareSaveAllSettings() {
             let userName = document.getElementById("SelectedUser").value;
             if (!userName) {
                 alert("Сначала выберите пользователя");
                 return;
             }
-            // Собираем данные для приватных настроек
+
+            // Собираем данные
             let canCloseWork = document.getElementById("canCloseWork").checked;
             let canSendCloseRequest = document.getElementById("canSendCloseRequest").checked;
             let canAccessSettings = document.getElementById("canAccessSettings").checked;
+
+            let currentPass = document.getElementById("currentPasswordForSelectedUser").value.trim();
+            let newPass = document.getElementById("newPasswordForSelectedUser").value.trim();
+
+            let checks = document.querySelectorAll("#subdivisionList input[type=checkbox]");
+            let selectedSubs = [];
+            checks.forEach(ch => {
+                if (ch.checked) {
+                    selectedSubs.push(parseInt(ch.value));
+                }
+            });
+
+            // Заполним данные в модальном окне
+            document.getElementById("confirmUserName").textContent = userName;
+            document.getElementById("confirmOldPass").textContent = currentPass ? currentPass : "(пусто)";
+            document.getElementById("confirmNewPass").textContent = newPass ? newPass : "(не меняем)";
+            document.getElementById("confirmCanClose").textContent = canCloseWork ? "Да" : "Нет";
+            document.getElementById("confirmCanSend").textContent = canSendCloseRequest ? "Да" : "Нет";
+            document.getElementById("confirmCanAccess").textContent = canAccessSettings ? "Да" : "Нет";
+            document.getElementById("confirmSubdivisions").textContent = selectedSubs.join(", ");
+
+            // Показываем модальное окно
+            let modalEl = document.getElementById('confirmSaveModal');
+            let modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        // --- Основная функция сохранения (выполняется при нажатии "Да" в модальном окне) ---
+        function saveAllSettings() {
+            let userName = document.getElementById("SelectedUser").value;
+            let canCloseWork = document.getElementById("canCloseWork").checked;
+            let canSendCloseRequest = document.getElementById("canSendCloseRequest").checked;
+            let canAccessSettings = document.getElementById("canAccessSettings").checked;
+            let newPass = document.getElementById("newPasswordForSelectedUser").value.trim();
 
             // Собираем выбранные подразделения
             let checks = document.querySelectorAll("#subdivisionList input[type=checkbox]");
@@ -262,9 +337,6 @@
                     selectedSubs.push(parseInt(ch.value));
                 }
             });
-
-            // Узнаем, есть ли новый пароль
-            let newPass = document.getElementById("newPasswordForSelectedUser").value.trim();
 
             // 1. Сохраняем приватные настройки
             let privacyData = {
@@ -319,36 +391,35 @@
                         return res2; // для цепочки
                     });
                 } else {
-                    // Если пароль пуст, пропускаем этот шаг
+                    // Если новый пароль пуст, пропускаем этот шаг
                     return { success: true };
                 }
             })
             .then(_ => {
                 // Если мы дошли сюда, значит все три операции прошли успешно
                 alert("Настройки успешно сохранены!");
-                // Можем перезагрузить страницу
+                // Перезагружаем страницу, чтобы увидеть обновлённые данные
                 location.reload();
             })
             .catch(e => {
-                // При любой ошибке выведем сообщение
+                // При любой ошибке
                 alert(e.message);
                 console.error(e);
             });
         }
 
-        // Регистрация нового пользователя
+        // --- Регистрация нового пользователя ---
         function registerNewUser() {
             let fio = document.getElementById("newUserFio").value.trim();
             let smallName = document.getElementById("newUserSmallName").value.trim();
             let divisionId = document.getElementById("newUserDivision").value;
-            let login = document.getElementById("newUserLogin").value.trim();
             let password = document.getElementById("newUserPassword").value.trim();
             let canClose = document.getElementById("newUserCanCloseWork").checked;
             let canSend = document.getElementById("newUserCanSendCloseRequest").checked;
             let canSettings = document.getElementById("newUserCanAccessSettings").checked;
 
-            if (!fio || !login || !password) {
-                alert("Пожалуйста, заполните ФИО, логин и пароль.");
+            if (!fio || !smallName || !password) {
+                alert("Пожалуйста, заполните ФИО, login и пароль.");
                 return;
             }
 
@@ -356,7 +427,6 @@
                 fullName: fio,
                 smallName: smallName,
                 idDivision: divisionId ? parseInt(divisionId) : null,
-                login: login,
                 password: password,
                 canCloseWork: canClose,
                 canSendCloseRequest: canSend,
@@ -384,9 +454,11 @@
         }
     </script>
 
-    <!-- Стили, специфичные только для страницы "Settings" (деловой стиль) -->
+    <!--
+        Стили, специфичные для страницы "Settings".
+        Добавляем лёгкие тени и закругления для карточек и таблиц.
+    -->
     <style>
-        /* Общие стили для card в настройках */
         .custom-card {
             border: none;
             border-radius: 12px;
@@ -423,37 +495,32 @@
                 background: #e9ecef;
             }
 
-        /* Мультиколонный select (попытка разбить опции на 2 столбца) */
         .multi-col-select {
-            /* Зададим высоту и укажем, что опции распределяются по 2 колонкам */
-            height: auto;
             -webkit-column-count: 2;
             -moz-column-count: 2;
             column-count: 2;
+            height: auto;
         }
-            /* Бывает, что нужно отключить перенос внутри опций */
+
             .multi-col-select option {
                 -webkit-column-break-inside: avoid;
                 -moz-column-break-inside: avoid;
                 column-break-inside: avoid;
             }
 
-        /* Для чекбоксов в подразделениях */
-        .form-check-label {
-            cursor: pointer;
-        }
-
-        /* 3-колоночное расположение чекбоксов для подразделений */
         .subdivisions-grid-3 {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3 столбца */
+            grid-template-columns: repeat(3, 1fr);
             gap: 0.5rem;
         }
 
-        /* Увеличим хитбокс чекбоксов слегка */
         .form-check-input {
             transform: scale(1.1);
             margin-right: 8px;
+        }
+
+        .form-check-label {
+            cursor: pointer;
         }
     </style>
 }

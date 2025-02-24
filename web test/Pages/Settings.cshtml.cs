@@ -18,22 +18,39 @@ namespace Monitoring.UI.Pages
             _loginService = loginService;
         }
 
-        // Список всех пользователей (smallName, login или как у вас заведено).
-        // Предположим, что _loginService.GetAllUsersAsync() возвращает список логинов или smallName.
+        /// <summary>
+        /// Список всех пользователей (smallName, login или любой другой идентификатор).
+        /// Заполняется в OnGet.
+        /// </summary>
         public List<string> AllUsers { get; set; } = new();
 
-        // Имя выбранного пользователя (smallName или login)
+        /// <summary>
+        /// Имя выбранного пользователя (smallName или login). 
+        /// Берётся из query-параметра ?SelectedUserName=...
+        /// </summary>
         [BindProperty(SupportsGet = true)]
         public string? SelectedUserName { get; set; }
 
-        // Текущие настройки приватности
+        /// <summary>
+        /// Текущие настройки приватности (из таблицы UserPrivacy).
+        /// </summary>
         public PrivacySettingsDto CurrentPrivacySettings { get; set; } = new();
 
-        // Справочник подразделений
+        /// <summary>
+        /// Справочник всех подразделений.
+        /// </summary>
         public List<DivisionDto> Subdivisions { get; set; } = new();
 
-        // Какие подразделения выбраны у пользователя
+        /// <summary>
+        /// Список idDivision, которые разрешены пользователю.
+        /// </summary>
         public List<int> UserSelectedDivisionIds { get; set; } = new();
+
+        /// <summary>
+        /// Текущий пароль (из таблицы Users.Password). 
+        /// Показываем в поле для чтения.
+        /// </summary>
+        public string? CurrentPasswordForSelectedUser { get; set; }
 
         public void OnGet()
         {
@@ -45,7 +62,7 @@ namespace Monitoring.UI.Pages
             }
 
             string userName = HttpContext.Request.Cookies["userName"];
-            // Нужен userId
+            // Находим userId (из сервиса логина)
             int? userIdP = _loginService.GetUserIdByNameAsync(userName).Result;
             if (userIdP == null)
             {
@@ -62,10 +79,10 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // 1. Список всех пользователей
+            // 1. Получаем список всех пользователей
             AllUsers = _loginService.GetAllUsersAsync().Result;
 
-            // 2. Список всех подразделений
+            // 2. Получаем список всех подразделений
             Subdivisions = _userSettingsService.GetAllDivisionsAsync().Result;
 
             // 3. Если кто-то выбран
@@ -80,6 +97,9 @@ namespace Monitoring.UI.Pages
 
                     // Грузим выбранные подразделения
                     UserSelectedDivisionIds = _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value).Result;
+
+                    // Загружаем текущий пароль
+                    CurrentPasswordForSelectedUser = _userSettingsService.GetUserCurrentPasswordAsync(userId.Value).Result;
                 }
             }
         }
@@ -209,7 +229,6 @@ namespace Monitoring.UI.Pages
 
                 string fio = data["fullName"]?.ToString();     // = Name
                 string smallName = data["smallName"]?.ToString();
-                //string login = data["login"]?.ToString();
                 string password = data["password"]?.ToString();
                 bool canClose = Convert.ToBoolean(data["canCloseWork"]);
                 bool canSend = Convert.ToBoolean(data["canSendCloseRequest"]);
@@ -228,20 +247,25 @@ namespace Monitoring.UI.Pages
 
                 if (string.IsNullOrWhiteSpace(fio) || string.IsNullOrWhiteSpace(smallName) || string.IsNullOrWhiteSpace(password))
                 {
-                    return new JsonResult(new { success = false, message = "Не все обязательные поля заполнены (ФИО, логин, пароль)." });
+                    return new JsonResult(new { success = false, message = "Не все обязательные поля заполнены (ФИО, login, пароль)." });
                 }
 
                 // Проверим, вдруг такой пользователь уже есть
                 int? existingUserId = _loginService.GetUserIdByNameAsync(smallName).Result;
                 if (existingUserId != null)
                 {
-                    // Или проверять по FIO/smallName — зависит от ваших правил
                     return new JsonResult(new { success = false, message = "Пользователь с таким логином уже существует." });
                 }
 
                 // Создаём запись в Users (idTypeUser=2, Isvalid=1)
                 int newUserId = _userSettingsService.RegisterUserInDbAsync(
-                    fio, smallName, password, idDivision, canClose, canSend, canSettings
+                    fio,
+                    smallName,
+                    password,
+                    idDivision,
+                    canClose,
+                    canSend,
+                    canSettings
                 ).Result;
 
                 return new JsonResult(new { success = true, newUserId = newUserId });
