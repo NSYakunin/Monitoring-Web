@@ -392,18 +392,25 @@ namespace Monitoring.UI.Pages
             string userName = HttpContext.Request.Cookies["userName"];
             UserName = userName;
 
+            // Берём все заявки (изменённый метод GetAllRequestsAsync возвращает DocumentName и WorkName)
             var allRequests = await _workRequestService.GetAllRequestsAsync();
+
+            // Оставляем только те, что адресованы этому пользователю, Pending, и не выполнены
             var myPending = allRequests
                 .Where(r => r.Receiver == userName && r.Status == "Pending" && !r.IsDone)
                 .ToList();
 
+            // Расширяем анонимный объект выдачи полями docName и workName
             var result = myPending.Select(r => new {
                 id = r.Id,
                 workDocumentNumber = r.WorkDocumentNumber,
                 requestType = r.RequestType,
                 proposedDate = r.ProposedDate?.ToString("yyyy-MM-dd"),
                 sender = r.Sender,
-                note = r.Note
+                note = r.Note,
+                // Новые поля - берем из r.DocumentName и r.WorkName
+                docName = r.DocumentName,
+                workName = r.WorkName
             });
             return new JsonResult(result);
         }

@@ -33,5 +33,8 @@
 
         // Доп. заметка
         public string? Note { get; set; }
+
+        public string? DocumentName { get; set; }
+        public string? WorkName { get; set; }
     }
 }

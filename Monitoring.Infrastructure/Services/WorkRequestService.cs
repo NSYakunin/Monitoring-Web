@@ -104,6 +104,14 @@ namespace Monitoring.Infrastructure.Services
             await cmd.ExecuteNonQueryAsync();
         }
 
+        /// <summary>
+        /// Возвращает все заявки, у которых Status = 'Pending' AND IsDone = 0.
+        /// Теперь в этом же запросе возвращаются DocumentName и WorkName,
+        /// вычисленные через связь (Documents / Works / TypeDocs).
+        /// Новый комментарий (на русском) для пояснения:
+        /// Мы берем Requests.WorkDocumentNumber (d.Number + '/' + w.id),
+        /// находим в таблицах Documents + Works соответствие и берём названия.
+        /// </summary>
         public async Task<List<WorkRequest>> GetAllRequestsAsync()
         {
             var listRequest = new List<WorkRequest>();
@@ -111,10 +119,41 @@ namespace Monitoring.Infrastructure.Services
             using var conn = new SqlConnection(connStr);
             await conn.OpenAsync();
 
+            // Старый запрос был:
+            //   SELECT * FROM Requests WHERE Status = 'Pending' AND IsDone = 0
+            //
+            // Теперь добавляем подзапросы для DocumentName и WorkName:
             string sql = @"
-                SELECT * FROM Requests
-                    WHERE Status = 'Pending' AND IsDone = 0
-                ";
+                SELECT
+                    r.Id,
+                    r.WorkDocumentNumber,
+                    r.RequestType,
+                    r.Sender,
+                    r.Receiver,
+                    r.RequestDate,
+                    r.ProposedDate,
+                    r.Status,
+                    r.IsDone,
+                    r.Note,
+
+                    -- Подзапрос для Наименования документа (DocumentName):
+                    (SELECT TOP 1 td.Name + ' ' + d.Name
+                     FROM Documents d
+                     JOIN TypeDocs td ON td.id = d.idTypeDoc
+                     JOIN Works w ON w.idDocuments = d.id
+                     WHERE d.Number + '/' + CAST(w.id as VARCHAR(10)) = r.WorkDocumentNumber
+                    ) AS DocumentName,
+
+                    -- Подзапрос для Наименования работы (WorkName):
+                    (SELECT TOP 1 w2.Name
+                     FROM Documents d2
+                     JOIN Works w2 ON w2.idDocuments = d2.id
+                     WHERE d2.Number + '/' + CAST(w2.id as VARCHAR(10)) = r.WorkDocumentNumber
+                    ) AS WorkName
+
+                FROM Requests r
+                WHERE r.Status = 'Pending' AND r.IsDone = 0
+            ";
 
             using var cmd = new SqlCommand(sql, conn);
 
@@ -132,16 +171,15 @@ namespace Monitoring.Infrastructure.Services
                     ProposedDate = rdr["ProposedDate"] as DateTime?,
                     Status = rdr.GetString(rdr.GetOrdinal("Status")),
                     IsDone = rdr.GetBoolean(rdr.GetOrdinal("IsDone")),
-                    Note = rdr["Note"] as string
+                    Note = rdr["Note"] as string,
+
+                    // Новые поля - считываем из подзапросов:
+                    DocumentName = rdr["DocumentName"] as string,
+                    WorkName = rdr["WorkName"] as string
                 };
                 listRequest.Add(wr);
             }
             return listRequest;
-
-
-            // SQL-запрос:
-            // SELECT * FROM Requests
-            // WHERE Receiver = @rcv AND Status = 'Pending' AND IsDone = 0
         }
     }
 }

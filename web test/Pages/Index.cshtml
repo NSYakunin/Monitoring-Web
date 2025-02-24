@@ -91,7 +91,6 @@
 
     <!-- Внешний контейнер с отступом снизу и горизонтальными отступами gx-3 -->
     <div class="row mb-3 gx-3" style="min-height: 50px;">
-        <!-- Левая колонка: d-flex, flex-column для "растягивания" карточки -->
         <div class="col d-flex flex-column">
             <div class="card shadow-sm flex-fill" style="min-width: 300px;">
                 <div class="card-header bg-warning">
@@ -128,7 +127,7 @@
             </div>
         </div>
 
-        <!-- Правая колонка: col-auto + d-flex + flex-column + justify-content-end -->
+        <!-- Правая колонка: кнопка экспорта (pdf/excel/word) -->
         <div class="col-auto d-flex flex-column justify-content-end">
             <form method="post" id="exportForm">
                 <!-- Скрытые поля для сохранения текущих фильтров при экспорте -->
@@ -175,7 +174,7 @@
         </div>
     </div>
 
-    <!-- "Мои входящие заявки" (для Accept/Decline) -->
+    <!-- "Мои входящие заявки" -->
     <div class="row mb-4">
         <div class="col-12">
             <h5>Мои входящие заявки</h5>
@@ -434,7 +433,7 @@
                 });
             });
 
-            // При загрузке страницы - подгружаем "мои заявки"
+            // При загрузке - подгружаем "Мои заявки"
             loadMyPendingRequests();
         });
 
@@ -442,7 +441,7 @@
         // Функция для AJAX-запроса списка исполнителей и обновления селекта #executor
         function loadExecutors(divisionId) {
             $.ajax({
-                url: '@Url.Page("Index", "Executors")', // OnGetExecutorsAsync
+                url: '@Url.Page("Index", "Executors")',
                 type: 'GET',
                 data: { divisionId: divisionId },
                 success: function(executors) {
@@ -463,8 +462,7 @@
             });
         }
 
-
-        // Обработка кнопки "Сгенерировать PDF/Excel/Word"
+        // Обработка кнопки "Сдаточный чек"
         $('#generatePdfBtn').on('click', function() {
             let rows = document.querySelectorAll("#workItemsTable tbody tr");
             let result = [];
@@ -561,9 +559,10 @@
                     let dateStr = req.proposedDate ? req.proposedDate.substring(0,10) : '';
                     let noteStr = req.note || '';
 
+                    // Важно: теперь используем req.docName и req.workName в первых столбцах
                     tr.innerHTML = `
-                        <td>${"Пусто пока"}</td>
-                        <td>${"Пусто пока"}</td>
+                        <td>${req.docName || ""}</td>
+                        <td>${req.workName || ""}</td>
                         <td>${req.workDocumentNumber}</td>
                         <td>${req.requestType}</td>
                         <td>${dateStr}</td>

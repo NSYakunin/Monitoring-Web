@@ -43,14 +43,12 @@ namespace Monitoring.Infrastructure.Services
             {
                 workItems = new List<WorkItem>();
 
-                // Динамическое формирование IN (...):
-                // допустим, будет @div0, @div1, ... @divN
+                // Динамическое формирование IN (...)
                 var paramNames = new List<string>();
                 for (int i = 0; i < sortedDivs.Count; i++)
                 {
                     paramNames.Add($"@div{i}");
                 }
-                // Соберём IN (@div0, @div1, ...)
                 string inClause = string.Join(", ", paramNames);
 
                 string query = $@"
@@ -284,13 +282,9 @@ namespace Monitoring.Infrastructure.Services
 
         /// <summary>
         /// Очистить кэш для конкретного отдела (или для любого).
-        /// Поскольку теперь у нас кэш может быть по нескольким отделам, 
-        /// можно расширить этот метод при необходимости.
         /// </summary>
         public void ClearCache(int divisionId)
         {
-            // Стираем старый ключ для одного divisionId
-            // (если вы используете список, ключ будет другой).
             string cacheKey = $"AllWorkItems_{divisionId}";
             _cache.Remove(cacheKey);
 
@@ -298,8 +292,8 @@ namespace Monitoring.Infrastructure.Services
             _cache.Remove(exKey);
 
             // Если у вас есть кэш по комбинациям отделов,
-            // то можно пройтись по всем ключам в MemoryCache и удалить, где встречается divisionId.
-            // Но это уже деталь реализации. 
+            // то можно пройтись по всем ключам в MemoryCache и удалить, 
+            // где встречается divisionId.
         }
     }
 }
