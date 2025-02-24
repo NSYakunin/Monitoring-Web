@@ -6,7 +6,8 @@
     ViewData["Title"] = "Настройки пользователей";
 }
 
-<div class="container-lg mt-4" style="max-width: 1200px;">
+<!-- Сделаем контейнер чуть шире, чтобы удобнее помещался двухколоночный список пользователей -->
+<div class="container mt-4" style="max-width: 1400px;">
     <!-- Заголовок страницы -->
     <h2 class="mb-4 text-center">Управление настройками и ролями пользователей</h2>
 
@@ -33,13 +34,12 @@
                             <label for="SelectedUser" class="col-form-label">Пользователь:</label>
                         </div>
                         <div class="col-sm-8">
-                            <select id="SelectedUser" name="SelectedUser" class="form-select"
+                            <select id="SelectedUser" name="SelectedUser" class="form-select multi-col-select"
                                     onchange="onUserSelectionChanged(this.value)">
                                 <option value="">-- Не выбран --</option>
                                 @foreach (var usr in Model.AllUsers)
                                 {
-                                    <option value="@usr"
-                                            selected="@(Model.SelectedUserName == usr ? "selected" : null)">
+                                    <option value="@usr" selected="@(Model.SelectedUserName == usr ? "selected" : null)">
                                         @usr
                                     </option>
                                 }
@@ -58,11 +58,11 @@
                 <div class="custom-card-body">
                     @if (!string.IsNullOrEmpty(Model.SelectedUserName))
                     {
-                        <!-- Список чекбоксов в 2 столбца -->
-                        <div id="subdivisionList" class="subdivisions-grid">
+                        <!-- Список чекбоксов в 3 столбца -->
+                        <div id="subdivisionList" class="subdivisions-grid-3">
                             @* 
-                              Для демонстрации — просто выводим все подряд 
-                              с помощью grid-template-columns: 1fr 1fr (см. стили ниже)
+                              Выводим все подразделения в три колонки 
+                              (grid-template-columns: repeat(3, 1fr)) 
                             *@
                             @foreach (var sub in Model.Subdivisions)
                             {
@@ -78,14 +78,6 @@
                                 </div>
                             }
                         </div>
-
-                        <!-- Кнопка "Сохранить подразделения" -->
-                        <div class="mt-3 text-end">
-                            <button type="button" class="btn btn-secondary btn-sm shadow-sm"
-                                    onclick="saveSubdivisions()">
-                                Сохранить подразделения
-                            </button>
-                        </div>
                     }
                     else
                     {
@@ -95,7 +87,7 @@
             </div>
         </div>
 
-        <!-- Правая колонка: Настройки приватности -->
+        <!-- Правая колонка: Настройки приватности + смена пароля + кнопка "Сохранить" -->
         <div class="col-md-7">
             <div class="card custom-card mb-4">
                 <div class="custom-card-header">
@@ -140,9 +132,15 @@
                             </tbody>
                         </table>
 
-                        <!-- Кнопка сохранения настроек приватности -->
+                        <!-- Поле для смены пароля -->
+                        <div class="mb-3">
+                            <label for="newPasswordForSelectedUser" class="form-label">Новый пароль (если нужно сменить):</label>
+                            <input type="password" id="newPasswordForSelectedUser" class="form-control" />
+                        </div>
+
+                        <!-- Кнопка сохранения всех настроек (приватность, подразделения, пароль) -->
                         <div class="text-end">
-                            <button class="btn btn-success shadow-sm" onclick="savePrivacySettings()">Сохранить</button>
+                            <button class="btn btn-success shadow-sm" onclick="saveAllSettings()">Сохранить</button>
                         </div>
                     }
                     else
@@ -155,10 +153,7 @@
     </div>
 </div>
 
-<!-- Модальное окно "Регистрация пользователя"
-     Убраны анимации animate__jackInTheBox,
-     оставлена стандартная Bootstrap-анимация для модалок (fade).
--->
+<!-- Модальное окно "Регистрация пользователя" -->
 <div class="modal fade" id="registerUserModal" tabindex="-1" aria-labelledby="registerUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -173,11 +168,30 @@
                     <input type="text" id="newUserFio" class="form-control" placeholder="Иванов Иван Иванович" />
                 </div>
 
-                <!-- Логин -->
+                <!-- Малое имя (smallName) -->
                 <div class="mb-3">
-                    <label for="newUserLogin" class="form-label">Логин:</label>
-                    <input type="text" id="newUserLogin" class="form-control" placeholder="ivanov" />
+                    <label for="newUserSmallName" class="form-label">Коротная запись (login):</label>
+                    <input type="text" id="newUserSmallName" class="form-control" placeholder="ivanov_i" />
                 </div>
+
+                <!-- Выбор подразделения -->
+                <div class="mb-3">
+                    <label for="newUserDivision" class="form-label">Подразделение:</label>
+                    <select id="newUserDivision" class="form-select">
+                        <option value="">-- Не выбрано --</option>
+                        @* Используем те же Subdivisions, что и на основной странице *@
+                        @foreach (var d in Model.Subdivisions)
+                        {
+                            <option value="@d.IdDivision">@d.SmallNameDivision</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Логин -->
+                @* <div class="mb-3"> *@
+                @*     <label for="newUserLogin" class="form-label">Логин:</label> *@
+                @*     <input type="text" id="newUserLogin" class="form-control" placeholder="ivanov" /> *@
+                @* </div> *@
 
                 <!-- Пароль -->
                 <div class="mb-3">
@@ -215,7 +229,7 @@
 
 @section Scripts {
     <script>
-        // Смена выбранного пользователя
+        // Смена выбранного пользователя в выпадающем меню
         function onUserSelectionChanged(userName) {
             if (userName) {
                 window.location.href = '?SelectedUserName=' + encodeURIComponent(userName);
@@ -224,18 +238,36 @@
             }
         }
 
-        // Сохранение настроек приватности
-        function savePrivacySettings() {
+        // Единая функция, которая сохраняет:
+        // 1) настройки приватности
+        // 2) выбранные подразделения
+        // 3) (опционально) новый пароль
+        // последовательно, одной кнопкой.
+        function saveAllSettings() {
             let userName = document.getElementById("SelectedUser").value;
             if (!userName) {
                 alert("Сначала выберите пользователя");
                 return;
             }
+            // Собираем данные для приватных настроек
             let canCloseWork = document.getElementById("canCloseWork").checked;
             let canSendCloseRequest = document.getElementById("canSendCloseRequest").checked;
             let canAccessSettings = document.getElementById("canAccessSettings").checked;
 
-            let data = {
+            // Собираем выбранные подразделения
+            let checks = document.querySelectorAll("#subdivisionList input[type=checkbox]");
+            let selectedSubs = [];
+            checks.forEach(ch => {
+                if (ch.checked) {
+                    selectedSubs.push(parseInt(ch.value));
+                }
+            });
+
+            // Узнаем, есть ли новый пароль
+            let newPass = document.getElementById("newPasswordForSelectedUser").value.trim();
+
+            // 1. Сохраняем приватные настройки
+            let privacyData = {
                 userName: userName,
                 canCloseWork: canCloseWork,
                 canSendCloseRequest: canSendCloseRequest,
@@ -245,61 +277,72 @@
             fetch('?handler=SavePrivacySettings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(privacyData)
             })
             .then(r => r.json())
             .then(res => {
-                if (res.success) {
-                    alert("Настройки успешно сохранены!");
-                    location.reload();
+                if (!res.success) {
+                    throw new Error("Ошибка при сохранении приватных настроек: " + res.message);
+                }
+                // 2. Сохраняем подразделения
+                let subData = {
+                    userName: userName,
+                    subdivisions: selectedSubs
+                };
+                return fetch('?handler=SaveSubdivisions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(subData)
+                });
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    throw new Error("Ошибка при сохранении подразделений: " + res.message);
+                }
+                // 3. Если поле нового пароля заполнено, меняем пароль
+                if (newPass) {
+                    let passData = {
+                        userName: userName,
+                        newPassword: newPass
+                    };
+                    return fetch('?handler=ChangeUserPassword', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(passData)
+                    })
+                    .then(r2 => r2.json())
+                    .then(res2 => {
+                        if (!res2.success) {
+                            throw new Error("Ошибка при смене пароля: " + res2.message);
+                        }
+                        return res2; // для цепочки
+                    });
                 } else {
-                    alert("Ошибка при сохранении: " + res.message);
+                    // Если пароль пуст, пропускаем этот шаг
+                    return { success: true };
                 }
             })
-            .catch(e => console.error(e));
-        }
-
-        // Сохранение списка подразделений
-        function saveSubdivisions() {
-            let userName = document.getElementById("SelectedUser").value;
-            if (!userName) {
-                alert("Сначала выберите пользователя");
-                return;
-            }
-            let checks = document.querySelectorAll("#subdivisionList input[type=checkbox]");
-            let selectedSubs = [];
-            checks.forEach(ch => {
-                if (ch.checked) {
-                    selectedSubs.push(parseInt(ch.value));
-                }
+            .then(_ => {
+                // Если мы дошли сюда, значит все три операции прошли успешно
+                alert("Настройки успешно сохранены!");
+                // Можем перезагрузить страницу
+                location.reload();
+            })
+            .catch(e => {
+                // При любой ошибке выведем сообщение
+                alert(e.message);
+                console.error(e);
             });
-
-            let data = {
-                userName: userName,
-                subdivisions: selectedSubs
-            };
-
-            fetch('?handler=SaveSubdivisions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            .then(r => r.json())
-            .then(res => {
-                if (res.success) {
-                    alert("Подразделения обновлены!");
-                } else {
-                    alert("Ошибка: " + res.message);
-                }
-            })
-            .catch(e => console.error(e));
         }
 
         // Регистрация нового пользователя
         function registerNewUser() {
-            let fio = document.getElementById("newUserFio").value;
-            let login = document.getElementById("newUserLogin").value;
-            let password = document.getElementById("newUserPassword").value;
+            let fio = document.getElementById("newUserFio").value.trim();
+            let smallName = document.getElementById("newUserSmallName").value.trim();
+            let divisionId = document.getElementById("newUserDivision").value;
+            let login = document.getElementById("newUserLogin").value.trim();
+            let password = document.getElementById("newUserPassword").value.trim();
             let canClose = document.getElementById("newUserCanCloseWork").checked;
             let canSend = document.getElementById("newUserCanSendCloseRequest").checked;
             let canSettings = document.getElementById("newUserCanAccessSettings").checked;
@@ -311,6 +354,8 @@
 
             let data = {
                 fullName: fio,
+                smallName: smallName,
+                idDivision: divisionId ? parseInt(divisionId) : null,
                 login: login,
                 password: password,
                 canCloseWork: canClose,
@@ -354,7 +399,6 @@
             }
 
         .custom-card-header {
-            /* Деловая сдержанная заливка, без ярких переходов */
             background-color: #495057;
             color: #fff;
             border-top-left-radius: 12px;
@@ -379,15 +423,30 @@
                 background: #e9ecef;
             }
 
+        /* Мультиколонный select (попытка разбить опции на 2 столбца) */
+        .multi-col-select {
+            /* Зададим высоту и укажем, что опции распределяются по 2 колонкам */
+            height: auto;
+            -webkit-column-count: 2;
+            -moz-column-count: 2;
+            column-count: 2;
+        }
+            /* Бывает, что нужно отключить перенос внутри опций */
+            .multi-col-select option {
+                -webkit-column-break-inside: avoid;
+                -moz-column-break-inside: avoid;
+                column-break-inside: avoid;
+            }
+
         /* Для чекбоксов в подразделениях */
         .form-check-label {
             cursor: pointer;
         }
 
-        /* Для 2-колоночного расположения чекбоксов — можно использовать row-cols, либо grid, как тут */
-        .subdivisions-grid {
+        /* 3-колоночное расположение чекбоксов для подразделений */
+        .subdivisions-grid-3 {
             display: grid;
-            grid-template-columns: 1fr 1fr; /* 2 столбца */
+            grid-template-columns: repeat(3, 1fr); /* 3 столбца */
             gap: 0.5rem;
         }
 

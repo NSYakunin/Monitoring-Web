@@ -21,5 +21,17 @@ namespace Monitoring.Application.Interfaces
 
         // Сохранить список id подразделений, доступных пользователю
         Task SaveUserAllowedDivisionsAsync(int userId, List<int> divisionIds);
+
+        Task<int> RegisterUserInDbAsync(
+            string fullName,
+            string smallName,
+            string password,
+            int? idDivision,
+            bool canCloseWork,
+            bool canSendCloseRequest,
+            bool canAccessSettings
+        );
+
+        Task ChangeUserPasswordAsync(int userId, string newPassword);
     }
 }

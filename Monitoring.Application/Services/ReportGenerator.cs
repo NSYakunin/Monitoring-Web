@@ -134,7 +134,7 @@ namespace Monitoring.Application.Services
                                        .Text("Ответственное лицо");
 
                                     row.RelativeItem()
-                                       .Element(x => x.PaddingLeft(20))
+                                       .Element(x => x.PaddingRight(10))
                                        .AlignRight()
                                        .Text("Ответственное лицо ИАЦ");
                                 });
@@ -161,12 +161,12 @@ namespace Monitoring.Application.Services
                                     row.AutoItem()
                                        .Element(x => x.PaddingRight(20))
                                        .AlignLeft()
-                                       .Text("____________________________/");
+                                       .Text("____________________/_______/");
 
                                     row.RelativeItem()
                                        .Element(x => x.PaddingLeft(20))
                                        .AlignRight()
-                                       .Text("____________________________/");
+                                       .Text("____________________/_______/");
                                 });
                             // Номера страниц (на всех страницах) -- центр, но больше отступ снизу
                             column.Item().AlignCenter().PaddingBottom(1, Unit.Millimetre).Text(text =>

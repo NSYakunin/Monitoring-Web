@@ -18,10 +18,11 @@ namespace Monitoring.UI.Pages
             _loginService = loginService;
         }
 
-        // Список всех пользователей (smallName)
+        // Список всех пользователей (smallName, login или как у вас заведено).
+        // Предположим, что _loginService.GetAllUsersAsync() возвращает список логинов или smallName.
         public List<string> AllUsers { get; set; } = new();
 
-        // Имя выбранного пользователя (smallName)
+        // Имя выбранного пользователя (smallName или login)
         [BindProperty(SupportsGet = true)]
         public string? SelectedUserName { get; set; }
 
@@ -36,7 +37,7 @@ namespace Monitoring.UI.Pages
 
         public void OnGet()
         {
-            // Предположим, вы берёте userName из куки
+            // Предположим, берём userName (логин) из куки
             if (!HttpContext.Request.Cookies.ContainsKey("userName"))
             {
                 Response.Redirect("/Login");
@@ -52,14 +53,12 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // Проверяем право
+            // Проверяем право на доступ к этой странице
             bool canAccess = _userSettingsService.HasAccessToSettingsAsync(userIdP.Value).Result;
             if (!canAccess)
             {
-                // Можно редиректить на главную, либо возвращать 403 (Forbidden)
-                // Пример:
-                Response.Redirect("/Index");  // или
-                                              // return Forbid(); 
+                // Редирект на главную или 403
+                Response.Redirect("/Index");
                 return;
             }
 
@@ -85,7 +84,7 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        // POST: сохранение настроек приватности
+        // POST: Сохранение настроек приватности
         public IActionResult OnPostSavePrivacySettings()
         {
             try
@@ -122,7 +121,7 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        // POST: сохранение списка подразделений
+        // POST: Сохранение списка подразделений
         public IActionResult OnPostSaveSubdivisions()
         {
             try
@@ -161,7 +160,42 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        // POST: регистрация нового пользователя (пример)
+        // POST: Смена пароля для выбранного пользователя
+        public IActionResult OnPostChangeUserPassword()
+        {
+            try
+            {
+                using var reader = new StreamReader(Request.Body);
+                string body = reader.ReadToEndAsync().Result;
+
+                var data = JsonSerializer.Deserialize<Dictionary<string, object>>(body);
+                if (data == null)
+                    return new JsonResult(new { success = false, message = "Невалидный JSON" });
+
+                string userName = data["userName"]?.ToString();
+                string newPassword = data["newPassword"]?.ToString();
+
+                if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(newPassword))
+                {
+                    return new JsonResult(new { success = false, message = "Не заданы userName или newPassword." });
+                }
+
+                int? userId = _loginService.GetUserIdByNameAsync(userName).Result;
+                if (userId == null)
+                    return new JsonResult(new { success = false, message = "Пользователь не найден" });
+
+                // Вызываем метод для смены пароля в Users
+                _userSettingsService.ChangeUserPasswordAsync(userId.Value, newPassword).Wait();
+
+                return new JsonResult(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
+
+        // POST: Регистрация нового пользователя
         public IActionResult OnPostRegisterUser()
         {
             try
@@ -173,20 +207,44 @@ namespace Monitoring.UI.Pages
                 if (data == null)
                     return new JsonResult(new { success = false, message = "Невалидный JSON" });
 
-                string fio = data["fullName"]?.ToString();
-                string login = data["login"]?.ToString();
+                string fio = data["fullName"]?.ToString();     // = Name
+                string smallName = data["smallName"]?.ToString();
+                //string login = data["login"]?.ToString();
                 string password = data["password"]?.ToString();
                 bool canClose = Convert.ToBoolean(data["canCloseWork"]);
                 bool canSend = Convert.ToBoolean(data["canSendCloseRequest"]);
                 bool canSettings = Convert.ToBoolean(data["canAccessSettings"]);
 
-                if (string.IsNullOrWhiteSpace(login))
-                    return new JsonResult(new { success = false, message = "Логин пуст." });
+                // Подразделение
+                int? idDivision = null;
+                if (data.ContainsKey("idDivision") && data["idDivision"] != null)
+                {
+                    // Если в JSON было null, то парсить не будем
+                    if (int.TryParse(data["idDivision"].ToString(), out var divId))
+                    {
+                        idDivision = divId;
+                    }
+                }
 
-                // Здесь может быть вызов специального метода, который создаст 
-                // новую запись в [Users], а затем запишет в [UserPrivacy].
-                // Для примера — просто "Успех".
-                return new JsonResult(new { success = true });
+                if (string.IsNullOrWhiteSpace(fio) || string.IsNullOrWhiteSpace(smallName) || string.IsNullOrWhiteSpace(password))
+                {
+                    return new JsonResult(new { success = false, message = "Не все обязательные поля заполнены (ФИО, логин, пароль)." });
+                }
+
+                // Проверим, вдруг такой пользователь уже есть
+                int? existingUserId = _loginService.GetUserIdByNameAsync(smallName).Result;
+                if (existingUserId != null)
+                {
+                    // Или проверять по FIO/smallName — зависит от ваших правил
+                    return new JsonResult(new { success = false, message = "Пользователь с таким логином уже существует." });
+                }
+
+                // Создаём запись в Users (idTypeUser=2, Isvalid=1)
+                int newUserId = _userSettingsService.RegisterUserInDbAsync(
+                    fio, smallName, password, idDivision, canClose, canSend, canSettings
+                ).Result;
+
+                return new JsonResult(new { success = true, newUserId = newUserId });
             }
             catch (Exception ex)
             {

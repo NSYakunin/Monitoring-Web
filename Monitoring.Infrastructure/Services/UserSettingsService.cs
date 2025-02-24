@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Configuration;
 using System.Data.SqlClient;
 using Monitoring.Application.DTO;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Monitoring.Infrastructure.Services
 {
@@ -235,6 +237,110 @@ namespace Monitoring.Infrastructure.Services
                     }
                 }
             }
+        }
+
+        /// <summary>Сменить пароль пользователю в таблице [Users]</summary>
+        public async Task ChangeUserPasswordAsync(int userId, string newPassword)
+        {
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            using (var conn = new SqlConnection(connStr))
+            {
+                await conn.OpenAsync();
+                string sql = @"
+                    UPDATE [Users]
+                    SET [Password] = @pwd
+                    WHERE [idUser] = @u
+                ";
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@pwd", newPassword);
+                    cmd.Parameters.AddWithValue("@u", userId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Регистрация нового пользователя в таблице [Users] 
+        /// + создание записи в [UserPrivacy].
+        /// Возвращает idUser вставленной записи.
+        /// </summary>
+        public async Task<int> RegisterUserInDbAsync(
+            string fullName,
+            string smallName,
+            //string login,
+            string password,
+            int? idDivision,
+            bool canCloseWork,
+            bool canSendCloseRequest,
+            bool canAccessSettings
+        )
+        {
+            // По условию:
+            //   idTypeUser = 2
+            //   Isvalid = 1 (bit)
+            //   Name = fullName
+            //   smallName = smallName
+            //   Password = password
+            //   idDivision = idDivision (может быть NULL)
+            //   вставляем в [Users], получаем новый idUser
+            //   затем вставляем в [UserPrivacy]
+
+            int newUserId = 0;
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            using (var conn = new SqlConnection(connStr))
+            {
+                await conn.OpenAsync();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // 1) INSERT в [Users]
+                        string insertUserSql = @"
+                            INSERT INTO [Users]
+                                ([Name], [smallName], [idDivision], [Password], [idTypeUser], [Isvalid])
+                            OUTPUT INSERTED.[idUser]
+                            VALUES
+                                (@name, @smallName, @idDiv, @pwd, 2, 1)
+                        ";
+                        using (var cmd = new SqlCommand(insertUserSql, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@name", fullName);
+                            cmd.Parameters.AddWithValue("@smallName", (object?)smallName ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@idDiv", (object?)idDivision ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@pwd", password);
+                            // idTypeUser=2, Isvalid=1 захардкожены в SQL
+                            object newIdObj = await cmd.ExecuteScalarAsync();
+                            newUserId = Convert.ToInt32(newIdObj);
+                        }
+
+                        // 2) INSERT в [UserPrivacy]
+                        string insertPrivacySql = @"
+                            INSERT INTO [UserPrivacy]
+                                ([idUser], [CanCloseWork], [CanSendCloseRequest], [CanAccessSettings])
+                            VALUES
+                                (@u, @cClose, @cSend, @cAccess)
+                        ";
+                        using (var cmdP = new SqlCommand(insertPrivacySql, conn, transaction))
+                        {
+                            cmdP.Parameters.AddWithValue("@u", newUserId);
+                            cmdP.Parameters.AddWithValue("@cClose", canCloseWork);
+                            cmdP.Parameters.AddWithValue("@cSend", canSendCloseRequest);
+                            cmdP.Parameters.AddWithValue("@cAccess", canAccessSettings);
+                            await cmdP.ExecuteNonQueryAsync();
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+
+            return newUserId;
         }
     }
 }
