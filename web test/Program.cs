@@ -44,7 +44,6 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
 
-// Razor Pages endpoints
 app.MapRazorPages();
 
 app.Run();

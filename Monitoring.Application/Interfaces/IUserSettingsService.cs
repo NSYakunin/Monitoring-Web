@@ -22,6 +22,7 @@ namespace Monitoring.Application.Interfaces
         // Сохранить список id подразделений, доступных пользователю
         Task SaveUserAllowedDivisionsAsync(int userId, List<int> divisionIds);
 
+        // Регистрация нового пользователя
         Task<int> RegisterUserInDbAsync(
             string fullName,
             string smallName,
@@ -32,11 +33,11 @@ namespace Monitoring.Application.Interfaces
             bool canAccessSettings
         );
 
+        // Поменять пароль у пользователя
         Task ChangeUserPasswordAsync(int userId, string newPassword);
 
-        /// <summary>
-        /// Получить текущий пароль пользователя (из таблицы Users.Password)
-        /// </summary>
+  
+        // Получить текущий пароль пользователя (из таблицы Users.Password)
         Task<string?> GetUserCurrentPasswordAsync(int userId);
     }
 }
