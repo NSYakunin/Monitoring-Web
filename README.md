@@ -56,7 +56,7 @@
 |**Entity Framework, ADO.NET**| ORM для взаимодействия с базой данных.                   |
 | **MS SQL**                  | Реляционная СУБД для хранения данных.                    |
 | **HTML, CSS, JavaScript**   | Разметка и скрипты на клиентской стороне.                |
-| **QuestPDF**                | Генерация PDF-отчётов.                                   |
+| **QuestPDF**, **OpenXml**   | Генерация PDF-отчётов.                                   |
 
 ---
 
@@ -72,28 +72,39 @@ Monitoring.sln
  ├─ Monitoring.Application
  │   ├─ Interfaces
  │   │   ├─ IWorkItemService.cs
+ │   │   ├─ IUserSettingsService.cs
  │   │   ├─ ILoginService.cs
  |   |   ├─ IWorkRequestService.cs
  │   │   └─ INotificationService.cs
- │   ├─ Models
+ │   ├─ DTO
  │   │   ├─ CreateRequestDto.cs
+ |   |   ├─ DivisionDto.cs
+ |   |   ├─ PrivacySettingsDto.cs
  |   |   └─ StatusChangeDto.cs
  │   ├─ Services
  │   │   └─ ReportGenerator.cs
+ |   |   ├─ ReportGeneratorExcel.cs
+ |   |   └─ ReportGeneratorWord.cs
  │   └─ ...
  ├─ Monitoring.Infrastructure
  │   ├─ Services
  |   |   ├─ NotificationService.cs
  |   |   ├─ WorkRequestService.cs
+ │   │   ├─ UserSettingsService.cs
  │   │   ├─ WorkItemService.cs
  │   │   └─ LoginService.cs
  │   └─ ...
  └─ Monitoring.UI
      ├─ Pages
+     |   ├─ Shared
+     |   |   ├─ _Layout.cshtml
+     |   |   └─ _WorkItemsTablePartial.cshtml
      │   ├─ Index.cshtml
      │   ├─ Index.cshtml.cs
      │   ├─ Login.cshtml
      │   ├─ Login.cshtml.cs
+     │   ├─ Settings.cshtml
+     │   ├─ Settings.cshtml.cs
      │   └─ Shared Partials (партиалы)
      ├─ wwwroot
      ├─ appsettings.json
