@@ -28,8 +28,9 @@
         {
             string highlightClass = item.HighlightCssClass ?? "";
 
+            <!-- Проверяем на валидность данные и разрешение из настроек на возможность текущему пользователю создавать заявки на закрытие (перенос) работ -->
             bool canSendRequest = false;
-            if (!string.IsNullOrEmpty(Model.UserName) && !string.IsNullOrEmpty(item.Executor))
+            if (!string.IsNullOrEmpty(Model.UserName) && !string.IsNullOrEmpty(item.Executor) && Model.HasSendCloseRequestAccess)
             {
                 var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(x => x.Trim());
@@ -52,7 +53,7 @@
 
                 <td class="align-middle">
                     <input type="checkbox" class="row-select" />
-                    <span class="drag-handle">&#x2630;</span>
+                   
 
                     @if (canSendRequest)
                     {

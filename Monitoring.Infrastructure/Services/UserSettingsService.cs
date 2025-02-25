@@ -23,6 +23,18 @@ namespace Monitoring.Infrastructure.Services
             return settings != null && settings.CanAccessSettings;
         }
 
+        public async Task<bool> HasAccessToSendCloseRequestAsync(int userId)
+        {
+            var settings = await GetPrivacySettingsAsync(userId);
+            return settings != null && settings.CanSendCloseRequest;
+        }
+
+        public async Task<bool> HasAccessToCloseWorkAsync(int userId)
+        {
+            var settings = await GetPrivacySettingsAsync(userId);
+            return settings != null && settings.CanCloseWork;
+        }
+
         public async Task<PrivacySettingsDto> GetPrivacySettingsAsync(int userId)
         {
             var result = new PrivacySettingsDto

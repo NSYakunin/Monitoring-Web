@@ -7,6 +7,12 @@ namespace Monitoring.Application.Interfaces
         // Проверить, есть ли у пользователя право на доступ к настройкам
         Task<bool> HasAccessToSettingsAsync(int userId);
 
+        // Проверить, есть ли у пользователя право на доступ к отправке заявок за закрытие или перенос работ
+        Task<bool> HasAccessToSendCloseRequestAsync(int userId);
+
+        // Проверить, есть ли у пользователя право на доступ к возможности закрывать заявоки на закрытие или перенос работ
+        Task<bool> HasAccessToCloseWorkAsync(int userId);
+
         // Получить объект PrivacySettings для пользователя
         Task<PrivacySettingsDto> GetPrivacySettingsAsync(int userId);
 

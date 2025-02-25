@@ -21,6 +21,7 @@
                     <h5 class="mb-0">Подразделение: @Model.DepartmentName</h5>
                     <p class="text-muted mb-0">Текущий пользователь: @Model.UserName</p>
                 </div>
+                text
 
                 <!-- Форма с фильтрами -->
                 <form method="get" id="filterForm" class="d-flex flex-wrap align-items-end gap-2">
@@ -218,6 +219,7 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="hiddenDocNumber" />
+                text
 
                 <!-- Тип запроса -->
                 <div class="mb-3">
@@ -261,6 +263,8 @@
 
 @section Scripts {
 
+        text
+
     <!-- Дополнительные стили -->
     <style>
         /* Пример ограничений для Handsontable */
@@ -286,17 +290,16 @@
             background-color: #e9f7ef !important; /* Светло-зеленый фон */
         }
 
-        /* Иконка/элемент для "перетаскивания" строк */
-        .drag-handle {
-            cursor: move;
-            margin-left: 5px;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-
-            .drag-handle:hover {
-                opacity: 1;
-            }
+        /* Убрали .drag-handle, так как теперь перетаскивание за всю строку */
+        /* .drag-handle {
+                    cursor: move;
+                    margin-left: 5px;
+                    opacity: 0.7;
+                    transition: opacity 0.2s;
+                }
+                .drag-handle:hover {
+                    opacity: 1;
+                } */
 
         /* Кнопка "Выделить/снять все" */
         .toggle-all-btn {
@@ -364,6 +367,9 @@
     </style>
 
     <script>
+        // Глобальная переменная, чтобы отследить &laquo;тащим&raquo; ли мы строку
+        let isDragging = false;
+
         // Инициализация сортировки строк + чекбоксы (PDF)
         function initSortableTable() {
             var $tableBody = $("#workItemsTable tbody");
@@ -375,13 +381,22 @@
                 });
             }
 
+            // Включаем сортировку за всю строку
             $tableBody.sortable({
-                handle: ".drag-handle",
                 axis: "y",
                 cursor: "move",
+                // При начале перетаскивания
                 start: function(event, ui) {
-                    ui.item.find('.row-select').prop('checked', true);
-                    ui.item.addClass('selected-row');
+                    isDragging = true;
+                    // Автоматически выделяем эту строку
+                    ui.item.find('.row-select').prop('checked', true).trigger('change');
+                },
+                // При завершении перетаскивания
+                stop: function(event, ui) {
+                    // Дадим небольшой таймаут, чтобы &laquo;click&raquo; не воспринимался
+                    setTimeout(() => {
+                        isDragging = false;
+                    }, 50);
                 },
                 update: function(event, ui) {
                     reindexRows();
@@ -389,11 +404,28 @@
             });
             $tableBody.disableSelection();
 
-            // Чекбоксы
+            // Чекбоксы (если нажать именно на сам чекбокс)
             $('#workItemsTable').on('change', '.row-select', function() {
                 $(this).closest('tr').toggleClass('selected-row', this.checked);
             });
+            // Начальное состояние: если чекбокс уже был установлен
             $('#workItemsTable .row-select:checked').closest('tr').addClass('selected-row');
+
+            // Клик по строке (в любом месте) – переключает чекбокс
+            $tableBody.on('click', 'tr', function(e) {
+                // Если сейчас идёт процесс перетаскивания – не обрабатываем &laquo;click&raquo;
+                if (isDragging) return;
+
+                // Если кликнули на элемент, который не должен менять галочку
+                // (например, на кнопку, ссылку и т.п.), то можно сделать проверку,
+                // но если нужно в любом случае клик - можно не проверять.
+                // Для простоты выключим реакцию, если это клики по кнопкам:
+                if ($(e.target).is('button, a, .btn, input')) return;
+
+                let $checkbox = $(this).find('.row-select');
+                let checked = $checkbox.prop('checked');
+                $checkbox.prop('checked', !checked).trigger('change');
+            });
 
             // "Выделить/снять все"
             $('.toggle-all-btn').off('click').on('click', function() {
@@ -408,7 +440,6 @@
 
             // AJAX-фильтр: при изменении полей
             $('#startDate, #endDate, #executor, #search, #divisionSelect').on('change keyup', function() {
-
                 // Сохраняем id изменённого элемента
                 var changedElementId = this.id;
 
@@ -464,9 +495,6 @@
                     $.each(executors, function(index, name) {
                         $execSelect.append($('<option>').val(name).text(name));
                     });
-
-                    // По желанию можно сразу отправить еще раз фильтр
-                    // $execSelect.trigger('change');
                 }
             });
         }
@@ -556,7 +584,7 @@
             .catch(e => console.error(e));
         }
 
-                // Функция загрузки "Моих входящих заявок"
+        // Функция загрузки "Моих входящих заявок"
         function loadMyPendingRequests() {
             fetch('@Url.Page("Index", "MyRequests")')
             .then(r => r.json())
@@ -583,7 +611,6 @@
                     let noteStr = req.note || "";
 
                     // Кнопки "Принять"/"Отклонить" в одном столбце
-                    // Расположим их друг под другом
                     let actionTd = `
                         <div class="d-flex flex-column">
                             <button class="btn btn-sm btn-success mb-1"

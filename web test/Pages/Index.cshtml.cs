@@ -73,6 +73,9 @@ namespace Monitoring.UI.Pages
 
         // Флаг: есть ли у пользователя доступ к настройкам
         public bool HasSettingsAccess { get; set; } = false;
+
+        // Флаг: есть ли у пользователя доступ к отправке заявок на закрытие (перенос) работ
+        public bool HasSendCloseRequestAccess { get; set; } = false;
         // Конец --- обычные свойства модели
 
         public async Task OnGet()
@@ -99,6 +102,9 @@ namespace Monitoring.UI.Pages
 
             // 4) Проверяем, есть ли у пользователя галочка "Доступ к настройкам"
             HasSettingsAccess = await _userSettingsService.HasAccessToSettingsAsync(userId.Value);
+
+            // 4.2) Проверяем, есть ли у пользователя доступ к отправке заявок на закрытие (перенос) работ
+            HasSendCloseRequestAccess = await _userSettingsService.HasAccessToSendCloseRequestAsync(userId.Value);
 
             // 5) Загружаем список отделов, к которым есть доступ (UserAllowedDivisions)
             var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
