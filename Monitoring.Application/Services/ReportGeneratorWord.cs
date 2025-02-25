@@ -106,7 +106,15 @@ namespace Monitoring.Application.Services
 
                     // Строка заголовков
                     TableRow headerRow = new TableRow(
-                        new TableRowProperties(new CantSplit())
+                        new TableRowProperties(
+                            new CantSplit(),
+                            // Явно задаём высоту строки для заголовка
+                            new TableRowHeight()
+                            {
+                                Val = 200, // 300 DXA (~5.3 мм)
+                                HeightType = HeightRuleValues.Exact // ← КРИТИЧНО ВАЖНЫЙ ПАРАМЕТР!
+                            }
+                        )
                     );
 
                     for (int i = 0; i < headers.Length; i++)
@@ -222,7 +230,6 @@ namespace Monitoring.Application.Services
                     leftCell.Append(
                         new TableCellProperties(
                             new TableCellWidth() { Type = TableWidthUnitValues.Pct, Width = "3000" },
-                            // Чтобы и в этих ячейках текст был по центру вертикально, можно добавить:
                             new TableCellVerticalAlignment() { Val = TableVerticalAlignmentValues.Center }
                         )
                     );

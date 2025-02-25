@@ -114,6 +114,7 @@ namespace Monitoring.Application.Services
                             .MinWidth(20)
                             .MinHeight(20)
                             .AlignMiddle()
+                            .PaddingVertical(2) // ДОБАВЛЕНО: вертикальные отступы
                             .PaddingHorizontal(1)
                             .PaddingLeft(2);
                     }
