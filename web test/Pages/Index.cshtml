@@ -174,27 +174,36 @@
         </div>
     </div>
 
-    <!-- "Мои входящие заявки" -->
+    <!-- Блок "Мои входящие заявки" -->
     <div class="row mb-4">
         <div class="col-12">
             <h5>Мои входящие заявки</h5>
-            <table class="table table-bordered table-hover">
-                <thead>
-                    <tr>
-                        <th>Наименование документа</th>
-                        <th>Наименование работы</th>
-                        <th>Документ</th>
-                        <th>Тип</th>
-                        <th>Предлагаемая дата</th>
-                        <th>Отправитель</th>
-                        <th>Примечание</th>
-                        <th>Действие</th>
-                    </tr>
-                </thead>
-                <tbody id="myRequestsTbody">
-                    <!-- JS заполнит -->
-                </tbody>
-            </table>
+            <!-- Оборачиваем таблицу в блок с overflow-x -->
+            <div style="overflow-x: auto;">
+                <table class="table table-bordered table-hover" style="min-width: 1500px;">
+                    <thead>
+                        <tr>
+                            <th>Документ</th>
+                            <th>Работа</th>
+                            <th>Исполнитель</th>
+                            <th>Контроль</th>
+                            <th>Принимающий</th>
+                            <th>План</th>
+                            <th>Корр1</th>
+                            <th>Корр2</th>
+                            <th>Корр3</th>
+                            <th>Заявка</th>
+                            <th>На дату</th>
+                            <th>Отправитель</th>
+                            <th>Заметка</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myRequestsTbody">
+                        <!-- JS заполнит -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -547,29 +556,37 @@
             .catch(e => console.error(e));
         }
 
-        // Загрузка моих входящих заявок (Receiver == @Model.UserName)
+                // Функция загрузки "Моих входящих заявок"
         function loadMyPendingRequests() {
             fetch('@Url.Page("Index", "MyRequests")')
             .then(r => r.json())
             .then(data => {
                 let tbody = document.getElementById('myRequestsTbody');
                 tbody.innerHTML = "";
+
                 data.forEach(req => {
                     let tr = document.createElement('tr');
-                    let dateStr = req.proposedDate ? req.proposedDate.substring(0,10) : '';
-                    let noteStr = req.note || '';
 
-                    // Важно: теперь используем req.docName и req.workName в первых столбцах
-                    tr.innerHTML = `
-                        <td>${req.docName || ""}</td>
-                        <td>${req.workName || ""}</td>
-                        <td>${req.workDocumentNumber}</td>
-                        <td>${req.requestType}</td>
-                        <td>${dateStr}</td>
-                        <td>${req.sender}</td>
-                        <td>${noteStr}</td>
-                        <td>
-                            <button class="btn btn-sm btn-success"
+                    // Сделаем удобные переменные
+                    let docName = req.documentName || "";
+                    let wName   = req.workName || "";
+                    let exec    = req.executor || "";
+                    let contr   = req.controller || "";
+                    let appr    = req.approver || "";
+                    let planD   = req.planDate || "";
+                    let k1      = req.korrect1 || "";
+                    let k2      = req.korrect2 || "";
+                    let k3      = req.korrect3 || "";
+                    let rType   = req.requestType || "";
+                    let rDate   = req.proposedDate || "";
+                    let sndr    = req.sender || "";
+                    let noteStr = req.note || "";
+
+                    // Кнопки "Принять"/"Отклонить" в одном столбце
+                    // Расположим их друг под другом
+                    let actionTd = `
+                        <div class="d-flex flex-column">
+                            <button class="btn btn-sm btn-success mb-1"
                                 onclick="setRequestStatus(${req.id}, '${req.workDocumentNumber}', 'Accepted')">
                                 Принять
                             </button>
@@ -577,7 +594,24 @@
                                 onclick="setRequestStatus(${req.id}, '${req.workDocumentNumber}', 'Declined')">
                                 Отклонить
                             </button>
-                        </td>
+                        </div>
+                    `;
+
+                    tr.innerHTML = `
+                        <td>${docName}</td>
+                        <td>${wName}</td>
+                        <td>${exec}</td>
+                        <td>${contr}</td>
+                        <td>${appr}</td>
+                        <td>${planD}</td>
+                        <td>${k1}</td>
+                        <td>${k2}</td>
+                        <td>${k3}</td>
+                        <td>${rType}</td>
+                        <td>${rDate}</td>
+                        <td>${sndr}</td>
+                        <td>${noteStr}</td>
+                        <td>${actionTd}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -585,7 +619,7 @@
             .catch(e => console.error(e));
         }
 
-        // Принять/Отклонить заявку
+        // Функция "Принять"/"Отклонить"
         function setRequestStatus(requestId, docNumber, newStatus) {
             let bodyData = {
                 RequestId: requestId,

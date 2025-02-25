@@ -368,6 +368,7 @@ namespace Monitoring.UI.Pages
                 {
                     return new JsonResult(new { success = false, message = "Некорректный статус" });
                 }
+
                 await _workRequestService.SetRequestStatusAsync(data.RequestId, data.NewStatus);
 
                 return new JsonResult(new { success = true });
@@ -408,10 +409,19 @@ namespace Monitoring.UI.Pages
                 proposedDate = r.ProposedDate?.ToString("yyyy-MM-dd"),
                 sender = r.Sender,
                 note = r.Note,
-                // Новые поля - берем из r.DocumentName и r.WorkName
-                docName = r.DocumentName,
-                workName = r.WorkName
+
+                // Новые "основные" поля
+                documentName = r.DocumentName,
+                workName = r.WorkName,
+                executor = r.Executor,
+                controller = r.Controller,
+                approver = r.Approver,
+                planDate = r.PlanDate?.ToString("yyyy-MM-dd"),
+                korrect1 = r.Korrect1?.ToString("yyyy-MM-dd"),
+                korrect2 = r.Korrect2?.ToString("yyyy-MM-dd"),
+                korrect3 = r.Korrect3?.ToString("yyyy-MM-dd")
             });
+
             return new JsonResult(result);
         }
 
