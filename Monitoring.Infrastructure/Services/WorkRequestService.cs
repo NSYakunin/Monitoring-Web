@@ -51,6 +51,7 @@ namespace Monitoring.Infrastructure.Services
                     Korrect2,
                     Korrect3
                 )
+                OUTPUT INSERTED.Id
                 VALUES
                 (
                     @WorkDocumentNumber,

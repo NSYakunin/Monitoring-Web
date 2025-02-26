@@ -23,82 +23,67 @@
     <tbody>
         @{
             int num = 1;
-        }
+            foreach (var item in Model.WorkItems)
+            {
+                // Подсветка
+                string highlightClass = item.HighlightCssClass ?? "";
 
-        @foreach (var item in Model.WorkItems)
-        {
-            // Класс подсветки, если есть pending-заявка
-            string highlightClass = item.HighlightCssClass ?? "";
+                // Данные заявки (Pending)
+                var dataRequestId = item.UserPendingRequestId?.ToString() ?? "";
+                var dataRequestType = item.UserPendingRequestType ?? "";
+                var dataRequestDate = item.UserPendingProposedDate?.ToString("yyyy-MM-dd") ?? "";
+                var dataRequestNote = item.UserPendingRequestNote ?? "";
+                var dataReceiver = item.UserPendingReceiver ?? "";
 
-            // Дополнительно: если есть заявка от ТЕКУЩЕГО пользователя, сохраняем её данные в data-*:
-            // (Свойства: UserPendingRequestId, UserPendingRequestType, UserPendingProposedDate, UserPendingRequestNote, UserPendingReceiver)
-            // (См. логику в IndexModel -> HighlightRows() [доработано], где мы ищем заявку от CurrentUser.)
-            var dataRequestId = item.UserPendingRequestId?.ToString() ?? "";
-            var dataRequestType = item.UserPendingRequestType ?? "";
-            var dataRequestDate = item.UserPendingProposedDate?.ToString("yyyy-MM-dd") ?? "";
-            var dataRequestNote = item.UserPendingRequestNote ?? "";
-            var dataReceiver = item.UserPendingReceiver ?? "";
-        }
+                // Проверяем, можем ли мы отправлять заявки
+                bool canSendRequest = false;
+                if (!string.IsNullOrEmpty(Model.UserName) &&
+                !string.IsNullOrEmpty(item.Executor) &&
+                Model.HasSendCloseRequestAccess)
+                {
+                    var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim());
+                    // Если текущий пользователь в списке исполнителей
+                    canSendRequest = exList.Contains(Model.UserName);
+                }
 
-        @foreach (var item in Model.WorkItems)
-        {
-            string highlightClass = item.HighlightCssClass ?? "";
+                <tr data-id="@item.DocumentNumber"
+                    data-request-id="@dataRequestId"
+                    data-request-type="@dataRequestType"
+                    data-request-date="@dataRequestDate"
+                    data-request-note="@dataRequestNote"
+                    data-receiver="@dataReceiver"
+                    class="@highlightClass">
 
-            <tr data-id="@item.DocumentNumber"
-                data-request-id="@(item.UserPendingRequestId?.ToString() ?? "")"
-                data-request-type="@(item.UserPendingRequestType ?? "")"
-                data-request-date="@(item.UserPendingProposedDate?.ToString("yyyy-MM-dd") ?? "")"
-                data-request-note="@(item.UserPendingRequestNote ?? "")"
-                data-receiver="@(item.UserPendingReceiver ?? "")"
-                class="@highlightClass">
+                    <td class="row-index">@num</td>
+                    <td>@item.DocumentName</td>
+                    <td>@item.WorkName</td>
+                    <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
+                    <td>@item.Controller</td>
+                    <td>@item.Approver</td>
+                    <td>@item.PlanDate?.ToShortDateString()</td>
+                    <td>@item.Korrect1?.ToShortDateString()</td>
+                    <td>@item.Korrect2?.ToShortDateString()</td>
+                    <td>@item.Korrect3?.ToShortDateString()</td>
 
-                <!-- Нумерация, переопределяемся на клиенте в initSortableTable() -->
-                <td class="row-index">@num</td>
-
-                <td>@item.DocumentName</td>
-                <td>@item.WorkName</td>
-                <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
-                <td>@item.Controller</td>
-                <td>@item.Approver</td>
-                <td>@item.PlanDate?.ToShortDateString()</td>
-                <td>@item.Korrect1?.ToShortDateString()</td>
-                <td>@item.Korrect2?.ToShortDateString()</td>
-                <td>@item.Korrect3?.ToShortDateString()</td>
-
-                <td class="align-middle">
-                    <input type="checkbox" class="row-select" />
-
-                    @* Кнопка "Создать/редактировать" заявку *@
-                    @{
-                        // Проверяем разрешение создавать заявки
-                        bool canSendRequest = false;
-                        if (!string.IsNullOrEmpty(Model.UserName) &&
-                        !string.IsNullOrEmpty(item.Executor) &&
-                        Model.HasSendCloseRequestAccess)
+                    <td class="align-middle">
+                        <input type="checkbox" class="row-select" />
+                        @if (canSendRequest)
                         {
-                            var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                            .Select(x => x.Trim());
-                            canSendRequest = exList.Contains(Model.UserName);
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                    onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver', this)">
+                                📝
+                            </button>
                         }
-                    }
+                        else
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>📝</button>
+                        }
+                    </td>
+                </tr>
 
-                    @if (canSendRequest)
-                    {
-                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
-                                onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver', this)">
-                            📝
-                        </button>
-                    }
-                    else
-                    {
-                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>
-                            📝
-                        </button>
-                    }
-                </td>
-            </tr>
-
-            num++;
+                num++;
+            }
         }
     </tbody>
 </table>
