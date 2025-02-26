@@ -210,6 +210,46 @@ namespace Monitoring.Infrastructure.Services
             return workItems;
         }
 
+        // НОВО: Получить список "Принимающих" (smallName) внутри отдела
+        public async Task<List<string>> GetApproversAsync(int divisionId)
+        {
+            string cacheKey = $"Approvers_{divisionId}";
+            if (!_cache.TryGetValue(cacheKey, out List<string> approvers))
+            {
+                approvers = new List<string>();
+
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    string query = @"
+                        SELECT DISTINCT u.smallName AS ApName
+                        FROM [DocumentControl].[dbo].[Users] u
+                        WHERE u.Isvalid = 1
+                        ORDER BY u.smallName
+                    ";
+                    using (var cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@divId", divisionId);
+                        await conn.OpenAsync();
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                approvers.Add(reader["ApName"]?.ToString() ?? "");
+                            }
+                        }
+                    }
+                }
+
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+                };
+                _cache.Set(cacheKey, approvers, cacheOptions);
+            }
+
+            return approvers;
+        }
+
         /// <summary>
         /// Получить список исполнителей (smallName) внутри одного отдела.
         /// (Пока оставляем как было. Если понадобится — можно расширить для списка отделов)
@@ -290,6 +330,8 @@ namespace Monitoring.Infrastructure.Services
 
             string exKey = $"Executors_{divisionId}";
             _cache.Remove(exKey);
+
+            _cache.Remove($"Approvers_{divisionId}");
 
             // Если у вас есть кэш по комбинациям отделов,
             // то можно пройтись по всем ключам в MemoryCache и удалить, 

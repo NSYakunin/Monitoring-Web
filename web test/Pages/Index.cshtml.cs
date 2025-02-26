@@ -42,6 +42,10 @@ namespace Monitoring.UI.Pages
         [BindProperty(SupportsGet = true)]
         public string? Executor { get; set; }
 
+        // НОВО: Фильтр по "Принимающему"
+        [BindProperty(SupportsGet = true)]
+        public string? Approver { get; set; }
+
         [BindProperty(SupportsGet = true)]
         public string? SearchQuery { get; set; }
 
@@ -56,6 +60,9 @@ namespace Monitoring.UI.Pages
 
         // Список исполнителей, загружаемый из БД для выбранного отдела
         public List<string> Executors { get; set; } = new List<string>();
+
+        // НОВО: список "Принимающих"
+        public List<string> Approvers { get; set; } = new List<string>();
 
         // Для экспорта: хранит порядок выбранных позиций (DocumentNumber)
         [BindProperty]
@@ -153,6 +160,7 @@ namespace Monitoring.UI.Pages
             if (SelectedDivision.HasValue)
             {
                 Executors = await _workItemService.GetExecutorsAsync(SelectedDivision.Value);
+                Approvers = await _workItemService.GetApproversAsync(SelectedDivision.Value);
                 WorkItems = await _workItemService.GetAllWorkItemsAsync(
                     new List<int> { SelectedDivision.Value }
                 );
@@ -161,6 +169,7 @@ namespace Monitoring.UI.Pages
             else
             {
                 Executors = new List<string>();
+                Approvers = new List<string>();
                 WorkItems = new List<WorkItem>();
                 DepartmentName = "Нет доступных подразделений";
             }
@@ -179,6 +188,7 @@ namespace Monitoring.UI.Pages
             DateTime? startDate,
             DateTime? endDate,
             string? executor,
+            string? approver,
             string? searchQuery,
             int? selectedDivision)
         {
@@ -197,6 +207,7 @@ namespace Monitoring.UI.Pages
             StartDate = startDate ?? new DateTime(2014, 1, 1);
             EndDate = endDate ?? DateTime.Now;
             Executor = executor;
+            Approver = approver;
             SearchQuery = searchQuery;
             SelectedDivision = selectedDivision;
 
@@ -233,6 +244,7 @@ namespace Monitoring.UI.Pages
             if (SelectedDivision.HasValue)
             {
                 Executors = await _workItemService.GetExecutorsAsync(SelectedDivision.Value);
+                Approvers = await _workItemService.GetApproversAsync(SelectedDivision.Value);
                 WorkItems = await _workItemService.GetAllWorkItemsAsync(
                     new List<int> { SelectedDivision.Value }
                 );
@@ -241,6 +253,7 @@ namespace Monitoring.UI.Pages
             else
             {
                 Executors = new List<string>();
+                Approvers = new List<string>();
                 WorkItems = new List<WorkItem>();
                 DepartmentName = "Нет доступных подразделений";
             }
@@ -253,6 +266,16 @@ namespace Monitoring.UI.Pages
 
             // 9) Возвращаем partial с таблицей
             return Partial("_WorkItemsTablePartial", this);
+        }
+
+        /// <summary>
+        /// AJAX: получить список Approvers для division
+        /// </summary>
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> OnGetApproversAsync(int divisionId)
+        {
+            var approvers = await _workItemService.GetApproversAsync(divisionId);
+            return new JsonResult(approvers);
         }
 
         /// <summary>
@@ -329,7 +352,7 @@ namespace Monitoring.UI.Pages
                     DocumentName = witem.DocumentName, // "ТипДок + название"
                     WorkName = witem.WorkName,      // Если нужно отдельно
                     RequestType = dto.RequestType,
-                    Sender = dto.Sender,   // либо UserName, если надо
+                    Sender = UserName,   // либо UserName, если надо
                     Receiver = dto.Receiver,
                     RequestDate = DateTime.Now,
                     IsDone = false,
@@ -347,6 +370,98 @@ namespace Monitoring.UI.Pages
                 };
 
                 await _workRequestService.CreateRequestAsync(newRequest);
+                return new JsonResult(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Обновление существующей заявки (если она ещё Pending и пользователь = Sender)
+        /// </summary>
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> OnPostUpdateRequestAsync()
+        {
+            try
+            {
+                using var reader = new StreamReader(Request.Body);
+                string body = await reader.ReadToEndAsync();
+                var dto = JsonSerializer.Deserialize<UpdateRequestDto>(body);
+                if (dto == null)
+                    return new JsonResult(new { success = false, message = "Невалидные данные" });
+
+                if (!HttpContext.Request.Cookies.ContainsKey("userName"))
+                {
+                    return new JsonResult(new { success = false, message = "No cookies" });
+                }
+                UserName = HttpContext.Request.Cookies["userName"];
+
+                // Находим заявку
+                var requests = await _workRequestService.GetRequestsByDocumentNumberAsync(dto.DocumentNumber);
+                var req = requests.FirstOrDefault(r => r.Id == dto.Id);
+                if (req == null)
+                    return new JsonResult(new { success = false, message = "Заявка не найдена" });
+
+                if (req.Sender != UserName)
+                {
+                    return new JsonResult(new { success = false, message = "Вы не являетесь автором заявки" });
+                }
+
+                if (req.Status != "Pending")
+                {
+                    return new JsonResult(new { success = false, message = "Заявка уже обработана" });
+                }
+
+                // Обновляем
+                req.RequestType = dto.RequestType;
+                req.Receiver = dto.Receiver;
+                req.ProposedDate = dto.ProposedDate;
+                req.Note = dto.Note;
+
+                await _workRequestService.UpdateRequestAsync(req);
+                return new JsonResult(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Удаление заявки (если Pending и пользователь = Sender)
+        /// </summary>
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> OnPostDeleteRequestAsync()
+        {
+            try
+            {
+                using var reader = new StreamReader(Request.Body);
+                string body = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<DeleteRequestDto>(body);
+                if (data == null)
+                    return new JsonResult(new { success = false, message = "Невалидные данные" });
+
+                if (!HttpContext.Request.Cookies.ContainsKey("userName"))
+                {
+                    return new JsonResult(new { success = false, message = "No cookies" });
+                }
+                UserName = HttpContext.Request.Cookies["userName"];
+
+                var allReq = await _workRequestService.GetRequestsByDocumentNumberAsync(data.DocumentNumber);
+                var req = allReq.FirstOrDefault(x => x.Id == data.RequestId);
+                if (req == null)
+                    return new JsonResult(new { success = false, message = "Заявка не найдена" });
+
+                if (req.Sender.ToString() != UserName)
+                    return new JsonResult(new { success = false, message = "Вы не автор этой заявки" });
+
+                if (req.Status != "Pending")
+                    return new JsonResult(new { success = false, message = "Нельзя удалить обработанную заявку" });
+
+                await _workRequestService.DeleteRequestAsync(req.Id);
+
                 return new JsonResult(new { success = true });
             }
             catch (Exception ex)
@@ -488,6 +603,7 @@ namespace Monitoring.UI.Pages
 
             int actualDivisionId = SelectedDivision ?? homeDivisionId;
             Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
+            Approvers = await _workItemService.GetApproversAsync(actualDivisionId);
             WorkItems = await _workItemService.GetAllWorkItemsAsync(
                 new List<int> { actualDivisionId }
             );
@@ -565,6 +681,13 @@ namespace Monitoring.UI.Pages
                     x.Executor.Contains(Executor, StringComparison.OrdinalIgnoreCase));
             }
 
+            // НОВО: Фильтр по принимающему
+            if (!string.IsNullOrEmpty(Approver))
+            {
+                query = query.Where(x => x.Approver != null &&
+                                         x.Approver.Contains(Approver, StringComparison.OrdinalIgnoreCase));
+            }
+
             // Полнотекстовый поиск (DocumentName, WorkName, Executor, Controller, Approver)
             if (!string.IsNullOrEmpty(SearchQuery))
             {
@@ -588,26 +711,28 @@ namespace Monitoring.UI.Pages
         }
 
         /// <summary>
-        /// Подсветка строк, у которых есть Pending-заявки
+        /// Подсветка строк + заполнение данных о заявке (если Pending, Sender=CurrentUser)
         /// </summary>
         private async Task HighlightRows()
         {
             foreach (var item in WorkItems)
             {
-                // Берём заявки для данного DocumentNumber
                 var requests = await _workRequestService.GetRequestsByDocumentNumberAsync(item.DocumentNumber);
-
-                // Ищем PENDING
-                var pendingRequests = requests.Where(r => r.Status == "Pending" && !r.IsDone).ToList();
-                if (pendingRequests.Any())
+                // Ищем PENDING запрос от текущего пользователя-исполнителя (Sender=UserName)
+                var pendingFromMe = requests.FirstOrDefault(r => r.Status == "Pending" && !r.IsDone && r.Executor == UserName);
+                if (pendingFromMe != null)
                 {
-                    bool hasFact = pendingRequests.Any(r => r.RequestType == "факт");
-                    bool hasCorr = pendingRequests.Any(r => r.RequestType.StartsWith("корр"));
+                    if (pendingFromMe.RequestType == "факт")
+                        item.HighlightCssClass = "table-info";
+                    else if (pendingFromMe.RequestType.StartsWith("корр"))
+                        item.HighlightCssClass = "table-warning";
 
-                    if (hasFact)
-                        item.HighlightCssClass = "table-info";    // голубая подсветка
-                    else if (hasCorr)
-                        item.HighlightCssClass = "table-warning"; // жёлтая подсветка
+                    // Заполним, чтобы отобразить в data-атрибутах
+                    item.UserPendingRequestId = pendingFromMe.Id;
+                    item.UserPendingRequestType = pendingFromMe.RequestType;
+                    item.UserPendingProposedDate = pendingFromMe.ProposedDate;
+                    item.UserPendingRequestNote = pendingFromMe.Note;
+                    item.UserPendingReceiver = pendingFromMe.Receiver;
                 }
             }
         }

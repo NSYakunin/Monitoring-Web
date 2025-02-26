@@ -24,21 +24,35 @@
         @{
             int num = 1;
         }
+
+        @foreach (var item in Model.WorkItems)
+        {
+            // Класс подсветки, если есть pending-заявка
+            string highlightClass = item.HighlightCssClass ?? "";
+
+            // Дополнительно: если есть заявка от ТЕКУЩЕГО пользователя, сохраняем её данные в data-*:
+            // (Свойства: UserPendingRequestId, UserPendingRequestType, UserPendingProposedDate, UserPendingRequestNote, UserPendingReceiver)
+            // (См. логику в IndexModel -> HighlightRows() [доработано], где мы ищем заявку от CurrentUser.)
+            var dataRequestId = item.UserPendingRequestId?.ToString() ?? "";
+            var dataRequestType = item.UserPendingRequestType ?? "";
+            var dataRequestDate = item.UserPendingProposedDate?.ToString("yyyy-MM-dd") ?? "";
+            var dataRequestNote = item.UserPendingRequestNote ?? "";
+            var dataReceiver = item.UserPendingReceiver ?? "";
+        }
+
         @foreach (var item in Model.WorkItems)
         {
             string highlightClass = item.HighlightCssClass ?? "";
 
-            <!-- Проверяем на валидность данные и разрешение из настроек на возможность текущему пользователю создавать заявки на закрытие (перенос) работ -->
-            bool canSendRequest = false;
-            if (!string.IsNullOrEmpty(Model.UserName) && !string.IsNullOrEmpty(item.Executor) && Model.HasSendCloseRequestAccess)
-            {
-                var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.Trim());
-                canSendRequest = exList.Contains(Model.UserName);
-            }
+            <tr data-id="@item.DocumentNumber"
+                data-request-id="@(item.UserPendingRequestId?.ToString() ?? "")"
+                data-request-type="@(item.UserPendingRequestType ?? "")"
+                data-request-date="@(item.UserPendingProposedDate?.ToString("yyyy-MM-dd") ?? "")"
+                data-request-note="@(item.UserPendingRequestNote ?? "")"
+                data-receiver="@(item.UserPendingReceiver ?? "")"
+                class="@highlightClass">
 
-            <tr data-id="@item.DocumentNumber" class="@highlightClass">
-                <!-- Первая колонка: пусть пока пустая, заполним на клиенте -->
+                <!-- Нумерация, переопределяемся на клиенте в initSortableTable() -->
                 <td class="row-index">@num</td>
 
                 <td>@item.DocumentName</td>
@@ -53,12 +67,25 @@
 
                 <td class="align-middle">
                     <input type="checkbox" class="row-select" />
-                   
+
+                    @* Кнопка "Создать/редактировать" заявку *@
+                    @{
+                        // Проверяем разрешение создавать заявки
+                        bool canSendRequest = false;
+                        if (!string.IsNullOrEmpty(Model.UserName) &&
+                        !string.IsNullOrEmpty(item.Executor) &&
+                        Model.HasSendCloseRequestAccess)
+                        {
+                            var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => x.Trim());
+                            canSendRequest = exList.Contains(Model.UserName);
+                        }
+                    }
 
                     @if (canSendRequest)
                     {
                         <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
-                                onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver')">
+                                onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver', this)">
                             📝
                         </button>
                     }
@@ -70,6 +97,7 @@
                     }
                 </td>
             </tr>
+
             num++;
         }
     </tbody>

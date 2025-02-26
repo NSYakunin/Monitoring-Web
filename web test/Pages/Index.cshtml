@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/index.css" />
 
 <div class="container-fluid mt-4">
+
     <!-- Шапка: подразделение, пользователь, фильтры -->
     <div class="row mb-4">
         <div class="col-12">
@@ -21,7 +22,6 @@
                     <h5 class="mb-0">Подразделение: @Model.DepartmentName</h5>
                     <p class="text-muted mb-0">Текущий пользователь: @Model.UserName</p>
                 </div>
-                text
 
                 <!-- Форма с фильтрами -->
                 <form method="get" id="filterForm" class="d-flex flex-wrap align-items-end gap-2">
@@ -66,6 +66,21 @@
                         </select>
                     </div>
 
+                    <!-- НОВО: Выпадающий список "Принимающий" -->
+                    <div class="d-flex flex-column">
+                        <label for="approver" class="form-label">Принимающий:</label>
+                        <select id="approver" name="approver" class="form-select">
+                            <!-- Аналогично: при OnGet заполняем, но если пусто, то "Все" -->
+                            <option value="">Все принимающие</option>
+                            @foreach (var ap in Model.Approvers)
+                            {
+                                <option value="@ap" selected="@(ap == Model.Approver ? "selected" : null)">
+                                    @ap
+                                </option>
+                            }
+                        </select>
+                    </div>
+
                     <!-- Поле поиска -->
                     <div class="d-flex flex-column">
                         <label for="search" class="form-label">Поиск:</label>
@@ -90,7 +105,7 @@
         </div>
     </div>
 
-    <!-- Внешний контейнер с отступом снизу и горизонтальными отступами gx-3 -->
+    <!-- Внешний контейнер: уведомления (левая колонка) + кнопка экспорта (правая) -->
     <div class="row mb-3 gx-3" style="min-height: 50px;">
         <div class="col d-flex flex-column">
             <div class="card shadow-sm flex-fill" style="min-width: 300px;">
@@ -135,6 +150,7 @@
                 <input type="hidden" asp-for="StartDate" />
                 <input type="hidden" asp-for="EndDate" />
                 <input type="hidden" asp-for="Executor" />
+                <input type="hidden" asp-for="Approver" />
                 <input type="hidden" asp-for="SearchQuery" />
                 <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
                 <input type="hidden" asp-for="SelectedDivision" />
@@ -207,19 +223,20 @@
             </div>
         </div>
     </div>
+
 </div>
 
-<!-- Модальное окно (Bootstrap) для создания заявки -->
+<!-- Модальное окно (Bootstrap) для создания/редактирования/удаления заявки -->
 <div class="modal fade" id="requestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Отправить запрос</h5>
+                <h5 class="modal-title">Заявка</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="hiddenDocNumber" />
-                text
+                <input type="hidden" id="hiddenRequestId" />
 
                 <!-- Тип запроса -->
                 <div class="mb-3">
@@ -254,8 +271,23 @@
             </div>
 
             <div class="modal-footer">
+                <!-- Кнопка "Отправить" (создать заявку) -->
+                <button type="button" class="btn btn-primary" id="createRequestBtn"
+                        onclick="createWorkRequest()">
+                    Отправить
+                </button>
+
+                <!-- Кнопки "Обновить" и "Удалить" для уже существующей заявки -->
+                <button type="button" class="btn btn-success" id="updateRequestBtn"
+                        onclick="updateWorkRequest()">
+                    Обновить
+                </button>
+                <button type="button" class="btn btn-danger" id="deleteRequestBtn"
+                        onclick="deleteWorkRequest()">
+                    Удалить
+                </button>
+
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                <button type="button" class="btn btn-primary" onclick="sendWorkRequest()">Отправить</button>
             </div>
         </div>
     </div>
@@ -265,7 +297,6 @@
 
     <!-- Дополнительные стили -->
     <style>
-        /* Пример ограничений для Handsontable */
         #spreadsheet {
             width: 100%;
             height: 80vh;
@@ -283,23 +314,10 @@
             box-sizing: border-box;
         }
 
-        /* Подсветка выбранной (чекбоксом) строки */
         .selected-row {
             background-color: #e9f7ef !important; /* Светло-зеленый фон */
         }
 
-        /* Убрали .drag-handle, так как теперь перетаскивание за всю строку */
-        /* .drag-handle {
-                    cursor: move;
-                    margin-left: 5px;
-                    opacity: 0.7;
-                    transition: opacity 0.2s;
-                }
-                .drag-handle:hover {
-                    opacity: 1;
-                } */
-
-        /* Кнопка "Выделить/снять все" */
         .toggle-all-btn {
             cursor: pointer;
             margin-left: 8px;
@@ -312,7 +330,6 @@
                 transform: scale(1.2);
             }
 
-        /* Кнопка PDF */
         .btn-pdf {
             background: linear-gradient(145deg, #2c3e50, #34495e);
             color: white !important;
@@ -336,7 +353,6 @@
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
 
-        /* Кнопка "Выход" */
         .btn-logout {
             border: 2px solid #dc3545;
             color: #dc3545;
@@ -358,40 +374,32 @@
             vertical-align: text-top;
         }
 
-        /* Уменьшенный шрифт для уведомлений */
         .table-sm {
             font-size: 0.85rem;
         }
     </style>
 
     <script>
-        // Глобальная переменная, чтобы отследить &laquo;тащим&raquo; ли мы строку
+        // Глобальная переменная, чтобы отследить &laquo;тащим&raquo; ли мы строку при сортировке
         let isDragging = false;
 
-        // Инициализация сортировки строк + чекбоксы (PDF)
         function initSortableTable() {
             var $tableBody = $("#workItemsTable tbody");
 
-            // Функция, которая пробегается сверху вниз и ставит 1,2,3...
             function reindexRows() {
                 $tableBody.find("tr").each(function(index, row) {
                     $(row).find(".row-index").text(index + 1);
                 });
             }
 
-            // Включаем сортировку за всю строку
             $tableBody.sortable({
                 axis: "y",
                 cursor: "move",
-                // При начале перетаскивания
                 start: function(event, ui) {
                     isDragging = true;
-                    // Автоматически выделяем эту строку
                     ui.item.find('.row-select').prop('checked', true).trigger('change');
                 },
-                // При завершении перетаскивания
                 stop: function(event, ui) {
-                    // Дадим небольшой таймаут, чтобы &laquo;click&raquo; не воспринимался
                     setTimeout(() => {
                         isDragging = false;
                     }, 50);
@@ -402,22 +410,15 @@
             });
             $tableBody.disableSelection();
 
-            // Чекбоксы (если нажать именно на сам чекбокс)
+            // Чекбокс для выделения строки
             $('#workItemsTable').on('change', '.row-select', function() {
                 $(this).closest('tr').toggleClass('selected-row', this.checked);
             });
-            // Начальное состояние: если чекбокс уже был установлен
             $('#workItemsTable .row-select:checked').closest('tr').addClass('selected-row');
 
-            // Клик по строке (в любом месте) – переключает чекбокс
+            // Клик по строке - переключает чекбокс (если не перетаскиваем и не по кнопке)
             $tableBody.on('click', 'tr', function(e) {
-                // Если сейчас идёт процесс перетаскивания – не обрабатываем &laquo;click&raquo;
                 if (isDragging) return;
-
-                // Если кликнули на элемент, который не должен менять галочку
-                // (например, на кнопку, ссылку и т.п.), то можно сделать проверку,
-                // но если нужно в любом случае клик - можно не проверять.
-                // Для простоты выключим реакцию, если это клики по кнопкам:
                 if ($(e.target).is('button, a, .btn, input')) return;
 
                 let $checkbox = $(this).find('.row-select');
@@ -437,8 +438,8 @@
             initSortableTable();
 
             // AJAX-фильтр: при изменении полей
-            $('#startDate, #endDate, #executor, #search, #divisionSelect').on('change keyup', function() {
-                // Сохраняем id изменённого элемента
+            $('#startDate, #endDate, #executor, #approver, #search, #divisionSelect').on('change keyup', function() {
+                // Запоминаем, что мы поменяли
                 var changedElementId = this.id;
 
                 $.ajax({
@@ -448,24 +449,27 @@
                         startDate: $('#startDate').val(),
                         endDate: $('#endDate').val(),
                         executor: $('#executor').val(),
+                        approver: $('#approver').val(),
                         searchQuery: $('#search').val(),
                         selectedDivision: $('#divisionSelect').val()
                     },
                     success: function(result) {
-                        // 1) Обновляем таблицу
+                        // Обновляем таблицу
                         $('#workItemsTableContainer').html(result);
                         initSortableTable();
 
-                        // 2) Обновляем скрытые поля (чтобы при экспорте подхватывались)
+                        // Обновляем скрытые поля (для экспорта)
                         $('input[name="StartDate"]').val($('#startDate').val());
                         $('input[name="EndDate"]').val($('#endDate').val());
                         $('input[name="Executor"]').val($('#executor').val());
+                        $('input[name="Approver"]').val($('#approver').val());
                         $('input[name="SearchQuery"]').val($('#search').val());
                         $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
 
-                        // 3) Если мы поменяли именно "подразделение" — подгружаем новый список исполнителей
+                        // Если мы поменяли подразделение - подгрузим новый список исполнителей и принимающих
                         if (changedElementId === 'divisionSelect') {
                             loadExecutors($('#divisionSelect').val());
+                            loadApprovers($('#divisionSelect').val());
                         }
                     }
                 });
@@ -475,8 +479,7 @@
             loadMyPendingRequests();
         });
 
-
-        // Функция для AJAX-запроса списка исполнителей и обновления селекта #executor
+        // Загрузка списка исполнителей
         function loadExecutors(divisionId) {
             $.ajax({
                 url: '@Url.Page("Index", "Executors")',
@@ -484,12 +487,8 @@
                 data: { divisionId: divisionId },
                 success: function(executors) {
                     let $execSelect = $('#executor');
-                    // Очищаем список
                     $execSelect.empty();
-                    // Добавляем пункт "Все исполнители"
                     $execSelect.append('<option value="">Все исполнители</option>');
-
-                    // Заполняем новыми
                     $.each(executors, function(index, name) {
                         $execSelect.append($('<option>').val(name).text(name));
                     });
@@ -497,7 +496,24 @@
             });
         }
 
-        // Обработка кнопки "Сдаточный чек"
+        // НОВО: Загрузка списка принимающих (Approvers)
+        function loadApprovers(divisionId) {
+            $.ajax({
+                url: '@Url.Page("Index", "Approvers")',
+                type: 'GET',
+                data: { divisionId: divisionId },
+                success: function(approvers) {
+                    let $apSelect = $('#approver');
+                    $apSelect.empty();
+                    $apSelect.append('<option value="">Все принимающие</option>');
+                    $.each(approvers, function(index, name) {
+                        $apSelect.append($('<option>').val(name).text(name));
+                    });
+                }
+            });
+        }
+
+        // Кнопка "Сдаточный чек"
         $('#generatePdfBtn').on('click', function() {
             let rows = document.querySelectorAll("#workItemsTable tbody tr");
             let result = [];
@@ -510,16 +526,29 @@
             $("#SelectedItemsOrder").val(JSON.stringify(result));
         });
 
+        // Открыть модальное окно (создание/редактирование) —
+        // в button мы передаём this, чтобы считать data-* атрибуты у <tr>.
+        function openRequestModal(docNumber, controller, approver, btn) {
+            // Находим родительскую строку
+            let tr = btn.closest('tr');
 
-        // Модальное окно: заполнение полей, открытие
-        function openRequestModal(docNumber, controller, approver) {
-            $('#hiddenDocNumber').val(docNumber);
-            $('#proposedDate').val("");
-            $('#requestNote').val("");
+            // Читаем data-* атрибуты (если есть уже заявка от текущего пользователя)
+            let requestId = tr.dataset.requestId || "";
+            let reqType = tr.dataset.requestType || "корр1";
+            let proposed = tr.dataset.requestDate || "";
+            let note = tr.dataset.requestNote || "";
+
+            // Заполняем поля
+            document.getElementById('hiddenDocNumber').value = docNumber;
+            document.getElementById('hiddenRequestId').value = requestId;
+            document.getElementById('requestTypeSelect').value = reqType;
+            document.getElementById('proposedDate').value = proposed;
+            document.getElementById('requestNote').value = note;
 
             let receiverSelect = document.getElementById('receiverSelect');
             receiverSelect.innerHTML = "";
 
+            // Добавляем варианты (controller / approver)
             let optCtrl = document.createElement('option');
             optCtrl.value = controller;
             optCtrl.textContent = `Контролирующий (${controller})`;
@@ -530,18 +559,37 @@
             optAppr.textContent = `Принимающий (${approver})`;
             receiverSelect.appendChild(optAppr);
 
+            // Выбираем тот, который был сохранён (если что)
+            if (optCtrl.value === tr.dataset.receiver) {
+                optCtrl.selected = true;
+            } else if (optAppr.value === tr.dataset.receiver) {
+                optAppr.selected = true;
+            }
+
+            // Если есть requestId, значит редактируем (показываем кнопки "Обновить", "Удалить")
+            if (requestId) {
+                document.getElementById('createRequestBtn').style.display = 'none';
+                document.getElementById('updateRequestBtn').style.display = 'inline-block';
+                document.getElementById('deleteRequestBtn').style.display = 'inline-block';
+            } else {
+                // Создание новой заявки
+                document.getElementById('createRequestBtn').style.display = 'inline-block';
+                document.getElementById('updateRequestBtn').style.display = 'none';
+                document.getElementById('deleteRequestBtn').style.display = 'none';
+            }
+
             let modal = new bootstrap.Modal(document.getElementById('requestModal'));
             modal.show();
         }
 
-        // Отправка заявки
-        function sendWorkRequest() {
+        // Создать новую заявку
+        function createWorkRequest() {
             let docNumber = $('#hiddenDocNumber').val();
             let requestType = $('#requestTypeSelect').val();
             let proposedDate = $('#proposedDate').val();
             let receiver = $('#receiverSelect').val();
             let note = $('#requestNote').val();
-            let sender = '@Model.UserName';
+            let sender = '@Model.UserName.ToString()';
 
             let dateObj = proposedDate ? new Date(proposedDate + "T00:00:00") : null;
 
@@ -567,13 +615,20 @@
                     let modal = bootstrap.Modal.getInstance(modalEl);
                     modal.hide();
 
-                    // Подсветим строку
-                    let row = document.querySelector(`tr[data-id="${docNumber}"]`);
-                    if (row) {
+                    // Меняем строку (добавляем data-*), чтобы был режим "редактировать"
+                    let tr = document.querySelector(`tr[data-id="${docNumber}"]`);
+                    if (tr) {
+                        tr.dataset.requestId = res.requestId; // ID новой заявки
+                        tr.dataset.requestType = requestType;
+                        tr.dataset.requestDate = proposedDate;
+                        tr.dataset.requestNote = note;
+                        tr.dataset.receiver = receiver;
+
+                        // Подсветка
                         if (requestType.startsWith('корр'))
-                            row.classList.add('table-warning');
+                            tr.classList.add('table-warning');
                         else if (requestType === 'факт')
-                            row.classList.add('table-info');
+                            tr.classList.add('table-info');
                     }
                 } else {
                     alert("Ошибка: " + res.message);
@@ -582,8 +637,104 @@
             .catch(e => console.error(e));
         }
 
-        // Функция загрузки "Моих входящих заявок"
-            function loadMyPendingRequests() {
+        // Обновить существующую заявку
+        function updateWorkRequest() {
+            let requestId = $('#hiddenRequestId').val();
+            let docNumber = $('#hiddenDocNumber').val();
+            let requestType = $('#requestTypeSelect').val();
+            let proposedDate = $('#proposedDate').val();
+            let receiver = $('#receiverSelect').val();
+            let note = $('#requestNote').val();
+
+            let dateObj = proposedDate ? new Date(proposedDate + "T00:00:00") : null;
+
+            let data = {
+                Id: parseInt(requestId),
+                DocumentNumber: docNumber,
+                RequestType: requestType,
+                Receiver: receiver,
+                ProposedDate: dateObj,
+                Note: note
+            };
+
+            fetch('@Url.Page("Index", "UpdateRequest")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    alert("Заявка обновлена!");
+                    let modalEl = document.getElementById('requestModal');
+                    let modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+
+                    // Обновляем атрибуты строки
+                    let tr = document.querySelector(`tr[data-id="${docNumber}"]`);
+                    if (tr) {
+                        tr.dataset.requestType = requestType;
+                        tr.dataset.requestDate = proposedDate;
+                        tr.dataset.requestNote = note;
+                        tr.dataset.receiver = receiver;
+
+                        // Перекрашиваем (снимем класс и добавим заново)
+                        tr.classList.remove('table-warning', 'table-info');
+                        if (requestType.startsWith('корр'))
+                            tr.classList.add('table-warning');
+                        else if (requestType === 'факт')
+                            tr.classList.add('table-info');
+                    }
+                } else {
+                    alert("Ошибка: " + res.message);
+                }
+            })
+            .catch(e => console.error(e));
+        }
+
+        // Удалить заявку
+        function deleteWorkRequest() {
+            let requestId = $('#hiddenRequestId').val();
+            let docNumber = $('#hiddenDocNumber').val();
+
+            let data = {
+                RequestId: parseInt(requestId),
+                DocumentNumber: docNumber
+            };
+
+            fetch('@Url.Page("Index", "DeleteRequest")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    alert("Заявка удалена!");
+                    let modalEl = document.getElementById('requestModal');
+                    let modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+
+                    // Удаляем все data-* (чтобы вернулся режим "Создать")
+                    let tr = document.querySelector(`tr[data-id="${docNumber}"]`);
+                    if (tr) {
+                        delete tr.dataset.requestId;
+                        delete tr.dataset.requestType;
+                        delete tr.dataset.requestDate;
+                        delete tr.dataset.requestNote;
+                        delete tr.dataset.receiver;
+                        // Убираем подсветку
+                        tr.classList.remove('table-warning', 'table-info');
+                    }
+                } else {
+                    alert("Ошибка: " + res.message);
+                }
+            })
+            .catch(e => console.error(e));
+        }
+
+        // Загрузка моих входящих заявок
+        function loadMyPendingRequests() {
             fetch('@Url.Page("Index", "MyRequests")')
             .then(r => r.json())
             .then(data => {
@@ -592,22 +743,6 @@
 
                 data.forEach(req => {
                     let tr = document.createElement('tr');
-
-                    // Пример подстановки:
-                    // "Документ"     -> req.documentName
-                    // "Работа"       -> req.workName
-                    // "Исполнитель"  -> req.executor
-                    // "Контроль"     -> req.controller
-                    // "Принимающий"  -> req.approver
-                    // "План"         -> req.planDate
-                    // "Корр1"        -> req.korrect1
-                    // "Корр2"        -> req.korrect2
-                    // "Корр3"        -> req.korrect3
-                    // "Заявка"       -> req.requestType
-                    // "На дату"      -> req.proposedDate
-                    // "Отправитель"  -> req.sender
-                    // "Заметка"      -> req.note
-
                     let actionTd = `
                         <div class="d-flex flex-column">
                             <button class="btn btn-sm btn-success mb-1"
@@ -643,8 +778,7 @@
             .catch(e => console.error(e));
         }
 
-
-        // Функция "Принять"/"Отклонить"
+        // "Принять"/"Отклонить" во входящих заявках
         function setRequestStatus(requestId, docNumber, newStatus) {
             let bodyData = {
                 RequestId: requestId,
@@ -705,7 +839,7 @@
             });
         }
 
-        // Установка формата экспорта и отправка формы
+        // Установка формата (pdf/excel/word) и сабмит формы
         function setFormat(fmt) {
             const spinner = document.querySelector('#generatePdfBtn .spinner-border');
             spinner.style.display = 'inline-block';

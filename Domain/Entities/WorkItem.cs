@@ -33,7 +33,11 @@ namespace Monitoring.Domain.Entities
 
         public string HighlightCssClass { get; set; } = "";
 
-        // При желании, в будущем можно добавить методы,
-        // которые проверяют корректность данных, валидацию и т.д.
+        // Для хранения Pending-заявки от текущего пользователя
+        public int? UserPendingRequestId { get; set; }
+        public string? UserPendingRequestType { get; set; }
+        public DateTime? UserPendingProposedDate { get; set; }
+        public string? UserPendingRequestNote { get; set; }
+        public string? UserPendingReceiver { get; set; }
     }
 }

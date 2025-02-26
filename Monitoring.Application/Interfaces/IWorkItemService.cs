@@ -16,5 +16,7 @@ namespace Monitoring.Application.Interfaces
         Task<string> GetDevAsync(int divisionId);
 
         void ClearCache(int divisionId);
+
+        Task<List<string>> GetApproversAsync(int divisionId);
     }
 }

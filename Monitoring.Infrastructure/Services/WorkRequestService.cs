@@ -25,7 +25,7 @@ namespace Monitoring.Infrastructure.Services
         /// Создаём новую заявку. 
         /// Вся информация (DocumentName, PlanDate и т.п.) уже подставляется при создании.
         /// </summary>
-        public async Task CreateRequestAsync(WorkRequest request)
+        public async Task<int> CreateRequestAsync(WorkRequest request)
         {
             using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
@@ -93,7 +93,9 @@ namespace Monitoring.Infrastructure.Services
             cmd.Parameters.AddWithValue("@Korrect2", (object?)request.Korrect2 ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Korrect3", (object?)request.Korrect3 ?? DBNull.Value);
 
-            await cmd.ExecuteNonQueryAsync();
+            var newIdObj = await cmd.ExecuteScalarAsync();
+            int newId = Convert.ToInt32(newIdObj);
+            return newId;
         }
 
         /// <summary>
@@ -254,6 +256,50 @@ namespace Monitoring.Infrastructure.Services
             cmd.Parameters.AddWithValue("@Status", newStatus);
             cmd.Parameters.AddWithValue("@Id", requestId);
 
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        /// <summary>
+        /// Обновить заявку
+        /// </summary>
+        public async Task UpdateRequestAsync(WorkRequest req)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            string sql = @"
+                UPDATE [dbo].[Requests]
+                SET 
+                    RequestType = @RequestType,
+                    Receiver = @Receiver,
+                    ProposedDate = @ProposedDate,
+                    Note = @Note
+                WHERE Id = @Id
+                  AND Status = 'Pending'
+            ";
+
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@RequestType", req.RequestType ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Receiver", req.Receiver ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@ProposedDate", (object?)req.ProposedDate ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Note", (object?)req.Note ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Id", req.Id);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        /// <summary>
+        /// Удалить заявку
+        /// </summary>
+        public async Task DeleteRequestAsync(int requestId)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            string sql = @"DELETE FROM [dbo].[Requests] WHERE Id = @Id AND Status='Pending';";
+
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@Id", requestId);
             await cmd.ExecuteNonQueryAsync();
         }
     }
