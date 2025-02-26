@@ -201,7 +201,7 @@
                         </tr>
                     </thead>
                     <tbody id="myRequestsTbody">
-                        <!-- JS заполнит -->
+                        <!-- Заполняется через JS (loadMyPendingRequests) -->
                     </tbody>
                 </table>
             </div>
@@ -228,7 +228,7 @@
                         <option value="корр1">корр1</option>
                         <option value="корр2">корр2</option>
                         <option value="корр3">корр3</option>
-                        <option value="fact">Фактическое закрытие</option>
+                        <option value="факт">Фактическое закрытие</option>
                     </select>
                 </div>
 
@@ -262,8 +262,6 @@
 </div>
 
 @section Scripts {
-
-        text
 
     <!-- Дополнительные стили -->
     <style>
@@ -574,7 +572,7 @@
                     if (row) {
                         if (requestType.startsWith('корр'))
                             row.classList.add('table-warning');
-                        else if (requestType === 'fact')
+                        else if (requestType === 'факт')
                             row.classList.add('table-info');
                     }
                 } else {
@@ -585,7 +583,7 @@
         }
 
         // Функция загрузки "Моих входящих заявок"
-        function loadMyPendingRequests() {
+            function loadMyPendingRequests() {
             fetch('@Url.Page("Index", "MyRequests")')
             .then(r => r.json())
             .then(data => {
@@ -595,22 +593,21 @@
                 data.forEach(req => {
                     let tr = document.createElement('tr');
 
-                    // Сделаем удобные переменные
-                    let docName = req.documentName || "";
-                    let wName   = req.workName || "";
-                    let exec    = req.executor || "";
-                    let contr   = req.controller || "";
-                    let appr    = req.approver || "";
-                    let planD   = req.planDate || "";
-                    let k1      = req.korrect1 || "";
-                    let k2      = req.korrect2 || "";
-                    let k3      = req.korrect3 || "";
-                    let rType   = req.requestType || "";
-                    let rDate   = req.proposedDate || "";
-                    let sndr    = req.sender || "";
-                    let noteStr = req.note || "";
+                    // Пример подстановки:
+                    // "Документ"     -> req.documentName
+                    // "Работа"       -> req.workName
+                    // "Исполнитель"  -> req.executor
+                    // "Контроль"     -> req.controller
+                    // "Принимающий"  -> req.approver
+                    // "План"         -> req.planDate
+                    // "Корр1"        -> req.korrect1
+                    // "Корр2"        -> req.korrect2
+                    // "Корр3"        -> req.korrect3
+                    // "Заявка"       -> req.requestType
+                    // "На дату"      -> req.proposedDate
+                    // "Отправитель"  -> req.sender
+                    // "Заметка"      -> req.note
 
-                    // Кнопки "Принять"/"Отклонить" в одном столбце
                     let actionTd = `
                         <div class="d-flex flex-column">
                             <button class="btn btn-sm btn-success mb-1"
@@ -625,19 +622,19 @@
                     `;
 
                     tr.innerHTML = `
-                        <td>${docName}</td>
-                        <td>${wName}</td>
-                        <td>${exec}</td>
-                        <td>${contr}</td>
-                        <td>${appr}</td>
-                        <td>${planD}</td>
-                        <td>${k1}</td>
-                        <td>${k2}</td>
-                        <td>${k3}</td>
-                        <td>${rType}</td>
-                        <td>${rDate}</td>
-                        <td>${sndr}</td>
-                        <td>${noteStr}</td>
+                        <td>${req.documentName || ""}</td>
+                        <td>${req.workName || ""}</td>
+                        <td>${req.executor || ""}</td>
+                        <td>${req.controller || ""}</td>
+                        <td>${req.approver || ""}</td>
+                        <td>${req.planDate || ""}</td>
+                        <td>${req.korrect1 || ""}</td>
+                        <td>${req.korrect2 || ""}</td>
+                        <td>${req.korrect3 || ""}</td>
+                        <td>${req.requestType || ""}</td>
+                        <td>${req.proposedDate || ""}</td>
+                        <td>${req.sender || ""}</td>
+                        <td>${req.note || ""}</td>
                         <td>${actionTd}</td>
                     `;
                     tbody.appendChild(tr);
@@ -645,6 +642,7 @@
             })
             .catch(e => console.error(e));
         }
+
 
         // Функция "Принять"/"Отклонить"
         function setRequestStatus(requestId, docNumber, newStatus) {

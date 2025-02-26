@@ -1,45 +1,30 @@
 ﻿namespace Monitoring.Domain.Entities
 {
-    /// <summary>
-    /// Заявка/запрос на изменение дат (корр1/2/3/факт) в WorkItem.
-    /// </summary>
     public class WorkRequest
     {
         public int Id { get; set; }
 
-        // Связка с WorkItem.DocumentNumber
-        public string WorkDocumentNumber { get; set; } = string.Empty;
+        // "docNumber/idWork"
+        public string WorkDocumentNumber { get; set; } = "";
 
-        // Тип запроса: "корр1", "корр2", "корр3", "fact"
-        public string RequestType { get; set; } = string.Empty;
+        // "ТипДок + название"
+        public string DocumentName { get; set; } = "";
 
-        // Отправитель (должен быть один из исполнителей)
-        public string Sender { get; set; } = string.Empty;
+        // Название работы (если нужно отдельно)
+        public string WorkName { get; set; } = "";
 
-        // Получатель (Controller или Approver)
-        public string Receiver { get; set; } = string.Empty;
-
-        // Дата, когда заявку создали
+        public string RequestType { get; set; } = "";  // "корр1"/"корр2"/"fact" и т.д.
+        public string Sender { get; set; } = "";
+        public string Receiver { get; set; } = "";
         public DateTime RequestDate { get; set; }
-
-        // Предлагаемая дата, которую хотим установить
-        public DateTime? ProposedDate { get; set; }
-
-        // Текущий статус: "Pending", "Accepted", "Declined"
-        public string Status { get; set; } = "Pending";
-
-        // Флаг, что заявка полностью завершена (принята/отклонена)
-        public bool IsDone { get; set; } = false;
-
-        // Доп. заметка
+        public bool IsDone { get; set; }
         public string? Note { get; set; }
+        public DateTime? ProposedDate { get; set; }
+        public string Status { get; set; } = "";       // "Pending" / "Accepted" / "Declined"
 
-        public string? DocumentName { get; set; }
-        public string? WorkName { get; set; }
-
-        public string? Executor { get; set; }
-        public string? Controller { get; set; }
-        public string? Approver { get; set; }
+        // Поля, чтобы не делать JOIN
+        public string Executor { get; set; } = "";
+        public string Controller { get; set; } = "";
         public DateTime? PlanDate { get; set; }
         public DateTime? Korrect1 { get; set; }
         public DateTime? Korrect2 { get; set; }

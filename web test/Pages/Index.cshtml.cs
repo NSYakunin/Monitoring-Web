@@ -271,18 +271,23 @@ namespace Monitoring.UI.Pages
         /// <summary>
         /// Обработчик POST для создания заявки (корректировки/факт)
         /// </summary>
+                // --------------------------------------------------
+        // 1) Создание заявки (POST) 
+        //    (корр, факт-закрытие и т.д.)
+        // --------------------------------------------------
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostCreateRequestAsync()
         {
             try
             {
-                // Читаем JSON-данные из тела запроса
+                // Читаем DTO из тела:
                 using var reader = new StreamReader(Request.Body);
                 string body = await reader.ReadToEndAsync();
                 var dto = JsonSerializer.Deserialize<CreateRequestDto>(body);
                 if (dto == null)
                     return new JsonResult(new { success = false, message = "Невалидный JSON" });
 
+                // Проверяем куки
                 if (!HttpContext.Request.Cookies.ContainsKey("divisionId") ||
                     !HttpContext.Request.Cookies.ContainsKey("userName"))
                 {
@@ -291,21 +296,24 @@ namespace Monitoring.UI.Pages
 
                 int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
                 UserName = HttpContext.Request.Cookies["userName"];
-
                 int actualDivisionId = SelectedDivision ?? homeDivisionId;
-                Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
-                WorkItems = await _workItemService.GetAllWorkItemsAsync(
+
+                // 1) Находим соответствующий WorkItem
+                var allItems = await _workItemService.GetAllWorkItemsAsync(
                     new List<int> { actualDivisionId }
                 );
-
-                var witem = WorkItems.FirstOrDefault(x => x.DocumentNumber == dto.DocumentNumber);
+                var witem = allItems.FirstOrDefault(x => x.DocumentNumber == dto.DocumentNumber);
                 if (witem == null)
+                {
                     return new JsonResult(new { success = false, message = "WorkItem не найден" });
+                }
 
-                // Проверяем, что текущий пользователь действительно исполнитель
-                var allExecs = witem.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(e => e.Trim()).ToList();
-                if (!allExecs.Contains(UserName))
+                // 2) Проверяем, что текущий пользователь действительно в списке исполнителей
+                var execs = witem.Executor
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim())
+                    .ToList();
+                if (!execs.Contains(UserName))
                 {
                     return new JsonResult(new
                     {
@@ -314,21 +322,31 @@ namespace Monitoring.UI.Pages
                     });
                 }
 
-                // Создаём заявку
-                var request = new WorkRequest
+                // 3) Создаём новую заявку, полностью заполняя все поля из WorkItem
+                var newRequest = new WorkRequest
                 {
-                    WorkDocumentNumber = dto.DocumentNumber,
+                    WorkDocumentNumber = witem.DocumentNumber,
+                    DocumentName = witem.DocumentName, // "ТипДок + название"
+                    WorkName = witem.WorkName,      // Если нужно отдельно
                     RequestType = dto.RequestType,
-                    Sender = dto.Sender,
+                    Sender = dto.Sender,   // либо UserName, если надо
                     Receiver = dto.Receiver,
                     RequestDate = DateTime.Now,
-                    ProposedDate = dto.ProposedDate,
+                    IsDone = false,
                     Note = dto.Note,
+                    ProposedDate = dto.ProposedDate,
                     Status = "Pending",
-                    IsDone = false
-                };
-                await _workRequestService.CreateRequestAsync(request);
 
+                    // Копируем поля из WorkItem
+                    Executor = witem.Executor,
+                    Controller = witem.Controller,
+                    PlanDate = witem.PlanDate,
+                    Korrect1 = witem.Korrect1,
+                    Korrect2 = witem.Korrect2,
+                    Korrect3 = witem.Korrect3
+                };
+
+                await _workRequestService.CreateRequestAsync(newRequest);
                 return new JsonResult(new { success = true });
             }
             catch (Exception ex)
@@ -348,18 +366,17 @@ namespace Monitoring.UI.Pages
             {
                 using var reader = new StreamReader(Request.Body);
                 string body = await reader.ReadToEndAsync();
-
                 var data = JsonSerializer.Deserialize<StatusChangeDto>(body);
                 if (data == null)
                     return new JsonResult(new { success = false, message = "Невалидные данные" });
 
-                // Проверяем, что текущий пользователь == Receiver
-                var requestList = await _workRequestService.GetRequestsByDocumentNumberAsync(data.DocumentNumber);
-                var req = requestList.FirstOrDefault(r => r.Id == data.RequestId);
-
+                // Находим заявку
+                var allForDoc = await _workRequestService.GetRequestsByDocumentNumberAsync(data.DocumentNumber);
+                var req = allForDoc.FirstOrDefault(r => r.Id == data.RequestId);
                 if (req == null)
                     return new JsonResult(new { success = false, message = "Заявка не найдена" });
 
+                // Проверяем, что текущий пользователь == Receiver
                 if (req.Receiver != UserName)
                 {
                     return new JsonResult(new
@@ -369,11 +386,9 @@ namespace Monitoring.UI.Pages
                     });
                 }
 
-                // Меняем статус
+                // Меняем статус (Accepted/Declined)
                 if (data.NewStatus != "Accepted" && data.NewStatus != "Declined")
-                {
                     return new JsonResult(new { success = false, message = "Некорректный статус" });
-                }
 
                 await _workRequestService.SetRequestStatusAsync(data.RequestId, data.NewStatus);
 
@@ -390,25 +405,19 @@ namespace Monitoring.UI.Pages
         /// </summary>
         public async Task<IActionResult> OnGetMyRequestsAsync()
         {
-            if (!HttpContext.Request.Cookies.ContainsKey("divisionId") ||
-                !HttpContext.Request.Cookies.ContainsKey("userName"))
+            if (!HttpContext.Request.Cookies.ContainsKey("userName"))
             {
                 return new JsonResult(new { success = false, message = "No cookies" });
             }
 
             string userName = HttpContext.Request.Cookies["userName"];
-            UserName = userName;
 
-            // Берём все заявки (изменённый метод GetAllRequestsAsync возвращает DocumentName и WorkName)
-            var allRequests = await _workRequestService.GetAllRequestsAsync();
+            // Берём PENDING заявки из таблицы Requests
+            var myPending = await _workRequestService.GetPendingRequestsByReceiverAsync(userName);
 
-            // Оставляем только те, что адресованы этому пользователю, Pending, и не выполнены
-            var myPending = allRequests
-                .Where(r => r.Receiver == userName && r.Status == "Pending" && !r.IsDone)
-                .ToList();
-
-            // Расширяем анонимный объект выдачи полями docName и workName
-            var result = myPending.Select(r => new {
+            // Преобразуем в JSON-форму для таблицы "Мои входящие заявки"
+            var result = myPending.Select(r => new
+            {
                 id = r.Id,
                 workDocumentNumber = r.WorkDocumentNumber,
                 requestType = r.RequestType,
@@ -416,12 +425,12 @@ namespace Monitoring.UI.Pages
                 sender = r.Sender,
                 note = r.Note,
 
-                // Новые "основные" поля
-                documentName = r.DocumentName,
-                workName = r.WorkName,
+                // Для колонок в таблице:
+                documentName = r.DocumentName, // "Документ"
+                workName = r.WorkName,     // "Работа"
                 executor = r.Executor,
                 controller = r.Controller,
-                approver = r.Approver,
+                approver = r.Receiver,     // "Принимающий"
                 planDate = r.PlanDate?.ToString("yyyy-MM-dd"),
                 korrect1 = r.Korrect1?.ToString("yyyy-MM-dd"),
                 korrect2 = r.Korrect2?.ToString("yyyy-MM-dd"),
@@ -585,18 +594,20 @@ namespace Monitoring.UI.Pages
         {
             foreach (var item in WorkItems)
             {
+                // Берём заявки для данного DocumentNumber
                 var requests = await _workRequestService.GetRequestsByDocumentNumberAsync(item.DocumentNumber);
-                var pendingRequests = requests.Where(r => r.Status == "Pending" && !r.IsDone).ToList();
 
+                // Ищем PENDING
+                var pendingRequests = requests.Where(r => r.Status == "Pending" && !r.IsDone).ToList();
                 if (pendingRequests.Any())
                 {
-                    bool hasFact = pendingRequests.Any(r => r.RequestType == "fact");
+                    bool hasFact = pendingRequests.Any(r => r.RequestType == "факт");
                     bool hasCorr = pendingRequests.Any(r => r.RequestType.StartsWith("корр"));
 
                     if (hasFact)
                         item.HighlightCssClass = "table-info";    // голубая подсветка
                     else if (hasCorr)
-                        item.HighlightCssClass = "table-warning"; // желтая подсветка
+                        item.HighlightCssClass = "table-warning"; // жёлтая подсветка
                 }
             }
         }

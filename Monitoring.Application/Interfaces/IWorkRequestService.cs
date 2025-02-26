@@ -10,6 +10,6 @@ namespace Monitoring.Application.Interfaces
         /// <summary>Изменить статус заявки (Accepted/Declined) + проставить IsDone=1.</summary>
         Task SetRequestStatusAsync(int requestId, string newStatus);
 
-        Task<List<WorkRequest>> GetAllRequestsAsync();
+        Task<List<WorkRequest>> GetPendingRequestsByReceiverAsync(string receiver);
     }
 }
