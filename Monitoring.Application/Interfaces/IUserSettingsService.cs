@@ -16,8 +16,8 @@ namespace Monitoring.Application.Interfaces
         // Получить объект PrivacySettings для пользователя
         Task<PrivacySettingsDto> GetPrivacySettingsAsync(int userId);
 
-        // Сохранить объект PrivacySettings для пользователя
-        Task SavePrivacySettingsAsync(int userId, PrivacySettingsDto dto);
+        // Новый вариант, где передаём ещё и статус "Isvalid" (активен/неактивен)
+        Task SavePrivacySettingsAsync(int userId, PrivacySettingsDto dto, bool isActive);
 
         // Получить список всех доступных подразделений (справочник)
         Task<List<DivisionDto>> GetAllDivisionsAsync();

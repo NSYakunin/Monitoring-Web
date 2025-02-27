@@ -53,6 +53,38 @@ namespace Monitoring.Infrastructure.Services
         }
 
         /// <summary>
+        /// Новый метод: получить список smallName только неактивных (Isvalid=0) пользователей.
+        /// </summary>
+        public async Task<List<string>> GetAllInactiveUsersAsync()
+        {
+            var users = new List<string>();
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                string query = @"
+                    SELECT [smallName]
+                    FROM [DocumentControl].[dbo].[Users]
+                    WHERE [Isvalid] = 0
+                    ORDER BY [smallName]
+                ";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    await conn.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            users.Add(reader["smallName"]?.ToString() ?? "");
+                        }
+                    }
+                }
+            }
+
+            return users;
+        }
+
+        /// <summary>
         /// Фильтрует пользователей по подстроке (LIKE '%query%').
         /// </summary>
         public async Task<List<string>> FilterUsersAsync(string query)

@@ -29,6 +29,17 @@
                     <h5 class="mb-0">Выберите пользователя</h5>
                 </div>
                 <div class="custom-card-body">
+                    <!-- NEW: Галочка "Показать неактивных" -->
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox"
+                               id="showInactiveCheckbox"
+                               onclick="onShowInactiveChanged()"
+                        @(Model.ShowInactive ? "checked" : null) />
+                        <label class="form-check-label" for="showInactiveCheckbox">
+                            Показать неактивных
+                        </label>
+                    </div>
+
                     <div class="row mb-3 align-items-center">
                         <div class="col-sm-4 text-end">
                             <label for="SelectedUser" class="col-form-label">Пользователь:</label>
@@ -124,6 +135,17 @@
                                         @(Model.CurrentPrivacySettings.CanAccessSettings ? "checked" : "") />
                                     </td>
                                 </tr>
+
+                                <!-- NEW: Признак "Пользователь активен?" -->
+                                <tr>
+                                    <td>Пользователь активен</td>
+                                    <td class="text-center">
+                                        <input type="checkbox"
+                                               id="isUserActive"
+                                        @(Model.IsUserValid ? "checked" : "") />
+                                    </td>
+                                </tr>
+
                             </tbody>
                         </table>
 
@@ -163,7 +185,7 @@
     </div>
 </div>
 
-<!-- Модальное окно "Регистрация пользователя" -->
+<!-- Модальное окно "Регистрация пользователя" (без изменений) -->
 <div class="modal fade" id="registerUserModal" tabindex="-1" aria-labelledby="registerUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -220,7 +242,6 @@
                     <label class="form-check-label" for="newUserCanAccessSettings">
                         Имеет доступ к настройкам
                     </label>
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -230,7 +251,7 @@
     </div>
 </div>
 
-<!-- Модальное окно подтверждения сохранения настроек -->
+<!-- Модальное окно подтверждения сохранения настроек (добавим вывод isActive) -->
 <div class="modal fade" id="confirmSaveModal" tabindex="-1" aria-labelledby="confirmSaveModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -246,6 +267,10 @@
                 <p>Может закрывать работы? <span id="confirmCanClose"></span></p>
                 <p>Может отправлять заявки на закрытие работ? <span id="confirmCanSend"></span></p>
                 <p>Доступ к настройкам <span id="confirmCanAccess"></span></p>
+
+                <!-- NEW: выводим активен/неактивен -->
+                <p>Пользователь активен? <span id="confirmIsActive"></span></p>
+
                 <p>Подразделения (ID): <span id="confirmSubdivisions"></span></p>
             </div>
             <div class="modal-footer">
@@ -258,16 +283,27 @@
 
 @section Scripts {
     <script>
-        // --- Переключение пользователя в селекте ---
+        // --- Переключение пользователя ---
         function onUserSelectionChanged(userName) {
+            let showInactive = document.getElementById("showInactiveCheckbox").checked;
             if (userName) {
-                window.location.href = '?SelectedUserName=' + encodeURIComponent(userName);
+                window.location.href = '?SelectedUserName=' + encodeURIComponent(userName)
+                    + '&ShowInactive=' + showInactive;
             } else {
-                window.location.href = '?SelectedUserName=';
+                window.location.href = '?SelectedUserName=&ShowInactive=' + showInactive;
             }
         }
 
-        // --- Показ/скрытие нового пароля при нажатии на "глазик" ---
+        // --- При щелчке на "Показать неактивных" ---
+        function onShowInactiveChanged() {
+            let chk = document.getElementById("showInactiveCheckbox");
+            let checked = chk.checked;
+            // При переключении сбрасываем выбранного пользователя,
+            // ведь мы переходим в другой список (активных/неактивных).
+            window.location.href = '?ShowInactive=' + checked;
+        }
+
+        // --- Показ/скрытие нового пароля ---
         function toggleNewPasswordVisibility() {
             let passInput = document.getElementById("newPasswordForSelectedUser");
             let icon = document.getElementById("toggleNewPassIcon");
@@ -282,7 +318,7 @@
             }
         }
 
-        // --- Подготовка данных и показ модального окна подтверждения ---
+        // --- Подготовка данных для сохранения ---
         function prepareSaveAllSettings() {
             let userName = document.getElementById("SelectedUser").value;
             if (!userName) {
@@ -290,10 +326,11 @@
                 return;
             }
 
-            // Собираем данные
             let canCloseWork = document.getElementById("canCloseWork").checked;
             let canSendCloseRequest = document.getElementById("canSendCloseRequest").checked;
             let canAccessSettings = document.getElementById("canAccessSettings").checked;
+            // NEW: активен/неактивен
+            let isActive = document.getElementById("isUserActive").checked;
 
             let currentPass = document.getElementById("currentPasswordForSelectedUser").value.trim();
             let newPass = document.getElementById("newPasswordForSelectedUser").value.trim();
@@ -306,30 +343,33 @@
                 }
             });
 
-            // Заполним данные в модальном окне
+            // Заполняем в модальное окно
             document.getElementById("confirmUserName").textContent = userName;
             document.getElementById("confirmOldPass").textContent = currentPass ? currentPass : "(пусто)";
             document.getElementById("confirmNewPass").textContent = newPass ? newPass : "(не меняем)";
             document.getElementById("confirmCanClose").textContent = canCloseWork ? "Да" : "Нет";
             document.getElementById("confirmCanSend").textContent = canSendCloseRequest ? "Да" : "Нет";
             document.getElementById("confirmCanAccess").textContent = canAccessSettings ? "Да" : "Нет";
+            // NEW:
+            document.getElementById("confirmIsActive").textContent = isActive ? "Да" : "Нет";
+
             document.getElementById("confirmSubdivisions").textContent = selectedSubs.join(", ");
 
-            // Показываем модальное окно
             let modalEl = document.getElementById('confirmSaveModal');
             let modal = new bootstrap.Modal(modalEl);
             modal.show();
         }
 
-        // --- Основная функция сохранения (выполняется при нажатии "Да" в модальном окне) ---
+        // --- Сохранение (Yes в модальном окне) ---
         function saveAllSettings() {
             let userName = document.getElementById("SelectedUser").value;
             let canCloseWork = document.getElementById("canCloseWork").checked;
             let canSendCloseRequest = document.getElementById("canSendCloseRequest").checked;
             let canAccessSettings = document.getElementById("canAccessSettings").checked;
+            let isActive = document.getElementById("isUserActive").checked;
+
             let newPass = document.getElementById("newPasswordForSelectedUser").value.trim();
 
-            // Собираем выбранные подразделения
             let checks = document.querySelectorAll("#subdivisionList input[type=checkbox]");
             let selectedSubs = [];
             checks.forEach(ch => {
@@ -338,12 +378,14 @@
                 }
             });
 
-            // 1. Сохраняем приватные настройки
+            // 1. Сохраняем приватные настройки + isActive
             let privacyData = {
                 userName: userName,
                 canCloseWork: canCloseWork,
                 canSendCloseRequest: canSendCloseRequest,
-                canAccessSettings: canAccessSettings
+                canAccessSettings: canAccessSettings,
+                // NEW:
+                isActive: isActive
             };
 
             fetch('?handler=SavePrivacySettings', {
@@ -372,7 +414,7 @@
                 if (!res.success) {
                     throw new Error("Ошибка при сохранении подразделений: " + res.message);
                 }
-                // 3. Если поле нового пароля заполнено, меняем пароль
+                // 3. Если есть новый пароль
                 if (newPass) {
                     let passData = {
                         userName: userName,
@@ -388,7 +430,7 @@
                         if (!res2.success) {
                             throw new Error("Ошибка при смене пароля: " + res2.message);
                         }
-                        return res2; // для цепочки
+                        return res2;
                     });
                 } else {
                     // Если новый пароль пуст, пропускаем этот шаг

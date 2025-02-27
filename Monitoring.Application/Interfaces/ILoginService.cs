@@ -31,5 +31,8 @@ namespace Monitoring.Application.Interfaces
         /// Если пользователь не найден, вернёт null.
         /// </summary>
         Task<int> GetUserIdByNameAsync(string userName);
+
+        // Новый метод:
+        Task<List<string>> GetAllInactiveUsersAsync();
     }
 }

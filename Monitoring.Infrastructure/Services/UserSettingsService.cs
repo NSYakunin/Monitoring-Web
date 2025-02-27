@@ -1,10 +1,10 @@
-﻿using Monitoring.Application.Interfaces;
+﻿using Monitoring.Application.DTO;
+using Monitoring.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
-using System.Data.SqlClient;
-using Monitoring.Application.DTO;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace Monitoring.Infrastructure.Services
 {
@@ -73,54 +73,85 @@ namespace Monitoring.Infrastructure.Services
             return result;
         }
 
-        public async Task SavePrivacySettingsAsync(int userId, PrivacySettingsDto dto)
+        // ВАЖНО! Обратите внимание, что мы добавляем параметр "bool isActive"
+        // и перед сохранением в [UserPrivacy] обновляем ещё и поле [Isvalid] в [Users].
+        public async Task SavePrivacySettingsAsync(int userId, PrivacySettingsDto dto, bool isActive)
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             using (var conn = new SqlConnection(connStr))
             {
-                string selectQuery = @"SELECT COUNT(*) FROM [UserPrivacy] WHERE [idUser] = @u";
-                using (var cmd = new SqlCommand(selectQuery, conn))
+                await conn.OpenAsync();
+                using (var transaction = conn.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@u", userId);
-                    await conn.OpenAsync();
-                    int count = (int)await cmd.ExecuteScalarAsync();
-
-                    if (count == 0)
+                    try
                     {
-                        // INSERT
-                        string insertQuery = @"
-                            INSERT INTO [UserPrivacy]
-                                ([idUser], [CanCloseWork], [CanSendCloseRequest], [CanAccessSettings])
-                            VALUES
-                                (@u, @close, @send, @acc)
-                        ";
-                        using (var cmdInsert = new SqlCommand(insertQuery, conn))
-                        {
-                            cmdInsert.Parameters.AddWithValue("@u", userId);
-                            cmdInsert.Parameters.AddWithValue("@close", dto.CanCloseWork);
-                            cmdInsert.Parameters.AddWithValue("@send", dto.CanSendCloseRequest);
-                            cmdInsert.Parameters.AddWithValue("@acc", dto.CanAccessSettings);
-                            await cmdInsert.ExecuteNonQueryAsync();
-                        }
-                    }
-                    else
-                    {
-                        // UPDATE
-                        string updateQuery = @"
-                            UPDATE [UserPrivacy]
-                            SET [CanCloseWork] = @close,
-                                [CanSendCloseRequest] = @send,
-                                [CanAccessSettings] = @acc
+                        // 1) Обновляем таблицу [Users], поле [Isvalid]
+                        //    (1 = активен, 0 = неактивен)
+                        string updateUserIsValid = @"
+                            UPDATE [Users]
+                            SET [Isvalid] = @isv
                             WHERE [idUser] = @u
                         ";
-                        using (var cmdUpdate = new SqlCommand(updateQuery, conn))
+                        using (var cmdVal = new SqlCommand(updateUserIsValid, conn, transaction))
                         {
-                            cmdUpdate.Parameters.AddWithValue("@u", userId);
-                            cmdUpdate.Parameters.AddWithValue("@close", dto.CanCloseWork);
-                            cmdUpdate.Parameters.AddWithValue("@send", dto.CanSendCloseRequest);
-                            cmdUpdate.Parameters.AddWithValue("@acc", dto.CanAccessSettings);
-                            await cmdUpdate.ExecuteNonQueryAsync();
+                            cmdVal.Parameters.AddWithValue("@isv", isActive ? 1 : 0);
+                            cmdVal.Parameters.AddWithValue("@u", userId);
+                            await cmdVal.ExecuteNonQueryAsync();
                         }
+
+                        // 2) Смотрим, есть ли запись в [UserPrivacy]
+                        string selectQuery = @"SELECT COUNT(*) FROM [UserPrivacy] WHERE [idUser] = @u";
+                        using (var cmdSelect = new SqlCommand(selectQuery, conn, transaction))
+                        {
+                            cmdSelect.Parameters.AddWithValue("@u", userId);
+                            int count = (int)await cmdSelect.ExecuteScalarAsync();
+
+                            if (count == 0)
+                            {
+                                // INSERT
+                                string insertQuery = @"
+                                    INSERT INTO [UserPrivacy]
+                                        ([idUser], [CanCloseWork], [CanSendCloseRequest], [CanAccessSettings])
+                                    VALUES
+                                        (@u, @close, @send, @acc)
+                                ";
+                                using (var cmdInsert = new SqlCommand(insertQuery, conn, transaction))
+                                {
+                                    cmdInsert.Parameters.AddWithValue("@u", userId);
+                                    cmdInsert.Parameters.AddWithValue("@close", dto.CanCloseWork);
+                                    cmdInsert.Parameters.AddWithValue("@send", dto.CanSendCloseRequest);
+                                    cmdInsert.Parameters.AddWithValue("@acc", dto.CanAccessSettings);
+                                    await cmdInsert.ExecuteNonQueryAsync();
+                                }
+                            }
+                            else
+                            {
+                                // UPDATE
+                                string updateQuery = @"
+                                    UPDATE [UserPrivacy]
+                                    SET [CanCloseWork] = @close,
+                                        [CanSendCloseRequest] = @send,
+                                        [CanAccessSettings] = @acc
+                                    WHERE [idUser] = @u
+                                ";
+                                using (var cmdUpdate = new SqlCommand(updateQuery, conn, transaction))
+                                {
+                                    cmdUpdate.Parameters.AddWithValue("@u", userId);
+                                    cmdUpdate.Parameters.AddWithValue("@close", dto.CanCloseWork);
+                                    cmdUpdate.Parameters.AddWithValue("@send", dto.CanSendCloseRequest);
+                                    cmdUpdate.Parameters.AddWithValue("@acc", dto.CanAccessSettings);
+                                    await cmdUpdate.ExecuteNonQueryAsync();
+                                }
+                            }
+                        }
+
+                        // Если всё ОК — фиксируем транзакцию
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
                     }
                 }
             }
@@ -142,7 +173,6 @@ namespace Monitoring.Infrastructure.Services
                     FROM [Divisions]
                     ORDER BY [idDivision]
                 ";
-
                 using (var cmd = new SqlCommand(sql, conn))
                 {
                     await conn.OpenAsync();
@@ -164,7 +194,6 @@ namespace Monitoring.Infrastructure.Services
                     }
                 }
             }
-
             return list;
         }
 
@@ -262,9 +291,6 @@ namespace Monitoring.Infrastructure.Services
             }
         }
 
-        /// <summary>
-        /// Получить текущий пароль из таблицы [Users].
-        /// </summary>
         public async Task<string?> GetUserCurrentPasswordAsync(int userId)
         {
             string? password = null;
@@ -355,7 +381,6 @@ namespace Monitoring.Infrastructure.Services
                     }
                 }
             }
-
             return newUserId;
         }
     }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Configuration;
 using Monitoring.Application.DTO;
 using Monitoring.Application.Interfaces;
 using Monitoring.Application.Services; // Для PrivacySettingsDto, DivisionDto
@@ -11,11 +12,13 @@ namespace Monitoring.UI.Pages
     {
         private readonly IUserSettingsService _userSettingsService;
         private readonly ILoginService _loginService;
+        private readonly IConfiguration _configuration;
 
-        public SettingsModel(IUserSettingsService userSettingsService, ILoginService loginService)
+        public SettingsModel(IUserSettingsService userSettingsService, ILoginService loginService, IConfiguration configuration)
         {
             _userSettingsService = userSettingsService;
             _loginService = loginService;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -23,6 +26,14 @@ namespace Monitoring.UI.Pages
         /// Заполняется в OnGet.
         /// </summary>
         public List<string> AllUsers { get; set; } = new();
+
+        /// <summary>
+        /// Флаг: Показывать ли неактивных пользователей.
+        /// true = показывать только Isvalid=0
+        /// false = показывать только Isvalid=1
+        /// </summary>
+        [BindProperty(SupportsGet = true)]
+        public bool ShowInactive { get; set; }
 
         /// <summary>
         /// Имя выбранного пользователя (smallName или login). 
@@ -52,6 +63,11 @@ namespace Monitoring.UI.Pages
         /// </summary>
         public string? CurrentPasswordForSelectedUser { get; set; }
 
+        /// <summary>
+        /// Показывает, является ли пользователь активным (Isvalid=1).
+        /// </summary>
+        public bool IsUserValid { get; set; }
+
         public void OnGet()
         {
             // Предположим, берём userName (логин) из куки
@@ -79,8 +95,16 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // 1. Получаем список всех пользователей
-            AllUsers = _loginService.GetAllUsersAsync().Result;
+            // 1. Если флажок "Показать неактивных" НЕ установлен, берём только активных
+            //    иначе — только неактивных.
+            if (!ShowInactive)
+            {
+                AllUsers = _loginService.GetAllUsersAsync().Result; // Isvalid=1
+            }
+            else
+            {
+                AllUsers = _loginService.GetAllInactiveUsersAsync().Result; // Isvalid=0
+            }
 
             // 2. Получаем список всех подразделений
             Subdivisions = _userSettingsService.GetAllDivisionsAsync().Result;
@@ -100,6 +124,40 @@ namespace Monitoring.UI.Pages
 
                     // Загружаем текущий пароль
                     CurrentPasswordForSelectedUser = _userSettingsService.GetUserCurrentPasswordAsync(userId.Value).Result;
+
+                    // Узнаём Isvalid (активен/неактивен)
+                    // Для простоты: используем ту же логику, что в LoginService, или напрямую
+                    // Здесь быстрый способ: или сделать отдельный метод, или просто взять
+                    // SELECT Isvalid внутри userSettingsService. Но можно и отдельный метод.
+                    // Ниже — упрощённое решение через LoginService (или делаем отдельный Dapper).
+                    // Для наглядности показываем вручную:
+                    string connStr = _loginService.GetType().GetProperty("_configuration",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance)?
+                        .GetValue(_loginService) as string;
+                    // (В реальном проекте получаем конфиг аккуратней. Или вызываем метод GetIsValidByUserId...)
+
+                    // Но проще: добавим небольшой запрос:
+                    using (var conn = new System.Data.SqlClient.SqlConnection(
+                        _configuration.GetConnectionString("DefaultConnection")))
+                    {
+                        conn.Open();
+                        string sql = "SELECT Isvalid FROM Users WHERE idUser = @id";
+                        using (var cmd = new System.Data.SqlClient.SqlCommand(sql, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", userId.Value);
+                            object obj = cmd.ExecuteScalar();
+                            if (obj != null && obj != DBNull.Value)
+                            {
+                                int val = Convert.ToInt32(obj);
+                                IsUserValid = (val == 1);
+                            }
+                            else
+                            {
+                                IsUserValid = false;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -121,6 +179,9 @@ namespace Monitoring.UI.Pages
                 bool canSend = ((JsonElement)data["canSendCloseRequest"]).GetBoolean();
                 bool canAccess = ((JsonElement)data["canAccessSettings"]).GetBoolean();
 
+                // Новая часть: Признак isActive (валиден/не валиден)
+                bool isActive = ((JsonElement)data["isActive"]).GetBoolean();
+
                 int? userId = _loginService.GetUserIdByNameAsync(userName).Result;
                 if (userId == null)
                     return new JsonResult(new { success = false, message = "Пользователь не найден" });
@@ -131,7 +192,8 @@ namespace Monitoring.UI.Pages
                     CanSendCloseRequest = canSend,
                     CanAccessSettings = canAccess
                 };
-                _userSettingsService.SavePrivacySettingsAsync(userId.Value, dto).Wait();
+                // Теперь вызываем новый метод (с параметром isActive)
+                _userSettingsService.SavePrivacySettingsAsync(userId.Value, dto, isActive).Wait();
 
                 return new JsonResult(new { success = true });
             }
