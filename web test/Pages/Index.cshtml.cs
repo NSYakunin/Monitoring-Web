@@ -42,7 +42,6 @@ namespace Monitoring.UI.Pages
         [BindProperty(SupportsGet = true)]
         public string? Executor { get; set; }
 
-        // НОВО: "Принимающий"
         [BindProperty(SupportsGet = true)]
         public string? Approver { get; set; }
 
@@ -70,8 +69,15 @@ namespace Monitoring.UI.Pages
         // Список отделов, к которым пользователь имеет доступ
         public List<DivisionDto> AllowedDivisions { get; set; } = new();
 
+
         // Флаг: есть ли доступ к настройкам
         public bool HasSettingsAccess { get; set; } = false;
+
+        // 4.3) Флаг: есть ли у пользователя хотя бы одна входящая Pending-заявка
+        public bool HasPendingRequests { get; set; } = false;
+
+        // 4.3) Флаг: есть ли доступ к ЗАКРЫТИЮ работ (canCloseWork)
+        public bool HasCloseWorkAccess { get; set; } = false;
 
         // Флаг: есть ли доступ к отправке заявок
         public bool HasSendCloseRequestAccess { get; set; } = false;
@@ -105,6 +111,15 @@ namespace Monitoring.UI.Pages
 
             // 4.2) Проверяем, есть ли у пользователя доступ к отправке заявок на закрытие (перенос) работ
             HasSendCloseRequestAccess = await _userSettingsService.HasAccessToSendCloseRequestAsync(userId.Value);
+
+            // 4.3) Проверяем, есть ли у пользователя право **закрывать** работы
+            HasCloseWorkAccess = await _userSettingsService.HasAccessToCloseWorkAsync(userId.Value);
+            if (HasCloseWorkAccess)
+            {
+                // Если есть — тогда проверяем, есть ли у этого пользователя входящие "Pending" заявки
+                var myPending = await _workRequestService.GetPendingRequestsByReceiverAsync(UserName);
+                HasPendingRequests = (myPending != null && myPending.Count > 0);
+            }
 
             // 5) Загружаем список отделов, к которым есть доступ
             var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);

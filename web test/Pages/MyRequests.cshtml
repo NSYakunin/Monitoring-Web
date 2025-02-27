@@ -1,0 +1,162 @@
+﻿@page
+@using Monitoring.UI.Pages
+@model MyRequestsModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+@{
+    ViewData["Title"] = "Мои входящие заявки";
+}
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Мои входящие заявки (Pending)</h4>
+
+        <!-- Кнопка "Назад на главную" -->
+        <a class="btn btn-secondary" asp-page="/Index">
+            Назад на главную
+        </a>
+    </div>
+
+    <hr />
+
+    @if (!Model.HasCloseWorkAccess)
+    {
+        <div class="alert alert-danger">
+            У вас нет права на закрытие работ. Страница недоступна.
+        </div>
+    }
+    else
+    {
+        @if (Model.MyRequests != null && Model.MyRequests.Count > 0)
+        {
+            <!-- Обёртка, чтобы таблица была на всю ширину экрана,
+                 и при вертикальной прокрутке заголовок оставался "липким" (sticky).
+                 Для этого используем position: sticky в thead th.
+            -->
+            <div class="table-responsive" style="overflow-y: auto; max-height: 70vh;">
+                <table class="table table-bordered table-hover w-100" id="myRequestsTable">
+                    <thead class="sticky-header">
+                        <tr>
+                            <th>Документ</th>
+                            <th>Работа</th>
+                            <th>Исполнитель</th>
+                            <th>Контроль</th>
+                            <th>Принимающий</th>
+                            <th>План</th>
+                            <th>Корр1</th>
+                            <th>Корр2</th>
+                            <th>Корр3</th>
+                            <th>Заявка</th>
+                            <th>На дату</th>
+                            <th>Отправитель</th>
+                            <th>Заметка</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var req in Model.MyRequests)
+                        {
+                            <tr>
+                                <td>@req.DocumentName</td>
+                                <td>@req.WorkName</td>
+                                <td>@req.Executor</td>
+                                <td>@req.Controller</td>
+                                <td>@req.Receiver</td>
+                                <td>@(req.PlanDate?.ToString("yyyy-MM-dd") ?? "")</td>
+                                <td>@(req.Korrect1?.ToString("yyyy-MM-dd") ?? "")</td>
+                                <td>@(req.Korrect2?.ToString("yyyy-MM-dd") ?? "")</td>
+                                <td>@(req.Korrect3?.ToString("yyyy-MM-dd") ?? "")</td>
+                                <td>@req.RequestType</td>
+                                <td>@(req.ProposedDate?.ToString("yyyy-MM-dd") ?? "")</td>
+                                <td>@req.Sender</td>
+                                <td>@req.Note</td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        <button class="btn btn-sm btn-success"
+                                                onclick="setRequestStatus(@req.Id, '@req.WorkDocumentNumber', 'Accepted')">
+                                            Принять
+                                        </button>
+                                        <button class="btn btn-sm btn-danger"
+                                                onclick="setRequestStatus(@req.Id, '@req.WorkDocumentNumber', 'Declined')">
+                                            Отклонить
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                Нет входящих заявок.
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <style>
+        /* Стили, чтобы шапка таблицы прилипала (sticky) при скролле */
+        .sticky-header th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #2c3e50;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .sticky-header th {
+            padding: 8px;
+            border-bottom: 2px solid #1a252f;
+        }
+
+            .sticky-header th::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                height: 60%;
+                width: 1px;
+                background: rgba(255,255,255,0.1);
+            }
+
+            .sticky-header th:last-child::after {
+                display: none;
+            }
+
+        /* Кнопочки в столбце "Действие" */
+        .btn-sm {
+            padding: 4px 8px;
+        }
+    </style>
+
+    <script>
+        function setRequestStatus(requestId, docNumber, newStatus) {
+            let bodyData = {
+                RequestId: requestId,
+                DocumentNumber: docNumber,
+                NewStatus: newStatus
+            };
+            fetch('@Url.Page("MyRequests", "SetRequestStatus")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyData)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    alert("Статус обновлён: " + newStatus);
+                    location.reload(); // просто перезагрузим страницу
+                } else {
+                    alert("Ошибка: " + res.message);
+                }
+            })
+            .catch(e => console.error(e));
+        }
+    </script>
+}

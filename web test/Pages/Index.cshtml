@@ -173,6 +173,16 @@
                     </div>
                 </div>
             </form>
+
+            <!-- НОВАЯ КНОПКА: отображается только если есть право закрывать (HasCloseWorkAccess) -->
+            @if (Model.HasCloseWorkAccess)
+            {
+                <!-- Если есть Pending-заявки, делаем яркую кнопку, иначе тусклую -->
+                <a href="/MyRequests" target="_blank"
+                   class="btn btn-myrequests @(Model.HasPendingRequests ? "btn-myrequests-new" : "btn-myrequests-none")">
+                    Входящие заявки
+                </a>
+            }
         </div>
     </div>
 
@@ -185,7 +195,8 @@
         </div>
     </div>
 
-    <!-- Мои входящие заявки -->
+    @*
+    <!-- БЛОК "Мои входящие заявки" УБРАН (или закомментирован):
     <div class="row mb-4">
         <div class="col-12">
             <h5>Мои входящие заявки</h5>
@@ -216,6 +227,8 @@
             </div>
         </div>
     </div>
+    -->
+    *@
 
 </div>
 
@@ -355,6 +368,53 @@
                 box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
             }
 
+        /* НОВЫЕ СТИЛИ для кнопки "Входящие заявки" */
+        .btn-myrequests {
+            margin-top: 10px;
+            margin-left: auto;
+            display: inline-block;
+            text-align: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        /* Когда нет входящих заявок, пусть кнопка будет более тусклая */
+        .btn-myrequests-none {
+            background: #6c757d; /* серо-тусклая */
+            color: #f8f9fa;
+        }
+
+            .btn-myrequests-none:hover {
+                background: #5a6268;
+                color: #ffffff;
+            }
+
+        /* Когда есть Pending-заявки, пусть кнопка будет более яркой */
+        .btn-myrequests-new {
+            background: #ffc107; /* желтый */
+            color: #212529;
+            box-shadow: 0 4px 8px rgba(255,193,7,0.4);
+        }
+
+            .btn-myrequests-new:hover {
+                background: #ffca2c; 
+                color: #212529;
+                box-shadow: 0 6px 12px rgba(255,193,7,0.5);
+            }
+
+        @@keyframes pulse {
+            0% { box-shadow: 0 0 0 rgba(255,193,7,0.5); }
+            50% { box-shadow: 0 0 20px rgba(255,193,7,0.7); }
+            100% { box-shadow: 0 0 0 rgba(255,193,7,0.5); }
+        }
+
+        .btn-myrequests-new {
+            animation: pulse 2s infinite;
+        }
+
         .spinner-border {
             vertical-align: text-top;
         }
@@ -458,8 +518,7 @@
                 });
             });
 
-            // При загрузке сразу грузим "Мои заявки"
-            loadMyPendingRequests();
+            // Убрали loadMyPendingRequests() отсюда, так как теперь отдельная страница
         });
 
         function loadExecutors(divisionId) {
@@ -694,74 +753,6 @@
                         delete tr.dataset.receiver;
                         tr.classList.remove('table-warning', 'table-info');
                     }
-                } else {
-                    alert("Ошибка: " + res.message);
-                }
-            })
-            .catch(e => console.error(e));
-        }
-
-        // Загрузка моих заявок
-        function loadMyPendingRequests() {
-            fetch('@Url.Page("Index", "MyRequests")')
-            .then(r => r.json())
-            .then(data => {
-                let tbody = document.getElementById('myRequestsTbody');
-                tbody.innerHTML = "";
-
-                data.forEach(req => {
-                    let tr = document.createElement('tr');
-                    let actionTd = `
-                        <div class="d-flex flex-column">
-                            <button class="btn btn-sm btn-success mb-1"
-                                onclick="setRequestStatus(${req.id}, '${req.workDocumentNumber}', 'Accepted')">
-                                Принять
-                            </button>
-                            <button class="btn btn-sm btn-danger"
-                                onclick="setRequestStatus(${req.id}, '${req.workDocumentNumber}', 'Declined')">
-                                Отклонить
-                            </button>
-                        </div>
-                    `;
-                    tr.innerHTML = `
-                        <td>${req.documentName || ""}</td>
-                        <td>${req.workName || ""}</td>
-                        <td>${req.executor || ""}</td>
-                        <td>${req.controller || ""}</td>
-                        <td>${req.approver || ""}</td>
-                        <td>${req.planDate || ""}</td>
-                        <td>${req.korrect1 || ""}</td>
-                        <td>${req.korrect2 || ""}</td>
-                        <td>${req.korrect3 || ""}</td>
-                        <td>${req.requestType || ""}</td>
-                        <td>${req.proposedDate || ""}</td>
-                        <td>${req.sender || ""}</td>
-                        <td>${req.note || ""}</td>
-                        <td>${actionTd}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            })
-            .catch(e => console.error(e));
-        }
-
-        // Принять / Отклонить
-        function setRequestStatus(requestId, docNumber, newStatus) {
-            let bodyData = {
-                RequestId: requestId,
-                DocumentNumber: docNumber,
-                NewStatus: newStatus
-            };
-            fetch('@Url.Page("Index", "SetRequestStatus")', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bodyData)
-            })
-            .then(r => r.json())
-            .then(res => {
-                if (res.success) {
-                    alert("Статус обновлён: " + newStatus);
-                    loadMyPendingRequests();
                 } else {
                     alert("Ошибка: " + res.message);
                 }
