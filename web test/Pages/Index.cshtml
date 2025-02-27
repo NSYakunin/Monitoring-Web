@@ -174,10 +174,9 @@
                 </div>
             </form>
 
-            <!-- НОВАЯ КНОПКА: отображается только если есть право закрывать (HasCloseWorkAccess) -->
+            <!-- КНОПКА "Входящие заявки" отображается только при наличии прав на закрытие работ -->
             @if (Model.HasCloseWorkAccess)
             {
-                <!-- Если есть Pending-заявки, делаем яркую кнопку, иначе тусклую -->
                 <a href="/MyRequests" target="_blank"
                    class="btn btn-myrequests @(Model.HasPendingRequests ? "btn-myrequests-new" : "btn-myrequests-none")">
                     Входящие заявки
@@ -196,38 +195,10 @@
     </div>
 
     @*
-    <!-- БЛОК "Мои входящие заявки" УБРАН (или закомментирован):
+    <!-- Блок "Мои входящие заявки" закомментирован, т.к. вынесен на отдельную страницу:
     <div class="row mb-4">
-        <div class="col-12">
-            <h5>Мои входящие заявки</h5>
-            <div style="overflow-x: auto;">
-                <table class="table table-bordered table-hover" style="min-width: 1500px;">
-                    <thead>
-                        <tr>
-                            <th>Документ</th>
-                            <th>Работа</th>
-                            <th>Исполнитель</th>
-                            <th>Контроль</th>
-                            <th>Принимающий</th>
-                            <th>План</th>
-                            <th>Корр1</th>
-                            <th>Корр2</th>
-                            <th>Корр3</th>
-                            <th>Заявка</th>
-                            <th>На дату</th>
-                            <th>Отправитель</th>
-                            <th>Заметка</th>
-                            <th>Действие</th>
-                        </tr>
-                    </thead>
-                    <tbody id="myRequestsTbody">
-                        <!-- заполняется JS (loadMyPendingRequests) -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        ...
     </div>
-    -->
     *@
 
 </div>
@@ -368,7 +339,7 @@
                 box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
             }
 
-        /* НОВЫЕ СТИЛИ для кнопки "Входящие заявки" */
+        /* Кнопка "Входящие заявки" */
         .btn-myrequests {
             margin-top: 10px;
             margin-left: auto;
@@ -578,9 +549,24 @@
             document.getElementById('hiddenDocNumber').value = docNumber;
             document.getElementById('hiddenRequestId').value = requestId;
             document.getElementById('requestTypeSelect').value = reqType;
-            document.getElementById('proposedDate').value = proposed;
+
+            let proposedDateInput = document.getElementById('proposedDate');
+            if (requestId) {
+                // Если заявка существующая, берём дату из data-атрибута
+                proposedDateInput.value = proposed;
+            }
+            else {
+                // Если заявка новая, по умолчанию ставим сегодняшнюю
+                let today = new Date();
+                let yyyy = today.getFullYear();
+                let mm = (today.getMonth() + 1).toString().padStart(2, '0');
+                let dd = today.getDate().toString().padStart(2, '0');
+                proposedDateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+
             document.getElementById('requestNote').value = note;
 
+            // Заполняем селект "Получатель"
             let receiverSelect = document.getElementById('receiverSelect');
             receiverSelect.innerHTML = "";
 
@@ -594,9 +580,16 @@
             optAppr.textContent = `Принимающий (${approver})`;
             receiverSelect.appendChild(optAppr);
 
-            if (optCtrl.value === tr.dataset.receiver) {
-                optCtrl.selected = true;
-            } else if (optAppr.value === tr.dataset.receiver) {
+            // Если это существующая заявка => выбираем того, кто уже есть
+            if (requestId) {
+                if (optCtrl.value === tr.dataset.receiver) {
+                    optCtrl.selected = true;
+                } else if (optAppr.value === tr.dataset.receiver) {
+                    optAppr.selected = true;
+                }
+            }
+            else {
+                // Если новая заявка — по умолчанию выбираем второй option (Принимающего)
                 optAppr.selected = true;
             }
 
