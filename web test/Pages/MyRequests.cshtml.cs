@@ -74,7 +74,6 @@ namespace Monitoring.UI.Pages
                     return new JsonResult(new { success = false, message = "Невалидные данные" });
 
                 // Проверяем, что текущий пользователь == Receiver
-                // (сделаем саму проверку в сервисе, или прямо тут)
                 var allForDoc = await _workRequestService.GetRequestsByDocumentNumberAsync(data.DocumentNumber);
                 var req = allForDoc.FirstOrDefault(r => r.Id == data.RequestId);
                 if (req == null)
@@ -92,6 +91,7 @@ namespace Monitoring.UI.Pages
                 if (data.NewStatus != "Accepted" && data.NewStatus != "Declined")
                     return new JsonResult(new { success = false, message = "Некорректный статус" });
 
+                // Здесь вызываем расширенный метод
                 await _workRequestService.SetRequestStatusAsync(data.RequestId, data.NewStatus);
 
                 return new JsonResult(new { success = true });

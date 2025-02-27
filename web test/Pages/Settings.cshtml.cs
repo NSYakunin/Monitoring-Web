@@ -12,32 +12,26 @@ namespace Monitoring.UI.Pages
     {
         private readonly IUserSettingsService _userSettingsService;
         private readonly ILoginService _loginService;
-        private readonly IConfiguration _configuration;
 
-        public SettingsModel(IUserSettingsService userSettingsService, ILoginService loginService, IConfiguration configuration)
+        public SettingsModel(IUserSettingsService userSettingsService, ILoginService loginService)
         {
             _userSettingsService = userSettingsService;
             _loginService = loginService;
-            _configuration = configuration;
         }
 
         /// <summary>
         /// Список всех пользователей (smallName, login или любой другой идентификатор).
-        /// Заполняется в OnGet.
         /// </summary>
         public List<string> AllUsers { get; set; } = new();
 
         /// <summary>
         /// Флаг: Показывать ли неактивных пользователей.
-        /// true = показывать только Isvalid=0
-        /// false = показывать только Isvalid=1
         /// </summary>
         [BindProperty(SupportsGet = true)]
         public bool ShowInactive { get; set; }
 
         /// <summary>
-        /// Имя выбранного пользователя (smallName или login). 
-        /// Берётся из query-параметра ?SelectedUserName=...
+        /// Имя выбранного пользователя.
         /// </summary>
         [BindProperty(SupportsGet = true)]
         public string? SelectedUserName { get; set; }
@@ -58,8 +52,7 @@ namespace Monitoring.UI.Pages
         public List<int> UserSelectedDivisionIds { get; set; } = new();
 
         /// <summary>
-        /// Текущий пароль (из таблицы Users.Password). 
-        /// Показываем в поле для чтения.
+        /// Текущий пароль (из таблицы Users.Password).
         /// </summary>
         public string? CurrentPasswordForSelectedUser { get; set; }
 
@@ -125,43 +118,11 @@ namespace Monitoring.UI.Pages
                     // Загружаем текущий пароль
                     CurrentPasswordForSelectedUser = _userSettingsService.GetUserCurrentPasswordAsync(userId.Value).Result;
 
-                    // Узнаём Isvalid (активен/неактивен)
-                    // Для простоты: используем ту же логику, что в LoginService, или напрямую
-                    // Здесь быстрый способ: или сделать отдельный метод, или просто взять
-                    // SELECT Isvalid внутри userSettingsService. Но можно и отдельный метод.
-                    // Ниже — упрощённое решение через LoginService (или делаем отдельный Dapper).
-                    // Для наглядности показываем вручную:
-                    string connStr = _loginService.GetType().GetProperty("_configuration",
-                        System.Reflection.BindingFlags.NonPublic |
-                        System.Reflection.BindingFlags.Instance)?
-                        .GetValue(_loginService) as string;
-                    // (В реальном проекте получаем конфиг аккуратней. Или вызываем метод GetIsValidByUserId...)
-
-                    // Но проще: добавим небольшой запрос:
-                    using (var conn = new System.Data.SqlClient.SqlConnection(
-                        _configuration.GetConnectionString("DefaultConnection")))
-                    {
-                        conn.Open();
-                        string sql = "SELECT Isvalid FROM Users WHERE idUser = @id";
-                        using (var cmd = new System.Data.SqlClient.SqlCommand(sql, conn))
-                        {
-                            cmd.Parameters.AddWithValue("@id", userId.Value);
-                            object obj = cmd.ExecuteScalar();
-                            if (obj != null && obj != DBNull.Value)
-                            {
-                                int val = Convert.ToInt32(obj);
-                                IsUserValid = (val == 1);
-                            }
-                            else
-                            {
-                                IsUserValid = false;
-                            }
-                        }
-                    }
+                    // Узнаём Isvalid (активен/неактивен), через метод сервиса:
+                    IsUserValid = _userSettingsService.IsUserValidAsync(userId.Value).Result;
                 }
             }
         }
-
         // POST: Сохранение настроек приватности
         public IActionResult OnPostSavePrivacySettings()
         {

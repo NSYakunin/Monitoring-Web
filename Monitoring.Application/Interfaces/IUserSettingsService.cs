@@ -28,6 +28,8 @@ namespace Monitoring.Application.Interfaces
         // Сохранить список id подразделений, доступных пользователю
         Task SaveUserAllowedDivisionsAsync(int userId, List<int> divisionIds);
 
+        Task<bool> IsUserValidAsync(int userId);
+
         // Регистрация нового пользователя
         Task<int> RegisterUserInDbAsync(
             string fullName,

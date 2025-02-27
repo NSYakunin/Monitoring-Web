@@ -1,9 +1,7 @@
 ﻿@page
 @model MyRequestsModel
-@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-
-
 @using Monitoring.UI.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 
 @{
     ViewData["Title"] = "Мои входящие заявки";
@@ -13,7 +11,7 @@
 <div class="container-fluid mt-3">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">Мои входящие заявк</h4>
+        <h4 class="mb-0">Мои входящие заявки</h4>
 
         <!-- Кнопка "Назад на главную" -->
         <a class="btn btn-secondary" asp-page="/Index">
@@ -33,11 +31,6 @@
     {
         @if (Model.MyRequests != null && Model.MyRequests.Count > 0)
         {
-            <!-- 
-                Обёртка с overflow-y: auto и max-height: 75vh, 
-                чтобы при большом количестве заявок появился вертикальный скролл
-                и шапка (thead) оставалась липкой (sticky).
-            -->
             <div class="table-responsive" style="overflow-y: auto; max-height: 75vh;">
                 <table class="table table-bordered table-hover w-100" id="myRequestsTable">
                     <thead class="sticky-header">
@@ -61,11 +54,6 @@
                     <tbody>
                         @foreach (var req in Model.MyRequests)
                         {
-                            /*
-                               Определяем класс строки, чтобы подсветка была мягкой и прозрачной:
-                               - Если RequestType == "факт" => используем table-info (голубой, но переопределим в CSS -> прозрачность)
-                               - Иначе (корр1, корр2, корр3, и т.д.) => table-warning (желтый, но переопределим в CSS -> прозрачность)
-                            */
                             string rowClass = (req.RequestType == "факт") ? "table-info" : "table-warning";
 
                             <tr class="@rowClass">
@@ -83,16 +71,14 @@
                                 <td>@req.Sender</td>
                                 <td>@req.Note</td>
                                 <td>
-                                    <!-- Центрируем кнопки верт. и гориз. 
-                                         (Bootstrap: text-center + d-flex justify-content-center align-items-center)
-                                    -->
                                     <div class="d-flex flex-column gap-2 justify-content-center align-items-center">
+                                        <!-- Передаём доп. параметры: requestType, proposedDate -->
                                         <button class="btn btn-approve"
-                                            onclick="setRequestStatus(@req.Id, '@req.WorkDocumentNumber', 'Accepted')">
+                                                onclick="setRequestStatus(@req.Id, '@req.WorkDocumentNumber', 'Accepted', '@req.RequestType', '@(req.ProposedDate?.ToString("yyyy-MM-dd"))')">
                                             Принять
                                         </button>
                                         <button class="btn btn-decline"
-                                            onclick="setRequestStatus(@req.Id, '@req.WorkDocumentNumber', 'Declined')">
+                                                onclick="setRequestStatus(@req.Id, '@req.WorkDocumentNumber', 'Declined', '@req.RequestType', '@(req.ProposedDate?.ToString("yyyy-MM-dd"))')">
                                             Отклонить
                                         </button>
                                     </div>
@@ -114,14 +100,14 @@
 
 @section Scripts {
     <style>
-        /* Липкий заголовок (sticky header), центрируем текст */
+        /* Липкий заголовок (sticky header) */
         .sticky-header th {
             position: sticky;
             top: 0;
             z-index: 10;
             background: #2c3e50;
             color: #fff;
-            text-align: center; /* Заголовки столбцов по центру */
+            text-align: center;
         }
 
         .sticky-header th {
@@ -130,52 +116,42 @@
             white-space: nowrap;
         }
 
-        .sticky-header th::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            height: 60%;
-            width: 1px;
-            background: rgba(255,255,255,0.1);
-        }
+            .sticky-header th::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                height: 60%;
+                width: 1px;
+                background: rgba(255,255,255,0.1);
+            }
 
-        .sticky-header th:last-child::after {
-            display: none;
-        }
+            .sticky-header th:last-child::after {
+                display: none;
+            }
 
-        /* 
-           Разрешаем перенос строк везде, кроме столбцов (План, Корр1, Корр2, Корр3).
-           Это 6,7,8,9-й столбцы:
-        */
         #myRequestsTable td {
-            white-space: normal; /* разрешаем перенос строк */
-            vertical-align: middle; /* чтобы содержимое было посередине по вертикали */
+            white-space: normal;
+            vertical-align: middle;
         }
 
-        #myRequestsTable td:nth-child(6),
-        #myRequestsTable td:nth-child(7),
-        #myRequestsTable td:nth-child(8),
-        #myRequestsTable td:nth-child(9),
-        #myRequestsTable td:nth-child(11) {
-            white-space: nowrap; /* даты не переносятся */
-        }
+            #myRequestsTable td:nth-child(6),
+            #myRequestsTable td:nth-child(7),
+            #myRequestsTable td:nth-child(8),
+            #myRequestsTable td:nth-child(9),
+            #myRequestsTable td:nth-child(11) {
+                white-space: nowrap;
+            }
 
-        /* Более мягкая прозрачность для table-info (обычно голубой) */
         .table-info {
-            background-color: rgba(23, 162, 184, 0.15) !important; /* 0.15 - прозрачность */
+            background-color: rgba(23, 162, 184, 0.15) !important;
         }
 
-        /* Более мягкая прозрачность для table-warning (обычно желтый) */
         .table-warning {
-            background-color: rgba(255, 193, 7, 0.15) !important; /* 0.15 - прозрачность */
+            background-color: rgba(255, 193, 7, 0.15) !important;
         }
 
-        /* Кнопки "Принять" и "Отклонить" - оформляем более мягко,
-           но в фирменных цветах. Можно использовать Bootstrap "outline", 
-           но сделаем свой стиль для большей индивидуальности.
-        */
         .btn-approve {
             background: linear-gradient(145deg, #28a745, #218838);
             color: white;
@@ -221,12 +197,32 @@
 
     <script>
         // AJAX-метод для обновления статуса заявки
-        function setRequestStatus(requestId, docNumber, newStatus) {
+        // Добавили параметры requestType и proposedDate, чтобы сделать confirm.
+        function setRequestStatus(requestId, docNumber, newStatus, requestType, proposedDate) {
+
+            // Делаем диалог подтверждения
+            let msg = "Вы точно хотите ";
+            if (newStatus === 'Accepted') {
+                msg += "принять заявку";
+            } else {
+                msg += "отклонить заявку";
+            }
+            if (requestType && proposedDate) {
+                // Если у нас есть тип заявки (факт/корр1/корр2/корр3) и дата
+                msg += ` (${requestType} на ${proposedDate})`;
+            }
+            msg += ` для документа [${docNumber}]?`;
+
+            if (!confirm(msg)) {
+                return; // пользователь передумал
+            }
+
             let bodyData = {
                 RequestId: requestId,
                 DocumentNumber: docNumber,
                 NewStatus: newStatus
             };
+
             fetch('@Url.Page("MyRequests", "SetRequestStatus")', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

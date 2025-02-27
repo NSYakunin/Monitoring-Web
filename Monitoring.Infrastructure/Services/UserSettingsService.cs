@@ -73,6 +73,31 @@ namespace Monitoring.Infrastructure.Services
             return result;
         }
 
+        /// <summary>
+        /// Новый метод: Проверяем, активен ли пользователь (Isvalid=1).
+        /// </summary>
+        public async Task<bool> IsUserValidAsync(int userId)
+        {
+            bool isUserActive = false;
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            using (var conn = new SqlConnection(connStr))
+            {
+                await conn.OpenAsync();
+                string sql = "SELECT Isvalid FROM Users WHERE idUser = @id";
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", userId);
+                    object obj = await cmd.ExecuteScalarAsync();
+                    if (obj != null && obj != DBNull.Value)
+                    {
+                        int val = Convert.ToInt32(obj);
+                        isUserActive = (val == 1);
+                    }
+                }
+            }
+            return isUserActive;
+        }
+
         // ВАЖНО! Обратите внимание, что мы добавляем параметр "bool isActive"
         // и перед сохранением в [UserPrivacy] обновляем ещё и поле [Isvalid] в [Users].
         public async Task SavePrivacySettingsAsync(int userId, PrivacySettingsDto dto, bool isActive)
