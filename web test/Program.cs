@@ -4,30 +4,13 @@ using Microsoft.Extensions.Configuration;
 //using Monitoring.Infrastructure.Services.Fake;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Infrastructure;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Monitoring.UI.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages(options =>
-{
-    options.Conventions.ConfigureFilter(new IgnoreAntiforgeryTokenAttribute());
-});
-
-builder.Services.AddMemoryCache();
-
- builder.Services.AddScoped<IWorkItemService, WorkItemService>();
-//builder.Services.AddScoped<IWorkItemService, FakeWorkItemService>();
- builder.Services.AddScoped<ILoginService, LoginService>();
-//builder.Services.AddScoped<ILoginService, FakeLoginService>();
-
-builder.Services.AddScoped<IUserSettingsService, UserSettingsService>(); 
-
-builder.Services.AddTransient<INotificationService, NotificationService>();
-builder.Services.AddTransient<IWorkRequestService, WorkRequestService>();
-
-//автоматически загружается при вызове 
-//builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-
-QuestPDF.Settings.License = LicenseType.Community;
+// Регистрируем сервисы
+builder.Services.AddMonitoringServices(builder.Configuration);
 
 var app = builder.Build();
 
