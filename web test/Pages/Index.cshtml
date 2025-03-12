@@ -177,7 +177,7 @@
             <!-- КНОПКА "Входящие заявки" отображается только при наличии прав на закрытие работ -->
             @if (Model.HasCloseWorkAccess)
             {
-                <a href="/MyRequests" target="_blank"
+                <a href="/MyRequests"
                    class="btn btn-myrequests @(Model.HasPendingRequests ? "btn-myrequests-new" : "btn-myrequests-none")">
                     Входящие заявки
                 </a>
