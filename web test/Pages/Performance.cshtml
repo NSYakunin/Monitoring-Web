@@ -1,0 +1,78 @@
+﻿@page
+@using Monitoring.UI.Pages
+@model PerformanceModel
+
+@{
+    ViewData["Title"] = "Исполнительность по подразделениям";
+}
+
+<h2>Исполнительность по подразделениям</h2>
+
+<!-- Форма для выбора дат -->
+<form method="get">
+    <div class="row mb-3">
+        <div class="col-auto">
+            <label for="startDate" class="form-label">C даты:</label>
+            <input type="date" class="form-control" id="startDate" name="StartDate"
+                   value="@(Model.StartDate.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="col-auto">
+            <label for="endDate" class="form-label">По дату:</label>
+            <input type="date" class="form-control" id="endDate" name="EndDate"
+                   value="@(Model.EndDate.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">
+                Показать
+            </button>
+        </div>
+    </div>
+</form>
+
+<!-- Таблица результатов -->
+@if (Model.Results != null && Model.Results.Count > 0)
+{
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 50px;">№ отд.</th>
+                <th>Подразделение</th>
+                <th style="width: 80px;">План</th>
+                <th style="width: 80px;">Факт</th>
+                <th style="width: 80px;">%исп</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Results)
+            {
+                double plan = row.PlanCount;
+                double fact = row.FactCount;
+                double percentage = (plan + fact) == 0 ? 0 : Math.Round((fact / (plan + fact)) * 100, 2);
+
+                <tr>
+                    <td>@row.DivisionId</td>
+                    <td>@row.DivisionName</td>
+                    <td>@plan</td>
+                    <td>@fact</td>
+                    <td>@(percentage + "%")</td>
+                </tr>
+            }
+
+            @* Итоговая строка – сумма *@
+            var totalPlan = Model.Results.Sum(x => x.PlanCount);
+            var totalFact = Model.Results.Sum(x => x.FactCount);
+            var totalPerc = (totalPlan + totalFact) == 0 ? 0 : Math.Round((totalFact / (totalPlan + totalFact)) * 100, 2);
+
+            <tr class="fw-bold">
+                <td colspan="2" class="text-end">Итог:</td>
+                <td>totalPlan</td>
+                <td>totalFact</td>
+                <td>(totalPerc + "%")</td>
+            </tr>
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Нет данных за указанный период</p>
+}

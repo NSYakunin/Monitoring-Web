@@ -140,23 +140,20 @@
             </div>
         </div>
 
-        <div class="col-auto d-flex flex-column justify-content-end">
-            <form method="post" id="exportForm">
-                <input type="hidden" asp-for="StartDate" />
-                <input type="hidden" asp-for="EndDate" />
-                <input type="hidden" asp-for="Executor" />
-                <input type="hidden" asp-for="Approver" />
-                <input type="hidden" asp-for="SearchQuery" />
-                <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
-                <input type="hidden" asp-for="SelectedDivision" />
+        <div class="col-auto d-flex flex-column">
+            <div class="d-flex flex-column gap-2">
+                <form method="post" id="exportForm" class="w-100">
+                    <input type="hidden" asp-for="StartDate" />
+                    <input type="hidden" asp-for="EndDate" />
+                    <input type="hidden" asp-for="Executor" />
+                    <input type="hidden" asp-for="Approver" />
+                    <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
+                    <input type="hidden" asp-for="SelectedDivision" />
+                    <input type="hidden" name="format" id="formatInput" value="pdf" />
 
-                <input type="hidden" name="format" id="formatInput" value="pdf" />
-
-                <div class="d-flex justify-content-end">
-                    <!-- Группа кнопок -->
-                    <div class="btn-group dropup">
+                    <div class="btn-group dropup w-100">
                         <button type="button"
-                                class="btn btn-pdf dropdown-toggle"
+                                class="btn btn-pdf dropdown-toggle w-100"
                                 data-bs-toggle="dropdown"
                                 aria-expanded="false"
                                 id="generatePdfBtn">
@@ -165,23 +162,26 @@
                                   style="display:none;"></span>
                             Сдаточный чек
                         </button>
-                        <ul class="dropdown-menu" aria-labelledby="generatePdfBtn">
+                        <ul class="dropdown-menu w-100" aria-labelledby="generatePdfBtn">
                             <li><a class="dropdown-item" href="#" onclick="setFormat('pdf')">PDF</a></li>
                             <li><a class="dropdown-item" href="#" onclick="setFormat('excel')">Excel</a></li>
                             <li><a class="dropdown-item" href="#" onclick="setFormat('word')">Word</a></li>
                         </ul>
                     </div>
-                </div>
-            </form>
+                </form>
 
-            <!-- КНОПКА "Входящие заявки" отображается только при наличии прав на закрытие работ -->
-            @if (Model.HasCloseWorkAccess)
-            {
-                <a href="/MyRequests"
-                   class="btn btn-myrequests @(Model.HasPendingRequests ? "btn-myrequests-new" : "btn-myrequests-none")">
-                    Входящие заявки
+                @if (Model.HasCloseWorkAccess)
+                {
+                    <a href="/MyRequests"
+                       class="btn btn-myrequests @(Model.HasPendingRequests ? "btn-myrequests-new" : "btn-myrequests-none") w-100">
+                        Входящие заявки
+                    </a>
+                }
+
+                <a asp-page="./Performance" class="btn btn-secondary w-100">
+                    Исполнительность
                 </a>
-            }
+            </div>
         </div>
     </div>
 
