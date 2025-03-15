@@ -27,7 +27,7 @@ namespace Monitoring.Infrastructure.Services
             var result = new List<PerformanceDto>();
 
             // Тот самый запрос, разбитый на подзапросы для Плана и Факта.
-            // Обратите внимание, что здесь всё параметризовано (@StartDate, @EndDate).
+            // Всё параметризовано (@StartDate, @EndDate).
             string sql = @"
                 SELECT
                     d.idDivision,
