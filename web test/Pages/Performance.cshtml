@@ -1,25 +1,30 @@
 ﻿@page
-@using Monitoring.UI.Pages
-@model PerformanceModel
+@model Monitoring.UI.Pages.PerformanceModel
 
 @{
-    ViewData["Title"] = "Исполнительность по подразделениям";
+    ViewData["Title"] = "Отчет по всем подразделениям";
 }
 
-<h2>Исполнительность по подразделениям</h2>
+<h2>Отчет по всем подразделениям</h2>
 
 <!-- Форма для выбора дат -->
 <form method="get">
     <div class="row mb-3">
         <div class="col-auto">
             <label for="startDate" class="form-label">C даты:</label>
-            <input type="date" class="form-control" id="startDate" name="StartDate"
-                   value="@(Model.StartDate.ToString("yyyy-MM-dd"))" />
+            <input type="date"
+                   class="form-control"
+                   id="startDate"
+                   name="StartDate"
+                   value="@Model.StartDate.ToString("yyyy-MM-dd")" />
         </div>
         <div class="col-auto">
             <label for="endDate" class="form-label">По дату:</label>
-            <input type="date" class="form-control" id="endDate" name="EndDate"
-                   value="@(Model.EndDate.ToString("yyyy-MM-dd"))" />
+            <input type="date"
+                   class="form-control"
+                   id="endDate"
+                   name="EndDate"
+                   value="@Model.EndDate.ToString("yyyy-MM-dd")" />
         </div>
         <div class="col-auto align-self-end">
             <button type="submit" class="btn btn-primary">
@@ -32,43 +37,30 @@
 <!-- Таблица результатов -->
 @if (Model.Results != null && Model.Results.Count > 0)
 {
-    <table class="table table-bordered table-hover align-middle">
-        <thead class="table-light">
+    <table class="table table-bordered table-hover align-middle custom-table">
+        <thead>
             <tr>
-                <th style="width: 50px;">№ отд.</th>
                 <th>Подразделение</th>
-                <th style="width: 80px;">План</th>
-                <th style="width: 80px;">Факт</th>
-                <th style="width: 80px;">%исп</th>
+                <th>Плановая</th>
+                <th>Фактическая</th>
+                <th>Процент</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var row in Model.Results)
             {
-                double plan = row.PlanCount;
-                double fact = row.FactCount;
-                double percentage = (plan + fact) == 0 ? 0 : Math.Round((fact / (plan + fact)) * 100, 2);
-
+                <!--
+                    row.Percentage хранит дробь от 0 до 1,
+                    умножаем на 100 и округляем до целого.
+                 -->
+                var percent = Math.Round(row.Percentage * 100, 0);
                 <tr>
-                    <td>@row.DivisionId</td>
                     <td>@row.DivisionName</td>
-                    <td>@plan</td>
-                    <td>@fact</td>
-                    <td>@(percentage + "%")</td>
+                    <td>@row.PlanCount</td>
+                    <td>@row.FactCount</td>
+                    <td>@(percent + "%")</td>
                 </tr>
             }
-
-            @* Итоговая строка – сумма *@
-            var totalPlan = Model.Results.Sum(x => x.PlanCount);
-            var totalFact = Model.Results.Sum(x => x.FactCount);
-            var totalPerc = (totalPlan + totalFact) == 0 ? 0 : Math.Round((totalFact / (totalPlan + totalFact)) * 100, 2);
-
-            <tr class="fw-bold">
-                <td colspan="2" class="text-end">Итог:</td>
-                <td>totalPlan</td>
-                <td>totalFact</td>
-                <td>(totalPerc + "%")</td>
-            </tr>
         </tbody>
     </table>
 }
@@ -76,3 +68,24 @@ else
 {
     <p>Нет данных за указанный период</p>
 }
+
+<!--
+    Немного CSS, чтобы сделать таблицу 'круче':
+    - Подсветка заголовка (фон + тень)
+    - Анимация при наведении на строку (приподнимается)
+-->
+<style>
+    .custom-table thead {
+        background-color: #f2f2f2;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .custom-table tbody tr {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        .custom-table tbody tr:hover {
+            transform: scale(1.01);
+            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+        }
+</style>

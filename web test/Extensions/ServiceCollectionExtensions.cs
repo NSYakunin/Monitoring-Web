@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Monitoring.Application.Interfaces;
 using Monitoring.Application.Services;
@@ -29,6 +30,7 @@ namespace Monitoring.UI.Extensions
             services.AddMemoryCache();
 
             // Наши сервисы
+            services.AddScoped<IPerformanceService, PerformanceService>();
             services.AddScoped<IWorkItemService, WorkItemService>();
             services.AddScoped<ILoginService, LoginService>();
             services.AddScoped<IUserSettingsService, UserSettingsService>();
