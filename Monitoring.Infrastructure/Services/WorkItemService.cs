@@ -28,186 +28,182 @@ namespace Monitoring.Infrastructure.Services
         /// </summary>
         public async Task<List<WorkItem>> GetAllWorkItemsAsync(List<int> divisionIds)
         {
-            // Если список пустой, возвращаем пустой список (или можно выбросить исключение)
             if (divisionIds == null || divisionIds.Count == 0)
                 return new List<WorkItem>();
 
-            // Чтобы кэшировать по комбинации подразделений, упорядочим ID 
-            // и сформируем строку-ключ: "AllWorkItems_10_12_17"
-            var sortedDivs = divisionIds.OrderBy(x => x).ToList();
-            string divisionsKeyPart = string.Join("_", sortedDivs);
-            string cacheKey = $"AllWorkItems_{divisionsKeyPart}";
+            // Для нескольких отделов - объединяем
+            var all = new List<WorkItem>();
 
-            // Пытаемся взять из кэша
-            if (!_cache.TryGetValue(cacheKey, out List<WorkItem> workItems))
+            foreach (int divId in divisionIds.Distinct())
             {
-                workItems = new List<WorkItem>();
+                var itemsForDiv = await GetAllWorkItemsForSingleDivision(divId);
+                all.AddRange(itemsForDiv);
+            }
 
-                // Динамическое формирование IN (...)
-                var paramNames = new List<string>();
-                for (int i = 0; i < sortedDivs.Count; i++)
+            // Теперь "агрегируем" их (собираем одинаковые записи, чтобы не дублировать исполнителей).
+            // Можно использовать тот же подход со словарём (documentNumber + поля).
+            var dict = new Dictionary<string, WorkItem>();
+
+            foreach (var w in all)
+            {
+                // Ключ
+                string key = $"{w.DocumentName}|{w.WorkName}|{w.Approver}|{w.PlanDate}|{w.Korrect1}|{w.Korrect2}|{w.Korrect3}|{w.FactDate}|{w.DocumentNumber}";
+
+                if (!dict.ContainsKey(key))
                 {
-                    paramNames.Add($"@div{i}");
+                    dict[key] = new WorkItem
+                    {
+                        DocumentNumber = w.DocumentNumber,
+                        DocumentName = w.DocumentName,
+                        WorkName = w.WorkName,
+                        Executor = w.Executor,
+                        Controller = w.Controller,
+                        Approver = w.Approver,
+                        PlanDate = w.PlanDate,
+                        Korrect1 = w.Korrect1,
+                        Korrect2 = w.Korrect2,
+                        Korrect3 = w.Korrect3,
+                        FactDate = w.FactDate
+                    };
                 }
-                string inClause = string.Join(", ", paramNames);
+                else
+                {
+                    // Агрегация исполнителей/контроллеров
+                    var existing = dict[key];
 
-                string query = $@"
+                    if (!string.IsNullOrWhiteSpace(w.Executor))
+                    {
+                        var execList = existing.Executor
+                            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => x.Trim())
+                            .ToList();
+
+                        var newExecs = w.Executor
+                            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => x.Trim());
+
+                        foreach (var ex in newExecs)
+                        {
+                            if (!execList.Contains(ex))
+                            {
+                                execList.Add(ex);
+                            }
+                        }
+                        existing.Executor = string.Join(", ", execList);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(w.Controller))
+                    {
+                        var ctrlList = existing.Controller
+                            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => x.Trim())
+                            .ToList();
+
+                        var newCtrls = w.Controller
+                            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => x.Trim());
+
+                        foreach (var c in newCtrls)
+                        {
+                            if (!ctrlList.Contains(c))
+                            {
+                                ctrlList.Add(c);
+                            }
+                        }
+                        existing.Controller = string.Join(", ", ctrlList);
+                    }
+                }
+            }
+
+            return dict.Values.ToList();
+        }
+
+        /// <summary>
+        /// Получить кэшированные работы для одного отдела
+        /// </summary>
+        private async Task<List<WorkItem>> GetAllWorkItemsForSingleDivision(int divisionId)
+        {
+            string cacheKey = $"AllWorkItems_div{divisionId}";
+            if (_cache.TryGetValue(cacheKey, out List<WorkItem> cached))
+            {
+                return cached;
+            }
+
+            // Грузим из БД
+            var result = new List<WorkItem>();
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                string sql = @"
                     SELECT 
                         d.Number,
                         wu.idWork,
                         td.Name + ' ' + d.Name AS DocumentName,
                         w.Name AS WorkName,
-                        -- Имя конкретного пользователя-исполнителя
-                        U2.smallName AS Executor,
-
-                        (SELECT smallName 
-                         FROM Users 
-                         WHERE idUser = wucontr.idUser
-                        ) AS Controller,
-
-                        (SELECT smallName 
-                         FROM Users 
-                         WHERE idUser = wuc.idUser
-                        ) AS Approver,
-
+                        (SELECT smallName FROM Users WHERE idUser = wucontr.idUser ) AS Controller,
+                        (SELECT smallName FROM Users WHERE idUser = wuc.idUser) AS Approver,
                         w.DatePlan,
                         wu.DateKorrect1,
                         wu.DateKorrect2,
                         wu.DateKorrect3,
-                        w.DateFact
-
+                        w.DateFact,
+                        -- Исполнитель:
+                        u.smallName AS Executor
                     FROM WorkUser wu
-                        INNER JOIN Works w 
-                            ON wu.idWork = w.id
-                        INNER JOIN Documents d 
-                            ON w.idDocuments = d.id
-                        LEFT JOIN WorkUserCheck wuc 
-                            ON wuc.idWork = w.id
-                        LEFT JOIN WorkUserControl wucontr 
-                            ON wucontr.idWork = w.id
-                        INNER JOIN TypeDocs td 
-                            ON td.id = d.idTypeDoc
-                        INNER JOIN Users u 
-                            ON wu.idUser = u.idUser
-
-                        -- Дополнительные JOIN-ы (EXECUTOR):
-                        INNER JOIN WorkUser       wu2   ON wu2.idWork = w.id
-                        INNER JOIN Users          U2    ON U2.idUser = wu2.idUser
-                        INNER JOIN WorkUserCheck  wuc2  ON wuc2.idWork = w.id
-
-                    WHERE
-                        wu.dateFact IS NULL
-                        AND wu.idUser IN (
-                            SELECT idUser 
-                            FROM Users 
-                            WHERE idDivision IN ({inClause})
-                        );
+                        INNER JOIN Works w ON wu.idWork = w.id
+                        INNER JOIN Documents d ON w.idDocuments = d.id
+                        LEFT JOIN WorkUserCheck wuc ON wuc.idWork = w.id
+                        LEFT JOIN WorkUserControl wucontr ON wucontr.idWork = w.id
+                        INNER JOIN TypeDocs td ON td.id = d.idTypeDoc
+                        INNER JOIN Users u ON wu.idUser = u.idUser
+                    WHERE wu.dateFact IS NULL
+                      AND u.idDivision = @div
+                      AND u.Isvalid = 1
                 ";
-
-                using (var conn = new SqlConnection(_connectionString))
-                using (var cmd = new SqlCommand(query, conn))
+                using (var cmd = new SqlCommand(sql, conn))
                 {
-                    // Добавляем параметры
-                    for (int i = 0; i < sortedDivs.Count; i++)
-                    {
-                        cmd.Parameters.AddWithValue(paramNames[i], sortedDivs[i]);
-                    }
-
+                    cmd.Parameters.AddWithValue("@div", divisionId);
                     await conn.OpenAsync();
 
-                    // Используем словарь для "агрегации" записей:
-                    var dict = new Dictionary<string, WorkItem>();
-
+                    var listRaw = new List<WorkItem>();
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            // Считываем поля
                             string idWork = reader["idWork"]?.ToString();
-                            string docNumber = reader["Number"]?.ToString() + "/" + reader["idWork"]?.ToString();
-                            string docName = reader["DocumentName"]?.ToString();
-                            string workName = reader["WorkName"]?.ToString();
-                            string executor = reader["Executor"]?.ToString();
-                            string controller = reader["Controller"]?.ToString();
-                            string approver = reader["Approver"]?.ToString();
-                            DateTime? planDate = reader["DatePlan"] as DateTime?;
-                            DateTime? kor1 = reader["DateKorrect1"] as DateTime?;
-                            DateTime? kor2 = reader["DateKorrect2"] as DateTime?;
-                            DateTime? kor3 = reader["DateKorrect3"] as DateTime?;
-                            DateTime? factDate = reader["DateFact"] as DateTime?;
-
-                            // Формируем ключ для агрегации (без executor/controller),
-                            // чтобы одинаковые записи объединять:
-                            string key = $"{docName}|{workName}|{approver}|{planDate}|{kor1}|{kor2}|{kor3}|{factDate}|{idWork}";
-
-                            if (!dict.ContainsKey(key))
+                            string docNumber = reader["Number"]?.ToString() + "/" + idWork;
+                            var item = new WorkItem
                             {
-                                dict[key] = new WorkItem
-                                {
-                                    DocumentNumber = docNumber,
-                                    DocumentName = docName ?? "",
-                                    WorkName = workName ?? "",
-                                    Executor = executor ?? "",
-                                    Controller = controller ?? "",
-                                    Approver = approver ?? "",
-                                    PlanDate = planDate,
-                                    Korrect1 = kor1,
-                                    Korrect2 = kor2,
-                                    Korrect3 = kor3,
-                                    FactDate = factDate
-                                };
-                            }
-                            else
-                            {
-                                // Если запись уже есть, "добавляем" исполнителей/контроллеров
-                                var existing = dict[key];
-
-                                // Агрегация исполнителей (Executor)
-                                if (!string.IsNullOrWhiteSpace(executor))
-                                {
-                                    var execList = existing.Executor
-                                        .Split(",", StringSplitOptions.RemoveEmptyEntries)
-                                        .Select(x => x.Trim())
-                                        .ToList();
-
-                                    if (!execList.Contains(executor))
-                                    {
-                                        execList.Add(executor);
-                                        existing.Executor = string.Join(", ", execList);
-                                    }
-                                }
-
-                                // Агрегация контролирующих (Controller)
-                                if (!string.IsNullOrWhiteSpace(controller))
-                                {
-                                    var ctrlList = existing.Controller
-                                        .Split(",", StringSplitOptions.RemoveEmptyEntries)
-                                        .Select(x => x.Trim())
-                                        .ToList();
-
-                                    if (!ctrlList.Contains(controller))
-                                    {
-                                        ctrlList.Add(controller);
-                                        existing.Controller = string.Join(", ", ctrlList);
-                                    }
-                                }
-                            }
+                                DocumentNumber = docNumber,
+                                DocumentName = reader["DocumentName"]?.ToString() ?? "",
+                                WorkName = reader["WorkName"]?.ToString() ?? "",
+                                Executor = reader["Executor"]?.ToString() ?? "",
+                                Controller = reader["Controller"]?.ToString() ?? "",
+                                Approver = reader["Approver"]?.ToString() ?? "",
+                                PlanDate = reader["DatePlan"] as DateTime?,
+                                Korrect1 = reader["DateKorrect1"] as DateTime?,
+                                Korrect2 = reader["DateKorrect2"] as DateTime?,
+                                Korrect3 = reader["DateKorrect3"] as DateTime?,
+                                FactDate = reader["DateFact"] as DateTime?
+                            };
+                            listRaw.Add(item);
                         }
                     }
 
-                    // Преобразуем словарь в список
-                    workItems = dict.Values.ToList();
+                    // Теперь listRaw может содержать дубликаты той же работы с разными исполнителями,
+                    // но, в отличие от мульти-отдела, здесь мы можем уже агрегировать.
+                    // Для простоты можем вернуть как есть, а уже в вызывающем методе объединять.
+                    result = listRaw;
                 }
-
-                // Сохраняем в кэш
-                var cacheOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
-                };
-                _cache.Set(cacheKey, workItems, cacheOptions);
             }
 
-            return workItems;
+            // Сохраняем в кэш
+            var cacheOpts = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+            };
+            _cache.Set(cacheKey, result, cacheOpts);
+
+            return result;
         }
 
         // НОВО: Получить список "Принимающих" (smallName) внутри отдела
