@@ -343,6 +343,32 @@ namespace Monitoring.Infrastructure.Services
             return password;
         }
 
+        public async Task<int?> GetUserHomeDivisionAsync(int userId)
+        {
+            int? userHome = null;
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            using (var conn = new SqlConnection(connStr))
+            {
+                await conn.OpenAsync();
+                string sql = @"
+                    SELECT [idDivision]
+                    FROM [DocumentControl].[dbo].[Users]
+                    WHERE [idUser] = @u
+                ";
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@u", userId);
+     
+                    object result = await cmd.ExecuteScalarAsync();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        userHome = Convert.ToInt32(result);
+                    }
+                }
+            }
+            return userHome;
+        }
+
         public async Task<int> RegisterUserInDbAsync(
             string fullName,
             string smallName,

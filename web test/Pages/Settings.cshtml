@@ -73,13 +73,23 @@
                             @foreach (var sub in Model.Subdivisions)
                             {
                                 bool isChecked = Model.UserSelectedDivisionIds.Contains(sub.IdDivision);
+
+                                // Проверяем, является ли этот sub.IdDivision родным отделом для выбранного пользователя.
+                                // Model.HomeDivisionIdForSelectedUser содержит родной отдел (см. код бэкенда).
+                                bool isHomeDivision = (sub.IdDivision == Model.HomeDivisionIdForSelectedUser);
+
                                 <div class="form-check d-flex align-items-center">
                                     <input class="form-check-input" type="checkbox"
                                            id="sub_@sub.IdDivision"
                                            value="@sub.IdDivision"
-                                    @(isChecked ? "checked" : null) />
+                                    @(isChecked ? "checked" : null)
+                                    @(isHomeDivision ? "disabled" : null) />
                                     <label class="form-check-label" for="sub_@sub.IdDivision">
                                         @sub.SmallNameDivision
+                                        @if (isHomeDivision)
+                                        {
+                                            <span class="text-muted" style="font-size:0.85rem;">(родной отдел)</span>
+                                        }
                                     </label>
                                 </div>
                             }
@@ -185,7 +195,7 @@
     </div>
 </div>
 
-<!-- Модальное окно "Регистрация пользователя" (без изменений) -->
+<!-- Модальное окно "Регистрация пользователя" -->
 <div class="modal fade" id="registerUserModal" tabindex="-1" aria-labelledby="registerUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -252,7 +262,7 @@
     </div>
 </div>
 
-<!-- Модальное окно подтверждения сохранения настроек (добавим вывод isActive) -->
+<!-- Модальное окно подтверждения сохранения настроек -->
 <div class="modal fade" id="confirmSaveModal" tabindex="-1" aria-labelledby="confirmSaveModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -385,7 +395,6 @@
                 canCloseWork: canCloseWork,
                 canSendCloseRequest: canSendCloseRequest,
                 canAccessSettings: canAccessSettings,
-                // NEW:
                 isActive: isActive
             };
 

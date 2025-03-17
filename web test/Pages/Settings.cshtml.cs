@@ -20,7 +20,7 @@ namespace Monitoring.UI.Pages
         }
 
         /// <summary>
-        /// Список всех пользователей (smallName, login или любой другой идентификатор).
+        /// Список всех пользователей (smallName).
         /// </summary>
         public List<string> AllUsers { get; set; } = new();
 
@@ -37,7 +37,7 @@ namespace Monitoring.UI.Pages
         public string? SelectedUserName { get; set; }
 
         /// <summary>
-        /// Текущие настройки приватности (из таблицы UserPrivacy).
+        /// Текущие настройки приватности.
         /// </summary>
         public PrivacySettingsDto CurrentPrivacySettings { get; set; } = new();
 
@@ -61,9 +61,15 @@ namespace Monitoring.UI.Pages
         /// </summary>
         public bool IsUserValid { get; set; }
 
+        /// <summary>
+        /// Родной отдел выбранного пользователя (idDivision из Users).
+        /// Нужно, чтобы нельзя было его убрать из списка чекбоксов.
+        /// </summary>
+        public int? HomeDivisionIdForSelectedUser { get; set; }
+
         public void OnGet()
         {
-            // Предположим, берём userName (логин) из куки
+            // Проверка куки, доступ и т.д. (не меняем)
             if (!HttpContext.Request.Cookies.ContainsKey("userName"))
             {
                 Response.Redirect("/Login");
@@ -71,7 +77,6 @@ namespace Monitoring.UI.Pages
             }
 
             string userName = HttpContext.Request.Cookies["userName"];
-            // Находим userId (из сервиса логина)
             int? userIdP = _loginService.GetUserIdByNameAsync(userName).Result;
             if (userIdP == null)
             {
@@ -79,47 +84,39 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // Проверяем право на доступ к этой странице
             bool canAccess = _userSettingsService.HasAccessToSettingsAsync(userIdP.Value).Result;
             if (!canAccess)
             {
-                // Редирект на главную или 403
                 Response.Redirect("/Index");
                 return;
             }
 
-            // 1. Если флажок "Показать неактивных" НЕ установлен, берём только активных
-            //    иначе — только неактивных.
+            // 1. Список пользователей — либо активных, либо неактивных
             if (!ShowInactive)
             {
-                AllUsers = _loginService.GetAllUsersAsync().Result; // Isvalid=1
+                AllUsers = _loginService.GetAllUsersAsync().Result;
             }
             else
             {
-                AllUsers = _loginService.GetAllInactiveUsersAsync().Result; // Isvalid=0
+                AllUsers = _loginService.GetAllInactiveUsersAsync().Result;
             }
 
-            // 2. Получаем список всех подразделений
+            // 2. Все подразделения
             Subdivisions = _userSettingsService.GetAllDivisionsAsync().Result;
 
-            // 3. Если кто-то выбран
+            // 3. Если выбран пользователь, грузим его настройки
             if (!string.IsNullOrEmpty(SelectedUserName))
             {
-                // Находим его idUser
-                int? userId = _loginService.GetUserIdByNameAsync(SelectedUserName).Result;
-                if (userId != null)
+                int? selUserId = _loginService.GetUserIdByNameAsync(SelectedUserName).Result;
+                if (selUserId != null)
                 {
-                    // Грузим настройки приватности
-                    CurrentPrivacySettings = _userSettingsService.GetPrivacySettingsAsync(userId.Value).Result;
+                    CurrentPrivacySettings = _userSettingsService.GetPrivacySettingsAsync(selUserId.Value).Result;
+                    UserSelectedDivisionIds = _userSettingsService.GetUserAllowedDivisionsAsync(selUserId.Value).Result;
+                    CurrentPasswordForSelectedUser = _userSettingsService.GetUserCurrentPasswordAsync(selUserId.Value).Result;
+                    IsUserValid = _userSettingsService.IsUserValidAsync(selUserId.Value).Result;
 
-                    // Грузим выбранные подразделения
-                    UserSelectedDivisionIds = _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value).Result;
-
-                    // Загружаем текущий пароль
-                    CurrentPasswordForSelectedUser = _userSettingsService.GetUserCurrentPasswordAsync(userId.Value).Result;
-
-                    // Узнаём Isvalid (активен/неактивен), через метод сервиса:
-                    IsUserValid = _userSettingsService.IsUserValidAsync(userId.Value).Result;
+                    // Родной отдел (idDivision) из таблицы Users
+                    HomeDivisionIdForSelectedUser = Convert.ToInt32(_userSettingsService.GetUserHomeDivisionAsync(selUserId.Value).Result);
                 }
             }
         }

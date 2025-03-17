@@ -47,5 +47,7 @@ namespace Monitoring.Application.Interfaces
   
         // Получить текущий пароль пользователя (из таблицы Users.Password)
         Task<string?> GetUserCurrentPasswordAsync(int userId);
+
+        Task<int?> GetUserHomeDivisionAsync(int userId);
     }
 }
