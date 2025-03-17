@@ -1,6 +1,6 @@
 ﻿@model Monitoring.UI.Pages.IndexModel
 
-<!-- Добавили hidden-поле для текущей страницы -->
+<!-- Храним текущую страницу, чтобы подгрузка AJAX знала, куда возвращаться -->
 <input type="hidden" id="CurrentPage" value="@Model.CurrentPage" />
 
 <table class="table table-bordered table-hover sticky-header-table" id="workItemsTable">
@@ -17,75 +17,79 @@
             <th>Корр2</th>
             <th>Корр3</th>
             <th>
-                <span class="toggle-all-btn" title="Выделить/снять все">
-                    📌
-                </span>
+                <!-- Кнопка &laquo;выделить/снять все&raquo; (только на текущей странице) -->
+                <span class="toggle-all-btn" title="Выделить/снять все"> 📌 </span>
             </th>
         </tr>
     </thead>
     <tbody>
         @{
-            int num = 1;
-            foreach (var item in Model.WorkItems)
+            // Считаем стартовый номер: если страница 1, то начинаем с 1, если страница 2, то с 1 + pageSize и т.д.
+            int startIndex = (Model.CurrentPage - 1) * Model.PageSize + 1;
+            int num = startIndex;
+        }
+
+        @foreach (var item in Model.WorkItems)
+        {
+            // Подсветка строки, если есть Pending-заявка
+            string highlightClass = item.HighlightCssClass ?? "";
+
+            // Собираем данные заявки (если есть)
+            var dataRequestId = item.UserPendingRequestId?.ToString() ?? "";
+            var dataRequestType = item.UserPendingRequestType ?? "";
+            var dataRequestDate = item.UserPendingProposedDate?.ToString("yyyy-MM-dd") ?? "";
+            var dataRequestNote = item.UserPendingRequestNote ?? "";
+            var dataReceiver = item.UserPendingReceiver ?? "";
+
+            // Проверяем, можем ли мы отправлять заявки
+            bool canSendRequest = false;
+            if (!string.IsNullOrEmpty(Model.UserName)
+            && !string.IsNullOrEmpty(item.Executor)
+            && Model.HasSendCloseRequestAccess)
             {
-                // Подсветка
-                string highlightClass = item.HighlightCssClass ?? "";
-
-                // Данные заявки (Pending)
-                var dataRequestId = item.UserPendingRequestId?.ToString() ?? "";
-                var dataRequestType = item.UserPendingRequestType ?? "";
-                var dataRequestDate = item.UserPendingProposedDate?.ToString("yyyy-MM-dd") ?? "";
-                var dataRequestNote = item.UserPendingRequestNote ?? "";
-                var dataReceiver = item.UserPendingReceiver ?? "";
-
-                // Проверяем, можем ли мы отправлять заявки
-                bool canSendRequest = false;
-                if (!string.IsNullOrEmpty(Model.UserName) &&
-                !string.IsNullOrEmpty(item.Executor) &&
-                Model.HasSendCloseRequestAccess)
-                {
-                    var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x => x.Trim());
-                    canSendRequest = exList.Contains(Model.UserName);
-                }
-
-                <tr data-id="@item.DocumentNumber"
-                    data-request-id="@dataRequestId"
-                    data-request-type="@dataRequestType"
-                    data-request-date="@dataRequestDate"
-                    data-request-note="@dataRequestNote"
-                    data-receiver="@dataReceiver"
-                    class="@highlightClass">
-
-                    <td class="row-index">@num</td>
-                    <td>@item.DocumentName</td>
-                    <td>@item.WorkName</td>
-                    <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
-                    <td>@item.Controller</td>
-                    <td>@item.Approver</td>
-                    <td>@item.PlanDate?.ToShortDateString()</td>
-                    <td>@item.Korrect1?.ToShortDateString()</td>
-                    <td>@item.Korrect2?.ToShortDateString()</td>
-                    <td>@item.Korrect3?.ToShortDateString()</td>
-
-                    <td class="align-middle">
-                        <input type="checkbox" class="row-select" />
-                        @if (canSendRequest)
-                        {
-                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
-                                    onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver', this)">
-                                📝
-                            </button>
-                        }
-                        else
-                        {
-                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>📝</button>
-                        }
-                    </td>
-                </tr>
-
-                num++;
+                var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim());
+                canSendRequest = exList.Contains(Model.UserName);
             }
+
+            <tr data-id="@item.DocumentNumber"
+                data-request-id="@dataRequestId"
+                data-request-type="@dataRequestType"
+                data-request-date="@dataRequestDate"
+                data-request-note="@dataRequestNote"
+                data-receiver="@dataReceiver"
+                class="@highlightClass">
+
+                <td class="row-index">@num</td>
+                <td>@item.DocumentName</td>
+                <td>@item.WorkName</td>
+                <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
+                <td>@item.Controller</td>
+                <td>@item.Approver</td>
+                <td>@item.PlanDate?.ToShortDateString()</td>
+                <td>@item.Korrect1?.ToShortDateString()</td>
+                <td>@item.Korrect2?.ToShortDateString()</td>
+                <td>@item.Korrect3?.ToShortDateString()</td>
+
+                <td class="align-middle">
+                    <!-- Чекбокс выбора -->
+                    <input type="checkbox" class="row-select" />
+                    <!-- Кнопка "Создать/редактировать заявку" -->
+                    @if (canSendRequest)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver', this)">
+                            📝
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>📝</button>
+                    }
+                </td>
+            </tr>
+
+            num++;
         }
     </tbody>
 </table>
@@ -95,9 +99,9 @@
 {
     <nav aria-label="Постраничная навигация">
         <ul class="pagination justify-content-center">
+
             <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
-                <a class="page-link" href="javascript:void(0);"
-                   onclick="goToPage(@(Model.CurrentPage - 1))">
+                <a class="page-link" href="javascript:void(0);" onclick="goToPage(@(Model.CurrentPage - 1))">
                     Предыдущая
                 </a>
             </li>

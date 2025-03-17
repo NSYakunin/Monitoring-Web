@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="css/index.css" />
 
 <div class="container-fluid mt-4">
-
+    <!-- Текст или заголовки -->
     <!-- Шапка: подразделение, пользователь, фильтры -->
     <div class="row mb-4">
         <div class="col-12">
@@ -37,18 +37,17 @@
                                value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
 
-                    <!-- Галочка "Все подразделения" -->
-                    <div class="form-check mt-4" style="margin-bottom: -1.5rem;">
-                        <input class="form-check-input" type="checkbox" id="allDivisionsChk" name="UseAllDivisions"
-                               value="true"
-                        @(Model.UseAllDivisions ? "checked" : null) />
-                        <label class="form-check-label" for="allDivisionsChk">
-                            Все
-                        </label>
-                    </div>
+                    <!-- Блок &laquo;Все&raquo; + &laquo;Подразделение&raquo; -->
+                    <div class="d-flex flex-column" style="min-width: 160px;">
+                        <!-- Галочка "Все подразделения" (уменьшенный шрифт) -->
+                        <div style="font-size: 0.85rem; margin-bottom: 2px;">
+                            <input class="form-check-input me-1" type="checkbox" id="allDivisionsChk" name="UseAllDivisions"
+                                   value="true"
+                            @(Model.UseAllDivisions ? "checked" : null) />
+                            <label class="form-check-label" for="allDivisionsChk">Все</label>
+                        </div>
 
-                    <!-- Подразделение -->
-                    <div class="d-flex flex-column">
+                        <!-- Подразделение -->
                         <label for="divisionSelect" class="form-label">Подразделение:</label>
                         <select id="divisionSelect" name="SelectedDivision" class="form-select"
                         @(Model.UseAllDivisions ? "disabled" : null)>
@@ -97,6 +96,7 @@
                                placeholder="Поиск..." value="@Model.SearchQuery" />
                     </div>
 
+                    <!-- Кнопки -->
                     <div class="d-flex justify-content-end gap-3 mb-4">
                         <!-- Кнопка выхода -->
                         <a asp-page="./Index" asp-page-handler="Logout" class="btn btn-logout">
@@ -206,7 +206,6 @@
             </div>
         </div>
     </div>
-
 </div>
 
 <!-- Модальное окно для создания/редактирования заявки -->
@@ -221,6 +220,7 @@
                 <input type="hidden" id="hiddenDocNumber" />
                 <input type="hidden" id="hiddenRequestId" />
 
+                <!-- Тип запроса -->
                 <div class="mb-3">
                     <label for="requestTypeSelect" class="form-label">Тип запроса</label>
                     <select id="requestTypeSelect" class="form-select">
@@ -231,17 +231,20 @@
                     </select>
                 </div>
 
+                <!-- Желаемая дата -->
                 <div class="mb-3">
                     <label for="proposedDate" class="form-label">Желаемая дата</label>
                     <input type="date" id="proposedDate" class="form-control" />
                 </div>
 
+                <!-- Получатель -->
                 <div class="mb-3">
                     <label for="receiverSelect" class="form-label">Получатель</label>
                     <select id="receiverSelect" class="form-select">
                     </select>
                 </div>
 
+                <!-- Примечание -->
                 <div class="mb-3">
                     <label for="requestNote" class="form-label">Примечание</label>
                     <textarea id="requestNote" class="form-control" rows="3"></textarea>
@@ -268,9 +271,9 @@
 </div>
 
 @section Scripts {
-
     <style>
         /* Небольшие стили, чтобы было удобно */
+
         #spreadsheet {
             width: 100%;
             height: 80vh;
@@ -278,8 +281,7 @@
             max-width: 100%;
         }
 
-        .handsontable th,
-        .handsontable td {
+        .handsontable th, .handsontable td {
             min-width: 50px;
             max-width: 300px;
         }
@@ -343,7 +345,6 @@
                 border-color: transparent;
                 box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
             }
-
         /* Кнопка "Входящие заявки" */
         .btn-myrequests {
             margin-top: 10px;
@@ -356,7 +357,6 @@
             transition: all 0.3s ease;
             border: none;
         }
-
         /* Когда нет входящих заявок, пусть кнопка будет более тусклая */
         .btn-myrequests-none {
             background: #6c757d; /* серо-тусклая */
@@ -367,7 +367,6 @@
                 background: #5a6268;
                 color: #ffffff;
             }
-
         /* Когда есть Pending-заявки, пусть кнопка будет более яркой */
         .btn-myrequests-new {
             background: #ffc107; /* желтый */
@@ -380,19 +379,21 @@
                 color: #212529;
                 box-shadow: 0 6px 12px rgba(255,193,7,0.5);
             }
-
         @@keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 rgba(255,193,7,0.5);
-            }
+            0%
 
-            50% {
-                box-shadow: 0 0 20px rgba(255,193,7,0.7);
-            }
+        {
+            box-shadow: 0 0 0 rgba(255,193,7,0.5);
+        }
 
-            100% {
-                box-shadow: 0 0 0 rgba(255,193,7,0.5);
-            }
+        50% {
+            box-shadow: 0 0 20px rgba(255,193,7,0.7);
+        }
+
+        100% {
+            box-shadow: 0 0 0 rgba(255,193,7,0.5);
+        }
+
         }
 
         .btn-myrequests-new {
@@ -409,17 +410,29 @@
     </style>
 
     <script>
+        // ==============================
+        // Глобальные переменные для &laquo;выбора строк&raquo; и &laquo;режима автоселекции&raquo;
+        // ==============================
+        // Если пользователь сам не проставляет галочки, мы считаем, что выбрано ВСЁ (автоселекция).
+        let isAutoSelectAll = true;
+        // В этом множестве храним выбранные документ-номера, если пользователь в ручном режиме
+        let selectedDocs = new Set();
+        // Флаг для Drag & Drop (перетаскивание строк)
         let isDragging = false;
 
+        // Функция инициализации сортировки (Drag & Drop) и обработки клика/чекбоксов
         function initSortableTable() {
             var $tableBody = $("#workItemsTable tbody");
 
+            // Функция для переиндексации в столбце "№" (локально, при перетаскивании)
             function reindexRows() {
                 $tableBody.find("tr").each(function(index, row) {
+                    // Просто локальное изменение отображения (1, 2, 3...)
                     $(row).find(".row-index").text(index + 1);
                 });
             }
 
+            // Подключаем jQuery-UI Sortable
             $tableBody.sortable({
                 axis: "y",
                 cursor: "move",
@@ -438,41 +451,81 @@
             });
             $tableBody.disableSelection();
 
-            // Чекбокс на строку
-            $('#workItemsTable').on('change', '.row-select', function() {
-                $(this).closest('tr').toggleClass('selected-row', this.checked);
-            });
-            $('#workItemsTable .row-select:checked').closest('tr').addClass('selected-row');
-
-            // Клик по строке
-            $tableBody.on('click', 'tr', function(e) {
-                if (isDragging) return;
-                if ($(e.target).is('button, a, .btn, input')) return;
-
-                let $checkbox = $(this).find('.row-select');
-                let checked = $checkbox.prop('checked');
-                $checkbox.prop('checked', !checked).trigger('change');
+            // При изменении конкретного чекбокса
+            $('#workItemsTable').off('change', '.row-select').on('change', '.row-select', function() {
+                let row = $(this).closest('tr');
+                let docId = row.data('id');
+                handleRowSelection(docId, this.checked, row);
             });
 
-            // "Выделить/снять все"
+            // Клик по строке (если не кликали на кнопку/ссылку/чекбокс)
+            $tableBody.off('click', 'tr').on('click', 'tr', function(e) {
+                if (isDragging) return;  // если сейчас идёт перетаскивание
+                if ($(e.target).is('button, a, .btn, input')) return;  // пропускаем клики на кнопках
+                let checkbox = $(this).find('.row-select');
+                let checked = !checkbox.prop('checked');
+                checkbox.prop('checked', checked).trigger('change');
+            });
+
+            // Кнопка "Выделить/снять все" (на текущей странице)
             $('.toggle-all-btn').off('click').on('click', function() {
-                let all = $('#workItemsTable .row-select');
-                let anyUnchecked = all.filter(':not(:checked)').length > 0;
-                all.prop('checked', anyUnchecked).trigger('change');
+                let allChecks = $('#workItemsTable .row-select');
+                // Если хотя бы один не проставлен, значит будем включать все
+                let anyUnchecked = allChecks.filter(':not(:checked)').length > 0;
+                allChecks.prop('checked', anyUnchecked).trigger('change');
             });
         }
 
-        $(document).ready(function(){
-            initSortableTable();
+        // Универсальная функция для обработки выбора/снятия галочки
+        function handleRowSelection(docId, checked, $row) {
+            // Если пользователь ставит галку, переходим в &laquo;ручной выбор&raquo;, если были в автоселекции.
+            if (checked) {
+                $row.addClass('selected-row');
+                if (isAutoSelectAll) {
+                    // переключаемся из режима "авто" в режим "ручной"
+                    isAutoSelectAll = false;
+                    selectedDocs.clear(); // сначала очищаем множество
+                }
+                selectedDocs.add(docId);
+            } else {
+                $row.removeClass('selected-row');
+                // Если мы уже в ручном режиме, то убираем документ из множества
+                if (!isAutoSelectAll) {
+                    selectedDocs.delete(docId);
+                    // Если множество стало пустым, возвращаемся к автоселекции = всё
+                    if (selectedDocs.size === 0) {
+                        isAutoSelectAll = true;
+                    }
+                }
+            }
+        }
 
-            // Отслеживаем любые изменения фильтров и перезапрашиваем partial
-            $('#startDate, #endDate, #executor, #approver, #search, #divisionSelect, #allDivisionsChk').on('change keyup', function() {
-                // При любом изменении сбрасываемся на 1-ю страницу:
-                setCurrentPage(1);
-                doAjaxFilter();
+        // После любой AJAX-подгрузки таблицы нужно &laquo;восстановить&raquo; состояние чекбоксов
+        function restoreSelection() {
+            let rows = document.querySelectorAll("#workItemsTable tbody tr");
+            rows.forEach(row => {
+                let docId = row.getAttribute("data-id");
+                let checkbox = row.querySelector(".row-select");
+
+                if (isAutoSelectAll) {
+                    // Режим &laquo;всё выбрано по умолчанию&raquo;, но фактически чекбокс не ставим
+                    // (так мы различаем ручной выбор от &laquo;всё&raquo;)
+                    checkbox.checked = false;
+                    row.classList.remove("selected-row");
+                } else {
+                    // Ручной режим: если docId в selectedDocs, ставим галочку
+                    if (selectedDocs.has(docId)) {
+                        checkbox.checked = true;
+                        row.classList.add("selected-row");
+                    } else {
+                        checkbox.checked = false;
+                        row.classList.remove("selected-row");
+                    }
+                }
             });
-        });
+        }
 
+        // AJAX-фильтр при изменении параметров
         function doAjaxFilter() {
             $.ajax({
                 url: '@Url.Page("Index", "Filter")',
@@ -485,14 +538,16 @@
                     searchQuery: $('#search').val(),
                     selectedDivision: $('#divisionSelect').val(),
                     useAllDivisions: $('#allDivisionsChk').is(':checked'),
-                    currentPage: $('#CurrentPage').val() // см. hidden поле в partial
+                    currentPage: $('#CurrentPage').val()
                 },
                 success: function(result) {
                     // Обновляем partial
                     $('#workItemsTableContainer').html(result);
                     initSortableTable();
+                    // Важно: после перезагрузки таблицы – восстановить состояние выбора
+                    restoreSelection();
 
-                    // Сохраняем поля в скрытые, чтобы форма экспорта и т.д. были в актуальном состоянии
+                    // Сохраняем поля в скрытые, чтобы форма экспорта была в актуальном состоянии
                     $('input[name="StartDate"]').val($('#startDate').val());
                     $('input[name="EndDate"]').val($('#endDate').val());
                     $('input[name="Executor"]').val($('#executor').val());
@@ -504,33 +559,39 @@
             });
         }
 
-        // Пагинация: устанавливаем страницу и делаем повторный запрос
+        // Установка страницы и фильтр
         function goToPage(page) {
             setCurrentPage(page);
             doAjaxFilter();
         }
-
         function setCurrentPage(page) {
             $('#CurrentPage').val(page);
         }
 
-        // Кнопка "Сдаточный чек"
+        // Обработка кнопки &laquo;Сдаточный чек&raquo;
         $('#generatePdfBtn').on('click', function() {
-            let rows = document.querySelectorAll("#workItemsTable tbody tr");
-            let result = [];
-            rows.forEach((row) => {
-                let checkbox = row.querySelector("input.row-select");
-                if (checkbox && checkbox.checked) {
-                    result.push(row.getAttribute("data-id") || "");
-                }
-            });
-            $("#SelectedItemsOrder").val(JSON.stringify(result));
+            // Формируем список выбранных документов.
+            // Если isAutoSelectAll == true, значит ничего не ставим (пустую строку),
+            // чтобы сервер понял: нужно ВСЁ.
+            if (isAutoSelectAll) {
+                $("#SelectedItemsOrder").val("");
+            } else {
+                // Собираем docId в порядке отображения (с учётом перетаскиваний)
+                let arr = [];
+                let rows = document.querySelectorAll("#workItemsTable tbody tr");
+                rows.forEach(r => {
+                    let docId = r.getAttribute("data-id");
+                    if (selectedDocs.has(docId)) {
+                        arr.push(docId);
+                    }
+                });
+                $("#SelectedItemsOrder").val(JSON.stringify(arr));
+            }
         });
 
         // Открыть модалку "Создание/редактирование заявки"
         function openRequestModal(docNumber, controller, approver, btn) {
             let tr = btn.closest('tr');
-
             let requestId = tr.dataset.requestId || "";
             let reqType = tr.dataset.requestType || "корр1";
             let proposed = tr.dataset.requestDate || "";
@@ -543,20 +604,18 @@
             let proposedDateInput = document.getElementById('proposedDate');
             if (requestId) {
                 proposedDateInput.value = proposed;
-            }
-            else {
+            } else {
+                // Если заявка новая, ставим сегодняшнюю дату
                 let today = new Date();
                 let yyyy = today.getFullYear();
                 let mm = (today.getMonth() + 1).toString().padStart(2, '0');
                 let dd = today.getDate().toString().padStart(2, '0');
                 proposedDateInput.value = `${yyyy}-${mm}-${dd}`;
             }
-
             document.getElementById('requestNote').value = note;
 
             let receiverSelect = document.getElementById('receiverSelect');
             receiverSelect.innerHTML = "";
-
             let optCtrl = document.createElement('option');
             optCtrl.value = controller;
             optCtrl.textContent = `Контролирующий (${controller})`;
@@ -573,8 +632,7 @@
                 } else if (optAppr.value === tr.dataset.receiver) {
                     optAppr.selected = true;
                 }
-            }
-            else {
+            } else {
                 optAppr.selected = true;
             }
 
@@ -599,10 +657,9 @@
             let proposedDate = $('#proposedDate').val();
             let receiver = $('#receiverSelect').val();
             let note = $('#requestNote').val();
-            let sender = '@Model.UserName.ToString()';
+            let sender = '@Model.UserName.ToString()'; // текущий пользователь
 
             let dateObj = proposedDate ? new Date(proposedDate + "T00:00:00") : null;
-
             let data = {
                 DocumentNumber: docNumber,
                 RequestType: requestType,
@@ -625,6 +682,7 @@
                     let modal = bootstrap.Modal.getInstance(modalEl);
                     modal.hide();
 
+                    // Обновляем атрибуты строки
                     let tr = document.querySelector(`tr[data-id="${docNumber}"]`);
                     if (tr) {
                         tr.dataset.requestId = res.requestId;
@@ -632,12 +690,9 @@
                         tr.dataset.requestDate = proposedDate;
                         tr.dataset.requestNote = note;
                         tr.dataset.receiver = receiver;
-
                         tr.classList.remove('table-warning', 'table-info');
-                        if (requestType.startsWith('корр'))
-                            tr.classList.add('table-warning');
-                        else if (requestType === 'факт')
-                            tr.classList.add('table-info');
+                        if (requestType.startsWith('корр')) tr.classList.add('table-warning');
+                        else if (requestType === 'факт') tr.classList.add('table-info');
                     }
                 } else {
                     alert("Ошибка: " + res.message);
@@ -646,7 +701,7 @@
             .catch(e => console.error(e));
         }
 
-        // Обновить
+        // Обновить заявку
         function updateWorkRequest() {
             let requestId = $('#hiddenRequestId').val();
             let docNumber = $('#hiddenDocNumber').val();
@@ -656,7 +711,6 @@
             let note = $('#requestNote').val();
 
             let dateObj = proposedDate ? new Date(proposedDate + "T00:00:00") : null;
-
             let data = {
                 Id: parseInt(requestId),
                 DocumentNumber: docNumber,
@@ -685,12 +739,9 @@
                         tr.dataset.requestDate = proposedDate;
                         tr.dataset.requestNote = note;
                         tr.dataset.receiver = receiver;
-
                         tr.classList.remove('table-warning', 'table-info');
-                        if (requestType.startsWith('корр'))
-                            tr.classList.add('table-warning');
-                        else if (requestType === 'факт')
-                            tr.classList.add('table-info');
+                        if (requestType.startsWith('корр')) tr.classList.add('table-warning');
+                        else if (requestType === 'факт') tr.classList.add('table-info');
                     }
                 } else {
                     alert("Ошибка: " + res.message);
@@ -699,15 +750,11 @@
             .catch(e => console.error(e));
         }
 
-        // Удалить
+        // Удалить заявку
         function deleteWorkRequest() {
             let requestId = $('#hiddenRequestId').val();
             let docNumber = $('#hiddenDocNumber').val();
-
-            let data = {
-                RequestId: parseInt(requestId),
-                DocumentNumber: docNumber
-            };
+            let data = { RequestId: parseInt(requestId), DocumentNumber: docNumber };
 
             fetch('@Url.Page("Index", "DeleteRequest")', {
                 method: 'POST',
@@ -742,7 +789,6 @@
         function refreshCache() {
             let btn = document.getElementById('refreshCacheBtn');
             let originalText = btn.innerHTML;
-
             btn.disabled = true;
             btn.innerHTML = "Обновляю...";
 
@@ -779,13 +825,28 @@
         function setFormat(fmt) {
             const spinner = document.querySelector('#generatePdfBtn .spinner-border');
             spinner.style.display = 'inline-block';
+
             document.getElementById('formatInput').value = fmt;
 
+            // Немного &laquo;задержки&raquo; для наглядности
             setTimeout(() => {
                 spinner.style.display = 'none';
-            }, 3000);
-
-            document.getElementById('exportForm').submit();
+                document.getElementById('exportForm').submit();
+            }, 1000);
         }
+
+        // При загрузке страницы
+        $(document).ready(function(){
+            // Инициализируем сортировку / логику выбора строк
+            initSortableTable();
+
+            // Следим за изменением полей фильтра
+            $('#startDate, #endDate, #executor, #approver, #search, #divisionSelect, #allDivisionsChk').on('change keyup', function() {
+                // Переходим на 1-ю страницу
+                setCurrentPage(1);
+                // Делаем AJAX-фильтр
+                doAjaxFilter();
+            });
+        });
     </script>
 }
