@@ -37,10 +37,21 @@
                                value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
                     </div>
 
+                    <!-- Галочка "Все подразделения" -->
+                    <div class="form-check mt-4" style="margin-bottom: -1.5rem;">
+                        <input class="form-check-input" type="checkbox" id="allDivisionsChk" name="UseAllDivisions"
+                               value="true"
+                        @(Model.UseAllDivisions ? "checked" : null) />
+                        <label class="form-check-label" for="allDivisionsChk">
+                            Все
+                        </label>
+                    </div>
+
                     <!-- Подразделение -->
                     <div class="d-flex flex-column">
                         <label for="divisionSelect" class="form-label">Подразделение:</label>
-                        <select id="divisionSelect" name="SelectedDivision" class="form-select">
+                        <select id="divisionSelect" name="SelectedDivision" class="form-select"
+                        @(Model.UseAllDivisions ? "disabled" : null)>
                             @foreach (var div in Model.AllowedDivisions)
                             {
                                 <option value="@div.IdDivision"
@@ -150,6 +161,8 @@
                     <input type="hidden" name="SelectedItemsOrder" id="SelectedItemsOrder" />
                     <input type="hidden" asp-for="SelectedDivision" />
                     <input type="hidden" name="format" id="formatInput" value="pdf" />
+                    <!-- Скрытое поле - флаг UseAllDivisions -->
+                    <input type="hidden" asp-for="UseAllDivisions" />
 
                     <div class="btn-group dropup w-100">
                         <button type="button"
@@ -194,13 +207,6 @@
         </div>
     </div>
 
-    @*
-    <!-- Блок "Мои входящие заявки" закомментирован, т.к. вынесен на отдельную страницу:
-    <div class="row mb-4">
-        ...
-    </div>
-    *@
-
 </div>
 
 <!-- Модальное окно для создания/редактирования заявки -->
@@ -233,7 +239,6 @@
                 <div class="mb-3">
                     <label for="receiverSelect" class="form-label">Получатель</label>
                     <select id="receiverSelect" class="form-select">
-                        <!-- заполняется при открытии модалки -->
                     </select>
                 </div>
 
@@ -371,15 +376,23 @@
         }
 
             .btn-myrequests-new:hover {
-                background: #ffca2c; 
+                background: #ffca2c;
                 color: #212529;
                 box-shadow: 0 6px 12px rgba(255,193,7,0.5);
             }
 
         @@keyframes pulse {
-            0% { box-shadow: 0 0 0 rgba(255,193,7,0.5); }
-            50% { box-shadow: 0 0 20px rgba(255,193,7,0.7); }
-            100% { box-shadow: 0 0 0 rgba(255,193,7,0.5); }
+            0% {
+                box-shadow: 0 0 0 rgba(255,193,7,0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(255,193,7,0.7);
+            }
+
+            100% {
+                box-shadow: 0 0 0 rgba(255,193,7,0.5);
+            }
         }
 
         .btn-myrequests-new {
@@ -452,76 +465,53 @@
         $(document).ready(function(){
             initSortableTable();
 
-            // AJAX-фильтр
-            $('#startDate, #endDate, #executor, #approver, #search, #divisionSelect').on('change keyup', function() {
-                var changedElementId = this.id;
-
-                $.ajax({
-                    url: '@Url.Page("Index", "Filter")',
-                    type: 'GET',
-                    data: {
-                        startDate: $('#startDate').val(),
-                        endDate: $('#endDate').val(),
-                        executor: $('#executor').val(),
-                        approver: $('#approver').val(),
-                        searchQuery: $('#search').val(),
-                        selectedDivision: $('#divisionSelect').val()
-                    },
-                    success: function(result) {
-                        // Обновляем partial
-                        $('#workItemsTableContainer').html(result);
-                        initSortableTable();
-
-                        // Подменяем скрытые поля
-                        $('input[name="StartDate"]').val($('#startDate').val());
-                        $('input[name="EndDate"]').val($('#endDate').val());
-                        $('input[name="Executor"]').val($('#executor').val());
-                        $('input[name="Approver"]').val($('#approver').val());
-                        $('input[name="SearchQuery"]').val($('#search').val());
-                        $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
-
-                        // Если сменили подразделение - подгружаем новый список исполнителей и принимающих
-                        if (changedElementId === 'divisionSelect') {
-                            loadExecutors($('#divisionSelect').val());
-                            loadApprovers($('#divisionSelect').val());
-                        }
-                    }
-                });
+            // Отслеживаем любые изменения фильтров и перезапрашиваем partial
+            $('#startDate, #endDate, #executor, #approver, #search, #divisionSelect, #allDivisionsChk').on('change keyup', function() {
+                // При любом изменении сбрасываемся на 1-ю страницу:
+                setCurrentPage(1);
+                doAjaxFilter();
             });
-
-            // Убрали loadMyPendingRequests() отсюда, так как теперь отдельная страница
         });
 
-        function loadExecutors(divisionId) {
+        function doAjaxFilter() {
             $.ajax({
-                url: '@Url.Page("Index", "Executors")',
+                url: '@Url.Page("Index", "Filter")',
                 type: 'GET',
-                data: { divisionId: divisionId },
-                success: function(executors) {
-                    let $execSelect = $('#executor');
-                    $execSelect.empty();
-                    $execSelect.append('<option value="">Все исполнители</option>');
-                    $.each(executors, function(index, name) {
-                        $execSelect.append($('<option>').val(name).text(name));
-                    });
+                data: {
+                    startDate: $('#startDate').val(),
+                    endDate: $('#endDate').val(),
+                    executor: $('#executor').val(),
+                    approver: $('#approver').val(),
+                    searchQuery: $('#search').val(),
+                    selectedDivision: $('#divisionSelect').val(),
+                    useAllDivisions: $('#allDivisionsChk').is(':checked'),
+                    currentPage: $('#CurrentPage').val() // см. hidden поле в partial
+                },
+                success: function(result) {
+                    // Обновляем partial
+                    $('#workItemsTableContainer').html(result);
+                    initSortableTable();
+
+                    // Сохраняем поля в скрытые, чтобы форма экспорта и т.д. были в актуальном состоянии
+                    $('input[name="StartDate"]').val($('#startDate').val());
+                    $('input[name="EndDate"]').val($('#endDate').val());
+                    $('input[name="Executor"]').val($('#executor').val());
+                    $('input[name="Approver"]').val($('#approver').val());
+                    $('input[name="SearchQuery"]').val($('#search').val());
+                    $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
+                    $('input[name="UseAllDivisions"]').val($('#allDivisionsChk').is(':checked'));
                 }
             });
         }
 
-        function loadApprovers(divisionId) {
-            $.ajax({
-                url: '@Url.Page("Index", "Approvers")',
-                type: 'GET',
-                data: { divisionId: divisionId },
-                success: function(approvers) {
-                    let $apSelect = $('#approver');
-                    $apSelect.empty();
-                    $apSelect.append('<option value="">Все принимающие</option>');
-                    $.each(approvers, function(index, name) {
-                        $apSelect.append($('<option>').val(name).text(name));
-                    });
-                }
-            });
+        // Пагинация: устанавливаем страницу и делаем повторный запрос
+        function goToPage(page) {
+            setCurrentPage(page);
+            doAjaxFilter();
+        }
+
+        function setCurrentPage(page) {
+            $('#CurrentPage').val(page);
         }
 
         // Кнопка "Сдаточный чек"
@@ -552,11 +542,9 @@
 
             let proposedDateInput = document.getElementById('proposedDate');
             if (requestId) {
-                // Если заявка существующая, берём дату из data-атрибута
                 proposedDateInput.value = proposed;
             }
             else {
-                // Если заявка новая, по умолчанию ставим сегодняшнюю
                 let today = new Date();
                 let yyyy = today.getFullYear();
                 let mm = (today.getMonth() + 1).toString().padStart(2, '0');
@@ -566,7 +554,6 @@
 
             document.getElementById('requestNote').value = note;
 
-            // Заполняем селект "Получатель"
             let receiverSelect = document.getElementById('receiverSelect');
             receiverSelect.innerHTML = "";
 
@@ -580,7 +567,6 @@
             optAppr.textContent = `Принимающий (${approver})`;
             receiverSelect.appendChild(optAppr);
 
-            // Если это существующая заявка => выбираем того, кто уже есть
             if (requestId) {
                 if (optCtrl.value === tr.dataset.receiver) {
                     optCtrl.selected = true;
@@ -589,7 +575,6 @@
                 }
             }
             else {
-                // Если новая заявка — по умолчанию выбираем второй option (Принимающего)
                 optAppr.selected = true;
             }
 
@@ -642,7 +627,7 @@
 
                     let tr = document.querySelector(`tr[data-id="${docNumber}"]`);
                     if (tr) {
-                        tr.dataset.requestId = res.requestId; // <-- теперь у нас есть requestId
+                        tr.dataset.requestId = res.requestId;
                         tr.dataset.requestType = requestType;
                         tr.dataset.requestDate = proposedDate;
                         tr.dataset.requestNote = note;

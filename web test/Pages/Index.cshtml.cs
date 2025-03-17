@@ -48,7 +48,6 @@ namespace Monitoring.UI.Pages
         [BindProperty(SupportsGet = true)]
         public string? SearchQuery { get; set; }
 
-        // Название текущего отдела (для интерфейса)
         public string DepartmentName { get; set; } = "Неизвестный отдел";
         public string UserName { get; set; } = string.Empty;
 
@@ -57,7 +56,6 @@ namespace Monitoring.UI.Pages
         public List<string> Executors { get; set; } = new List<string>();
         public List<string> Approvers { get; set; } = new List<string>();
 
-        // Для экспорта: хранит порядок выбранных позиций (DocumentNumber)
         [BindProperty]
         public string SelectedItemsOrder { get; set; } = string.Empty;
 
@@ -66,23 +64,23 @@ namespace Monitoring.UI.Pages
         [BindProperty(SupportsGet = true)]
         public int? SelectedDivision { get; set; }
 
-        // Список отделов, к которым пользователь имеет доступ
         public List<DivisionDto> AllowedDivisions { get; set; } = new();
 
-
-        // Флаг: есть ли доступ к настройкам
         public bool HasSettingsAccess { get; set; } = false;
-
-        // 4.3) Флаг: есть ли у пользователя хотя бы одна входящая Pending-заявка
         public bool HasPendingRequests { get; set; } = false;
-
-        // 4.3) Флаг: есть ли доступ к ЗАКРЫТИЮ работ (canCloseWork)
         public bool HasCloseWorkAccess { get; set; } = false;
-
-        // Флаг: есть ли доступ к отправке заявок
         public bool HasSendCloseRequestAccess { get; set; } = false;
 
-        // --- End of properties ---
+        // Флаг: показываем все доступные подразделения
+        [BindProperty(SupportsGet = true)]
+        public bool UseAllDivisions { get; set; }
+
+        // Пагинация:
+        [BindProperty(SupportsGet = true)]
+        public int CurrentPage { get; set; } = 1;
+
+        public int PageSize { get; set; } = 100;
+        public int TotalPages { get; set; } = 1;
 
         public async Task OnGet()
         {
@@ -94,7 +92,7 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // 2) Считываем родной отдел (homeDivision) и userName
+            // 2) userName и homeDivisionId
             int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
@@ -106,26 +104,20 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // 4) Проверяем, есть ли у пользователя галочка "Доступ к настройкам"
+            // 4) Проверяем доступы
             HasSettingsAccess = await _userSettingsService.HasAccessToSettingsAsync(userId.Value);
-
-            // 4.2) Проверяем, есть ли у пользователя доступ к отправке заявок на закрытие (перенос) работ
             HasSendCloseRequestAccess = await _userSettingsService.HasAccessToSendCloseRequestAsync(userId.Value);
-
-            // 4.3) Проверяем, есть ли у пользователя право **закрывать** работы
             HasCloseWorkAccess = await _userSettingsService.HasAccessToCloseWorkAsync(userId.Value);
             if (HasCloseWorkAccess)
             {
-                // Если есть — тогда проверяем, есть ли у этого пользователя входящие "Pending" заявки
                 var myPending = await _workRequestService.GetPendingRequestsByReceiverAsync(UserName);
                 HasPendingRequests = (myPending != null && myPending.Count > 0);
             }
 
-            // 5) Загружаем список отделов, к которым есть доступ
+            // 5) Загружаем список отделов
             var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
             if (userDivIds.Count == 0)
             {
-                // Если нет записей, значит доступен только родной
                 userDivIds.Add(homeDivisionId);
             }
 
@@ -134,16 +126,21 @@ namespace Monitoring.UI.Pages
                 .Where(d => userDivIds.Contains(d.IdDivision))
                 .ToList();
 
-            // 6) Определяем, какой отдел выбрать по умолчанию
-            if (!SelectedDivision.HasValue)
+            // 6) Определяем SelectedDivision, если флажок UseAllDivisions==false
+            if (!UseAllDivisions)
             {
-                if (AllowedDivisions.Any(d => d.IdDivision == homeDivisionId))
+                // Если не задано, берём homeDivisionId, если он в списке
+                if (!SelectedDivision.HasValue ||
+                    !AllowedDivisions.Any(d => d.IdDivision == SelectedDivision.Value))
                 {
-                    SelectedDivision = homeDivisionId;
-                }
-                else if (AllowedDivisions.Count > 0)
-                {
-                    SelectedDivision = AllowedDivisions.First().IdDivision;
+                    if (AllowedDivisions.Any(d => d.IdDivision == homeDivisionId))
+                    {
+                        SelectedDivision = homeDivisionId;
+                    }
+                    else if (AllowedDivisions.Count > 0)
+                    {
+                        SelectedDivision = AllowedDivisions.First().IdDivision;
+                    }
                 }
             }
 
@@ -159,124 +156,145 @@ namespace Monitoring.UI.Pages
             // 8) Деактивируем старые уведомления
             await _notificationService.DeactivateOldNotificationsAsync(90);
 
-            // 9) Грузим уведомления по выбранному отделу (или родному)
-            int divisionForNotifications = SelectedDivision ?? homeDivisionId;
-            Notifications = await _notificationService.GetActiveNotificationsAsync(divisionForNotifications);
+            // 9) Грузим уведомления
+            int divForNotes = (UseAllDivisions && AllowedDivisions.Count > 0)
+                ? AllowedDivisions.First().IdDivision
+                : (SelectedDivision ?? homeDivisionId);
+            Notifications = await _notificationService.GetActiveNotificationsAsync(divForNotes);
 
-            // 10) Загружаем исполнителей и работы
-            if (SelectedDivision.HasValue)
+            // 10) Загружаем исполнителей, принимающих и WorkItems:
+            if (UseAllDivisions)
             {
-                Executors = await _workItemService.GetExecutorsAsync(SelectedDivision.Value);
-                Approvers = await _workItemService.GetApproversAsync(SelectedDivision.Value);
-                WorkItems = await _workItemService.GetAllWorkItemsAsync(
-                    new List<int> { SelectedDivision.Value }
-                );
-                DepartmentName = await _workItemService.GetDevAsync(SelectedDivision.Value);
+                // Берём все разрешённые отделы
+                Executors = await _loginService.GetAllUsersAsync();
+                Approvers = await _loginService.GetAllUsersAsync();
+                WorkItems = await _workItemService.GetAllWorkItemsAsync(AllowedDivisions.Select(x => x.IdDivision).ToList());
+
+                DepartmentName = "Все отделы";
             }
             else
             {
-                Executors = new List<string>();
-                Approvers = new List<string>();
-                WorkItems = new List<WorkItem>();
-                DepartmentName = "Нет доступных подразделений";
+                if (SelectedDivision.HasValue)
+                {
+                    Executors = await _workItemService.GetExecutorsAsync(SelectedDivision.Value);
+                    Approvers = await _workItemService.GetApproversAsync(SelectedDivision.Value);
+                    WorkItems = await _workItemService.GetAllWorkItemsAsync(new List<int> { SelectedDivision.Value });
+                    DepartmentName = await _workItemService.GetDevAsync(SelectedDivision.Value);
+                }
+                else
+                {
+                    Executors = new List<string>();
+                    Approvers = new List<string>();
+                    WorkItems = new List<WorkItem>();
+                    DepartmentName = "Нет доступных подразделений";
+                }
             }
 
-            // 11) Применяем фильтры
+            // 11) Фильтрация
             ApplyFilters();
 
-            // 12) Подсвечиваем строки (Pending-заявки)
+            // 12) Пагинация
+            PaginateWorkItems();
+
+            // 13) Подсветка Pending-заявок
             await HighlightRows();
         }
 
         /// <summary>
-        /// AJAX-фильтр: вызывается при изменении дат, исполнителя, принимающего, подразделения и т.д.
-        /// Возвращаем partial.
+        /// AJAX-фильтр при изменении параметров.
         /// </summary>
         public async Task<IActionResult> OnGetFilterAsync(
-            DateTime? startDate,
-            DateTime? endDate,
-            string? executor,
-            string? approver,
-            string? searchQuery,
-            int? selectedDivision)
+        DateTime? startDate,
+        DateTime? endDate,
+        string? executor,
+        string? approver,
+        string? searchQuery,
+        int? selectedDivision,
+        bool useAllDivisions,
+        int currentPage = 1)
         {
-            // 1) Проверяем куки
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId") ||
                 !HttpContext.Request.Cookies.ContainsKey("userName"))
             {
                 return new JsonResult(new { error = "Нет нужных куки" });
             }
 
-            // 2) userName, homeDivisionId
             UserName = HttpContext.Request.Cookies["userName"];
             int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
 
-            // 3) Устанавливаем свойства
+            // Привязываем свойства
             StartDate = startDate ?? new DateTime(2014, 1, 1);
             EndDate = endDate ?? DateTime.Now;
             Executor = executor;
             Approver = approver;
             SearchQuery = searchQuery;
             SelectedDivision = selectedDivision;
+            UseAllDivisions = useAllDivisions;
+            CurrentPage = currentPage;
 
-            // 4) Определяем доступные отделы
+            // Проверяем пользователя и т.д.
             int? userId = await _loginService.GetUserIdByNameAsync(UserName);
             if (userId == null)
                 return new JsonResult(new { error = "Пользователь не найден" });
 
-            // ВАЖНО: перезаполняем флаги доступа (иначе кнопка заявки будет отключена)
-            HasSettingsAccess = await _userSettingsService.HasAccessToSettingsAsync(userId.Value);
             HasSendCloseRequestAccess = await _userSettingsService.HasAccessToSendCloseRequestAsync(userId.Value);
 
+            // Список отделов
             var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
             if (userDivIds.Count == 0)
             {
                 userDivIds.Add(homeDivisionId);
             }
             var allDivisions = await _userSettingsService.GetAllDivisionsAsync();
-            AllowedDivisions = allDivisions
-                .Where(d => userDivIds.Contains(d.IdDivision))
-                .ToList();
+            AllowedDivisions = allDivisions.Where(d => userDivIds.Contains(d.IdDivision)).ToList();
 
-            // 5) Если переданный отдел не в списке, берём что-то по умолчанию
-            if (!SelectedDivision.HasValue ||
-                !AllowedDivisions.Any(d => d.IdDivision == SelectedDivision.Value))
+            // Если UseAllDivisions == false, определяем текущий отдел
+            if (!UseAllDivisions)
             {
-                if (AllowedDivisions.Any(d => d.IdDivision == homeDivisionId))
+                if (!SelectedDivision.HasValue ||
+                    !AllowedDivisions.Any(d => d.IdDivision == SelectedDivision.Value))
                 {
-                    SelectedDivision = homeDivisionId;
-                }
-                else if (AllowedDivisions.Count > 0)
-                {
-                    SelectedDivision = AllowedDivisions.First().IdDivision;
+                    if (AllowedDivisions.Any(d => d.IdDivision == homeDivisionId))
+                    {
+                        SelectedDivision = homeDivisionId;
+                    }
+                    else if (AllowedDivisions.Count > 0)
+                    {
+                        SelectedDivision = AllowedDivisions.First().IdDivision;
+                    }
                 }
             }
 
-            // 6) Загружаем исполнителей и WorkItems
-            if (SelectedDivision.HasValue)
+            // Грузим работы и исполнителей
+            if (UseAllDivisions)
             {
-                Executors = await _workItemService.GetExecutorsAsync(SelectedDivision.Value);
-                Approvers = await _workItemService.GetApproversAsync(SelectedDivision.Value);
-                WorkItems = await _workItemService.GetAllWorkItemsAsync(
-                    new List<int> { SelectedDivision.Value }
-                );
-                DepartmentName = await _workItemService.GetDevAsync(SelectedDivision.Value);
+                Executors = await _loginService.GetAllUsersAsync();
+                Approvers = await _loginService.GetAllUsersAsync();
+                WorkItems = await _workItemService.GetAllWorkItemsAsync(AllowedDivisions.Select(x => x.IdDivision).ToList());
+                DepartmentName = "Все отделы";
             }
             else
             {
-                Executors = new List<string>();
-                Approvers = new List<string>();
-                WorkItems = new List<WorkItem>();
-                DepartmentName = "Нет доступных подразделений";
+                if (SelectedDivision.HasValue)
+                {
+                    Executors = await _workItemService.GetExecutorsAsync(SelectedDivision.Value);
+                    Approvers = await _workItemService.GetApproversAsync(SelectedDivision.Value);
+                    WorkItems = await _workItemService.GetAllWorkItemsAsync(new List<int> { SelectedDivision.Value });
+                    DepartmentName = await _workItemService.GetDevAsync(SelectedDivision.Value);
+                }
+                else
+                {
+                    Executors = new List<string>();
+                    Approvers = new List<string>();
+                    WorkItems = new List<WorkItem>();
+                    DepartmentName = "Нет доступных подразделений";
+                }
             }
 
-            // 7) Фильтрация
             ApplyFilters();
-
-            // 8) Подсветка Pending-заявок
+            PaginateWorkItems();
             await HighlightRows();
 
-            // 9) Возвращаем partial
             return Partial("_WorkItemsTablePartial", this);
         }
 
@@ -669,13 +687,12 @@ namespace Monitoring.UI.Pages
         }
 
         /// <summary>
-        /// Фильтрация WorkItems
+        /// Фильтрация
         /// </summary>
         private void ApplyFilters()
         {
             var query = WorkItems.AsQueryable();
 
-            // Фильтр по исполнителю
             if (!string.IsNullOrEmpty(Executor))
             {
                 query = query.Where(x =>
@@ -683,7 +700,6 @@ namespace Monitoring.UI.Pages
                     x.Executor.Contains(Executor, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Фильтр по принимающему
             if (!string.IsNullOrEmpty(Approver))
             {
                 query = query.Where(x =>
@@ -691,7 +707,6 @@ namespace Monitoring.UI.Pages
                     x.Approver.Contains(Approver, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Поиск (DocumentName, WorkName, Executor, Controller, Approver)
             if (!string.IsNullOrEmpty(SearchQuery))
             {
                 query = query.Where(x =>
@@ -703,7 +718,7 @@ namespace Monitoring.UI.Pages
                 );
             }
 
-            // Фильтр по дате <= EndDate
+            // Фильтр по максимальной дате
             if (EndDate.HasValue)
             {
                 query = query.Where(x =>
@@ -711,6 +726,26 @@ namespace Monitoring.UI.Pages
             }
 
             WorkItems = query.ToList();
+        }
+
+        /// <summary>
+        /// Разбиваем WorkItems на страницы.
+        /// </summary>
+        private void PaginateWorkItems()
+        {
+            int totalCount = WorkItems.Count;
+            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+            if (TotalPages < 1)
+                TotalPages = 1;
+            if (CurrentPage < 1)
+                CurrentPage = 1;
+            if (CurrentPage > TotalPages)
+                CurrentPage = TotalPages;
+
+            WorkItems = WorkItems
+                .Skip((CurrentPage - 1) * PageSize)
+                .Take(PageSize)
+                .ToList();
         }
 
         /// <summary>
