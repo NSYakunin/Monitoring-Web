@@ -72,11 +72,12 @@
                         <div id="subdivisionList" class="subdivisions-grid-3">
                             @foreach (var sub in Model.Subdivisions)
                             {
-                                bool isChecked = Model.UserSelectedDivisionIds.Contains(sub.IdDivision);
-
-                                // Проверяем, является ли этот sub.IdDivision родным отделом для выбранного пользователя.
-                                // Model.HomeDivisionIdForSelectedUser содержит родной отдел (см. код бэкенда).
+                                // Обратите внимание, что теперь мы ВСЕГДА выставляем isChecked в true,
+                                // если это родное подразделение.
                                 bool isHomeDivision = (sub.IdDivision == Model.HomeDivisionIdForSelectedUser);
+
+                                // Изменение: если это родной отдел, ставим isChecked = true независимо от списка
+                                bool isChecked = isHomeDivision || Model.UserSelectedDivisionIds.Contains(sub.IdDivision);
 
                                 <div class="form-check d-flex align-items-center">
                                     <input class="form-check-input" type="checkbox"
