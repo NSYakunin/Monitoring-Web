@@ -61,6 +61,7 @@ namespace Monitoring.UI.Pages
 
         public List<Notification> Notifications { get; set; } = new List<Notification>();
 
+        // Если SelectedDivision == 0, это означает "Выбрать все"
         [BindProperty(SupportsGet = true)]
         public int? SelectedDivision { get; set; }
 
@@ -74,13 +75,6 @@ namespace Monitoring.UI.Pages
         // Флаг: показываем все доступные подразделения
         [BindProperty(SupportsGet = true)]
         public bool UseAllDivisions { get; set; }
-
-        // Пагинация:
-        [BindProperty(SupportsGet = true)]
-        public int CurrentPage { get; set; } = 1;
-
-        public int PageSize { get; set; } = 100;
-        public int TotalPages { get; set; } = 1;
 
         public async Task OnGet()
         {
@@ -126,12 +120,16 @@ namespace Monitoring.UI.Pages
                 .Where(d => userDivIds.Contains(d.IdDivision))
                 .ToList();
 
+            // Если SelectedDivision == 0, значит выбрано "Выбрать все"
+            if (SelectedDivision.HasValue && SelectedDivision.Value == 0)
+            {
+                UseAllDivisions = true;
+            }
+
             // 6) Определяем SelectedDivision, если флажок UseAllDivisions==false
             if (!UseAllDivisions)
             {
-                // Если не задано, берём homeDivisionId, если он в списке
-                if (!SelectedDivision.HasValue ||
-                    !AllowedDivisions.Any(d => d.IdDivision == SelectedDivision.Value))
+                if (!SelectedDivision.HasValue || !AllowedDivisions.Any(d => d.IdDivision == SelectedDivision.Value))
                 {
                     if (AllowedDivisions.Any(d => d.IdDivision == homeDivisionId))
                     {
@@ -193,9 +191,6 @@ namespace Monitoring.UI.Pages
             // 11) Фильтрация
             ApplyFilters();
 
-            // 12) Пагинация
-            PaginateWorkItems();
-
             // 13) Подсветка Pending-заявок
             await HighlightRows();
         }
@@ -204,14 +199,14 @@ namespace Monitoring.UI.Pages
         /// AJAX-фильтр при изменении параметров.
         /// </summary>
         public async Task<IActionResult> OnGetFilterAsync(
-        DateTime? startDate,
-        DateTime? endDate,
-        string? executor,
-        string? approver,
-        string? searchQuery,
-        int? selectedDivision,
-        bool useAllDivisions,
-        int currentPage = 1)
+            DateTime? startDate,
+            DateTime? endDate,
+            string? executor,
+            string? approver,
+            string? searchQuery,
+            int? selectedDivision,
+            bool useAllDivisions,
+            int currentPage = 1)
         {
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId") ||
                 !HttpContext.Request.Cookies.ContainsKey("userName"))
@@ -230,7 +225,12 @@ namespace Monitoring.UI.Pages
             SearchQuery = searchQuery;
             SelectedDivision = selectedDivision;
             UseAllDivisions = useAllDivisions;
-            CurrentPage = currentPage;
+
+            // Если выбран "Выбрать все" (SelectedDivision==0), устанавливаем UseAllDivisions
+            if (SelectedDivision.HasValue && SelectedDivision.Value == 0)
+            {
+                UseAllDivisions = true;
+            }
 
             // Проверяем пользователя и т.д.
             int? userId = await _loginService.GetUserIdByNameAsync(UserName);
@@ -292,7 +292,6 @@ namespace Monitoring.UI.Pages
             }
 
             ApplyFilters();
-            PaginateWorkItems();
             await HighlightRows();
 
             return Partial("_WorkItemsTablePartial", this);
@@ -342,12 +341,12 @@ namespace Monitoring.UI.Pages
 
                 int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
                 UserName = HttpContext.Request.Cookies["userName"];
-                int actualDivisionId = SelectedDivision ?? homeDivisionId;
+                int actualDivisionId = SelectedDivision.HasValue && SelectedDivision.Value == 0
+                    ? homeDivisionId
+                    : SelectedDivision ?? homeDivisionId;
 
                 // 1) Находим WorkItem
-                var allItems = await _workItemService.GetAllWorkItemsAsync(
-                    new List<int> { actualDivisionId }
-                );
+                var allItems = await _workItemService.GetAllWorkItemsAsync(new List<int> { actualDivisionId });
                 var witem = allItems.FirstOrDefault(x => x.DocumentNumber == dto.DocumentNumber);
                 if (witem == null)
                 {
@@ -622,14 +621,31 @@ namespace Monitoring.UI.Pages
             int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
-            int actualDivisionId = SelectedDivision ?? homeDivisionId;
-            Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
-            Approvers = await _workItemService.GetApproversAsync(actualDivisionId);
-            WorkItems = await _workItemService.GetAllWorkItemsAsync(
-                new List<int> { actualDivisionId }
-            );
+            // Если выбрано "Выбрать все" (SelectedDivision == 0), загружаем данные по всем разрешённым подразделениям
+            if (SelectedDivision.HasValue && SelectedDivision.Value == 0)
+            {
+                int? userId = await _loginService.GetUserIdByNameAsync(UserName);
+                if (userId != null)
+                {
+                    var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
+                    var allDivisions = await _userSettingsService.GetAllDivisionsAsync();
+                    AllowedDivisions = allDivisions.Where(d => userDivIds.Contains(d.IdDivision)).ToList();
+                }
+                Executors = await _loginService.GetAllUsersAsync();
+                Approvers = await _loginService.GetAllUsersAsync();
+                WorkItems = await _workItemService.GetAllWorkItemsAsync(AllowedDivisions.Select(x => x.IdDivision).ToList());
+                DepartmentName = "Все отделы";
+            }
+            else
+            {
+                int actualDivisionId = SelectedDivision ?? homeDivisionId;
+                Executors = await _workItemService.GetExecutorsAsync(actualDivisionId);
+                Approvers = await _workItemService.GetApproversAsync(actualDivisionId);
+                WorkItems = await _workItemService.GetAllWorkItemsAsync(new List<int> { actualDivisionId });
+                DepartmentName = await _workItemService.GetDevAsync(actualDivisionId);
+            }
 
-            string dev = await _workItemService.GetDevAsync(actualDivisionId);
+            string dev = DepartmentName;
 
             // Фильтр
             ApplyFilters();
@@ -728,25 +744,6 @@ namespace Monitoring.UI.Pages
             WorkItems = query.ToList();
         }
 
-        /// <summary>
-        /// Разбиваем WorkItems на страницы.
-        /// </summary>
-        private void PaginateWorkItems()
-        {
-            int totalCount = WorkItems.Count;
-            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-            if (TotalPages < 1)
-                TotalPages = 1;
-            if (CurrentPage < 1)
-                CurrentPage = 1;
-            if (CurrentPage > TotalPages)
-                CurrentPage = TotalPages;
-
-            WorkItems = WorkItems
-                .Skip((CurrentPage - 1) * PageSize)
-                .Take(PageSize)
-                .ToList();
-        }
 
         /// <summary>
         /// Подсветка строк, если есть Pending-заявка от текущего пользователя
