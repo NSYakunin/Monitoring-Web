@@ -1,7 +1,7 @@
 ﻿@model Monitoring.UI.Pages.IndexModel
 
-<!-- 
-  Здесь мы добавили стили: 
+<!--
+  Здесь мы добавили стили:
   1) Уменьшили padding (с 15px до 5px) в заголовке таблицы.
   2) Сделали заголовок фиксированным (sticky) при прокрутке.
   3) Добавили комментарии, чтобы было понятно, как изменить высоту заголовка.
@@ -45,49 +45,49 @@
                 // Проверяем, можем ли мы отправлять заявки
                 bool canSendRequest = false;
                 if (!string.IsNullOrEmpty(Model.UserName) &&
-                    !string.IsNullOrEmpty(item.Executor) &&
-                    Model.HasSendCloseRequestAccess)
+                !string.IsNullOrEmpty(item.Executor) &&
+                Model.HasSendCloseRequestAccess)
                 {
                     var exList = item.Executor.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                                              .Select(x => x.Trim());
+                    .Select(x => x.Trim());
                     // Если текущий пользователь в списке исполнителей
                     canSendRequest = exList.Contains(Model.UserName);
                 }
 
-                        <tr data-id="@item.DocumentNumber"
-                            data-request-id="@dataRequestId"
-                            data-request-type="@dataRequestType"
-                            data-request-date="@dataRequestDate"
-                            data-request-note="@dataRequestNote"
-                            data-receiver="@dataReceiver"
-                            class="@highlightClass">
+                <tr data-id="@item.DocumentNumber"
+                    data-request-id="@dataRequestId"
+                    data-request-type="@dataRequestType"
+                    data-request-date="@dataRequestDate"
+                    data-request-note="@dataRequestNote"
+                    data-receiver="@dataReceiver"
+                    class="@highlightClass">
 
-                            <td class="row-index">@num</td>
-                            <td>@item.DocumentName</td>
-                            <td>@item.WorkName</td>
-                            <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
-                            <td>@item.Controller</td>
-                            <td>@item.Approver</td>
-                            <td>@item.PlanDate?.ToShortDateString()</td>
-                            <td>@item.Korrect1?.ToShortDateString()</td>
-                            <td>@item.Korrect2?.ToShortDateString()</td>
-                            <td>@item.Korrect3?.ToShortDateString()</td>
+                    <td class="row-index">@num</td>
+                    <td>@item.DocumentName</td>
+                    <td>@item.WorkName</td>
+                    <td>@Html.Raw(item.Executor?.Replace(", ", "<br>"))</td>
+                    <td>@item.Controller</td>
+                    <td>@item.Approver</td>
+                    <td>@item.PlanDate?.ToShortDateString()</td>
+                    <td>@item.Korrect1?.ToShortDateString()</td>
+                    <td>@item.Korrect2?.ToShortDateString()</td>
+                    <td>@item.Korrect3?.ToShortDateString()</td>
 
-                            <td class="align-middle">
-                                <input type="checkbox" class="row-select" />
+                    <td class="align-middle">
+                        <input type="checkbox" class="row-select" />
                         @if (canSendRequest)
                         {
-                                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
-                                                onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver', this)">
-                                            📝
-                                        </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                    onclick="openRequestModal('@item.DocumentNumber', '@item.Controller', '@item.Approver', this)">
+                                📝
+                            </button>
                         }
                         else
                         {
-                                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>📝</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>📝</button>
                         }
-                            </td>
-                        </tr>
+                    </td>
+                </tr>
 
                 num++;
             }
@@ -96,70 +96,67 @@
 </table>
 
 <style>
-    /* 
-     * 1) Для "плавающего" заголовка (sticky header) нам нужно:
-     *    - дать контейнеру overflow и ограничение высоты (если нужно)
-     *      ИЛИ сделать сам заголовок position: sticky.
-     *    - В данном решении мы делаем sticky непосредственно на th.
-     *    
-     * 2) Чтобы заголовок таблицы был менее высоким, мы уменьшаем padding (отступы).
-     *    Ниже в классе .custom-header th заменили padding: 15px на, например, 5px.
-     *    Можно ещё отрегулировать line-height, если нужно уменьшить/увеличить визуальную высоту.
-     */
+    /*
+         * 1) Для "плавающего" заголовка (sticky header) нам нужно:
+         *    - дать контейнеру overflow и ограничение высоты (если нужно)
+         *      ИЛИ сделать сам заголовок position: sticky.
+         *    - В данном решении мы делаем sticky непосредственно на th.
+         *
+         * 2) Чтобы заголовок таблицы был менее высоким, мы уменьшаем padding (отступы).
+         *    Ниже в классе .custom-header th заменили padding: 15px на, например, 5px.
+         *    Можно ещё отрегулировать line-height, если нужно уменьшить/увеличить визуальную высоту.
+         */
 
-    /* Класс-обёртка, чтобы у таблицы была горизонтальная прокрутка при необходимости 
-       (если ширина таблицы большая), но вертикальный скролл будет у всей страницы 
-       - заголовок "прилипает" к верху окна. */
+    /* Класс-обёртка, чтобы у таблицы была горизонтальная прокрутка при необходимости
+           (если ширина таблицы большая), но вертикальный скролл будет у всей страницы
+           - заголовок "прилипает" к верху окна. */
     .sticky-header-table {
         width: 100%;
         border-collapse: collapse;
     }
 
-    /* Делаем верхние ячейки (th) "липкими" (sticky).
-       z-index нужен, чтобы заголовок оставался поверх остальных элементов.
-    */
-    .sticky-header-table thead th {
-        position: sticky;
-        top: 0;           /* Заголовок "прилипает" к верху окна */
-        z-index: 50;      /* Достаточно большой, чтобы перекрыть контент */
-    }
+        /* Делаем верхние ячейки (th) "липкими" (sticky).
+           z-index нужен, чтобы заголовок оставался поверх остальных элементов.
+        */
+        .sticky-header-table thead th {
+            position: sticky;
+            top: 0; /* Заголовок "прилипает" к верху окна */
+            z-index: 50; /* Достаточно большой, чтобы перекрыть контент */
+        }
 
     /* Стили шапки */
     .custom-header th {
         background: linear-gradient(145deg, #2c3e50, #34495e);
         color: white;
         font-weight: 500;
-
         /* УМЕНЬШИЛИ ПАДДИНГ: было 15px, теперь 5px */
         padding: 5px;
-
         /* Отступ снизу подчеркивания */
         border-bottom: 2px solid #1a252f;
-
         transition: all 0.3s ease;
         position: relative;
     }
 
-    .custom-header th:hover {
-        background: linear-gradient(145deg, #34495e, #2c3e50);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
+        .custom-header th:hover {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
 
-    .custom-header th::after {
-        content: '';
-        position: absolute;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        height: 60%;
-        width: 1px;
-        background: rgba(255,255,255,0.1);
-    }
+        .custom-header th::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 60%;
+            width: 1px;
+            background: rgba(255,255,255,0.1);
+        }
 
-    .custom-header th:last-child::after {
-        display: none;
-    }
+        .custom-header th:last-child::after {
+            display: none;
+        }
 
     /* Иконка "Выделить всё" */
     .toggle-all-btn {
@@ -168,8 +165,9 @@
         display: inline-block;
         padding: 5px;
     }
-    .toggle-all-btn:hover {
-        transform: rotate(90deg);
-        color: #ecf0f1;
-    }
+
+        .toggle-all-btn:hover {
+            transform: rotate(90deg);
+            color: #ecf0f1;
+        }
 </style>

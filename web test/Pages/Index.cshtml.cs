@@ -299,20 +299,38 @@ namespace Monitoring.UI.Pages
 
         /// <summary>
         /// AJAX: получить список Approvers для division
+        /// ВАЖНО! Если divisionId == 0 (т.е. "Выбрать все"), возвращаем всех пользователей.
         /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnGetApproversAsync(int divisionId)
         {
+            // Добавляем проверку:
+            if (divisionId == 0)
+            {
+                // Возвращаем всех
+                var allUsers = await _loginService.GetAllUsersAsync();
+                return new JsonResult(allUsers);
+            }
+
             var approvers = await _workItemService.GetApproversAsync(divisionId);
             return new JsonResult(approvers);
         }
 
         /// <summary>
         /// AJAX: получить список исполнителей для division
+        /// ВАЖНО! Если divisionId == 0 (т.е. "Выбрать все"), возвращаем всех пользователей.
         /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnGetExecutorsAsync(int divisionId)
         {
+            // Добавляем проверку:
+            if (divisionId == 0)
+            {
+                // Возвращаем всех
+                var allUsers = await _loginService.GetAllUsersAsync();
+                return new JsonResult(allUsers);
+            }
+
             var executors = await _workItemService.GetExecutorsAsync(divisionId);
             return new JsonResult(executors);
         }

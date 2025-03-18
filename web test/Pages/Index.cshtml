@@ -296,10 +296,10 @@
             transition: all 0.3s;
         }
 
-        .toggle-all-btn:hover {
-            opacity: 1;
-            transform: scale(1.2);
-        }
+            .toggle-all-btn:hover {
+                opacity: 1;
+                transform: scale(1.2);
+            }
 
         .btn-pdf {
             background: linear-gradient(145deg, #2c3e50, #34495e);
@@ -312,16 +312,16 @@
             overflow: hidden;
         }
 
-        .btn-pdf:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-            background: linear-gradient(145deg, #34495e, #2c3e50);
-        }
+            .btn-pdf:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+                background: linear-gradient(145deg, #34495e, #2c3e50);
+            }
 
-        .btn-pdf:active {
-            transform: translateY(1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+            .btn-pdf:active {
+                transform: translateY(1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
 
         .btn-logout {
             border: 2px solid #dc3545;
@@ -333,12 +333,12 @@
             position: relative;
         }
 
-        .btn-logout:hover {
-            background: rgba(220, 53, 69, 0.9);
-            color: white !important;
-            border-color: transparent;
-            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
-        }
+            .btn-logout:hover {
+                background: rgba(220, 53, 69, 0.9);
+                color: white !important;
+                border-color: transparent;
+                box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+            }
 
         /* Кнопка "Входящие заявки" */
         .btn-myrequests {
@@ -359,10 +359,10 @@
             color: #f8f9fa;
         }
 
-        .btn-myrequests-none:hover {
-            background: #5a6268;
-            color: #ffffff;
-        }
+            .btn-myrequests-none:hover {
+                background: #5a6268;
+                color: #ffffff;
+            }
 
         /* Когда есть Pending-заявки, пусть кнопка будет более яркой */
         .btn-myrequests-new {
@@ -371,16 +371,27 @@
             box-shadow: 0 4px 8px rgba(255,193,7,0.4);
         }
 
-        .btn-myrequests-new:hover {
-            background: #ffca2c; 
-            color: #212529;
-            box-shadow: 0 6px 12px rgba(255,193,7,0.5);
-        }
+            .btn-myrequests-new:hover {
+                background: #ffca2c;
+                color: #212529;
+                box-shadow: 0 6px 12px rgba(255,193,7,0.5);
+            }
 
         @@keyframes pulse {
-            0% { box-shadow: 0 0 0 rgba(255,193,7,0.5); }
-            50% { box-shadow: 0 0 20px rgba(255,193,7,0.7); }
-            100% { box-shadow: 0 0 0 rgba(255,193,7,0.5); }
+            0%
+
+        {
+            box-shadow: 0 0 0 rgba(255,193,7,0.5);
+        }
+
+        50% {
+            box-shadow: 0 0 20px rgba(255,193,7,0.7);
+        }
+
+        100% {
+            box-shadow: 0 0 0 rgba(255,193,7,0.5);
+        }
+
         }
 
         .btn-myrequests-new {
@@ -409,9 +420,23 @@
         }
 
         @@keyframes pulseButton {
-            0% { transform: scale(1); box-shadow: 0 0 0 rgba(0,123,255,0.7); }
-            50% { transform: scale(1.05); box-shadow: 0 0 10px rgba(0,123,255,0.7); }
-            100% { transform: scale(1); box-shadow: 0 0 0 rgba(0,123,255,0.7); }
+            0%
+
+        {
+            transform: scale(1);
+            box-shadow: 0 0 0 rgba(0,123,255,0.7);
+        }
+
+        50% {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0,123,255,0.7);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 rgba(0,123,255,0.7);
+        }
+
         }
 
         .btn-performance:hover {
