@@ -25,6 +25,10 @@
 
                 <!-- Форма с фильтрами -->
                 <form method="get" id="filterForm" class="d-flex flex-wrap align-items-end gap-2">
+                    <!-- Скрытые поля для сохранения флага UseAllDivisions и номера текущей страницы -->
+                    <input type="hidden" name="useAllDivisions" id="useAllDivisions" value="@Model.UseAllDivisions" />
+                    <input type="hidden" name="currentPage" id="currentPage" value="@Model.CurrentPage" />
+
                     <!-- Фильтр по датам -->
                     <div class="d-flex flex-column">
                         <label for="startDate" class="form-label">C даты:</label>
@@ -42,10 +46,10 @@
                         <label for="divisionSelect" class="form-label">Подразделение:</label>
                         <select id="divisionSelect" name="SelectedDivision" class="form-select">
                             <!-- Новая опция "Выбрать все" -->
-                            <option value="0" selected=@(Model.SelectedDivision == 0 ? "selected" : null)>Выбрать все</option>
+                            <option value="0" selected="@(Model.SelectedDivision == 0 ? "selected" : null)">Выбрать все</option>
                             @foreach (var div in Model.AllowedDivisions)
                             {
-                                <option value="@div.IdDivision" selected=@(div.IdDivision == Model.SelectedDivision ? "selected" : null)>
+                                <option value="@div.IdDivision" selected="@(div.IdDivision == Model.SelectedDivision ? "selected" : null)">
                                     @div.SmallNameDivision
                                 </option>
                             }
@@ -340,7 +344,6 @@
                 box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
             }
 
-        /* Кнопка "Входящие заявки" */
         .btn-myrequests {
             margin-top: 10px;
             margin-left: auto;
@@ -353,9 +356,8 @@
             border: none;
         }
 
-        /* Когда нет входящих заявок, пусть кнопка будет более тусклая */
         .btn-myrequests-none {
-            background: #6c757d; /* серо-тусклая */
+            background: #6c757d;
             color: #f8f9fa;
         }
 
@@ -364,9 +366,8 @@
                 color: #ffffff;
             }
 
-        /* Когда есть Pending-заявки, пусть кнопка будет более яркой */
         .btn-myrequests-new {
-            background: #ffc107; /* желтый */
+            background: #ffc107;
             color: #212529;
             box-shadow: 0 4px 8px rgba(255,193,7,0.4);
         }
@@ -378,20 +379,17 @@
             }
 
         @@keyframes pulse {
-            0%
+            0% {
+                box-shadow: 0 0 0 rgba(255,193,7,0.5);
+            }
 
-        {
-            box-shadow: 0 0 0 rgba(255,193,7,0.5);
-        }
+            50% {
+                box-shadow: 0 0 20px rgba(255,193,7,0.7);
+            }
 
-        50% {
-            box-shadow: 0 0 20px rgba(255,193,7,0.7);
-        }
-
-        100% {
-            box-shadow: 0 0 0 rgba(255,193,7,0.5);
-        }
-
+            100% {
+                box-shadow: 0 0 0 rgba(255,193,7,0.5);
+            }
         }
 
         .btn-myrequests-new {
@@ -406,7 +404,6 @@
             font-size: 0.85rem;
         }
 
-        /* Новый стиль для кнопки "Исполнительность" */
         .btn-performance {
             background: linear-gradient(145deg, #007bff, #0056b3);
             color: white !important;
@@ -420,23 +417,20 @@
         }
 
         @@keyframes pulseButton {
-            0%
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 rgba(0,123,255,0.7);
+            }
 
-        {
-            transform: scale(1);
-            box-shadow: 0 0 0 rgba(0,123,255,0.7);
-        }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 10px rgba(0,123,255,0.7);
+            }
 
-        50% {
-            transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(0,123,255,0.7);
-        }
-
-        100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 rgba(0,123,255,0.7);
-        }
-
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 rgba(0,123,255,0.7);
+            }
         }
 
         .btn-performance:hover {
@@ -475,13 +469,11 @@
             });
             $tableBody.disableSelection();
 
-            // Чекбокс на строку
             $('#workItemsTable').on('change', '.row-select', function() {
                 $(this).closest('tr').toggleClass('selected-row', this.checked);
             });
             $('#workItemsTable .row-select:checked').closest('tr').addClass('selected-row');
 
-            // Клик по строке
             $tableBody.on('click', 'tr', function(e) {
                 if (isDragging) return;
                 if ($(e.target).is('button, a, .btn, input')) return;
@@ -491,7 +483,6 @@
                 $checkbox.prop('checked', !checked).trigger('change');
             });
 
-            // "Выделить/снять все"
             $('.toggle-all-btn').off('click').on('click', function() {
                 let all = $('#workItemsTable .row-select');
                 let anyUnchecked = all.filter(':not(:checked)').length > 0;
@@ -502,10 +493,8 @@
         $(document).ready(function(){
             initSortableTable();
 
-            // AJAX-фильтр
+            // AJAX-фильтр – при изменении любого из параметров, включая поиск, сбрасываем текущую страницу в 1
             $('#startDate, #endDate, #executor, #approver, #search, #divisionSelect').on('change keyup', function() {
-                var changedElementId = this.id;
-
                 $.ajax({
                     url: '@Url.Page("Index", "Filter")',
                     type: 'GET',
@@ -515,10 +504,11 @@
                         executor: $('#executor').val(),
                         approver: $('#approver').val(),
                         searchQuery: $('#search').val(),
-                        selectedDivision: $('#divisionSelect').val()
+                        selectedDivision: $('#divisionSelect').val(),
+                        useAllDivisions: $('#useAllDivisions').val(),
+                        currentPage: 1
                     },
                     success: function(result) {
-                        // Обновляем partial
                         $('#workItemsTableContainer').html(result);
                         initSortableTable();
 
@@ -530,8 +520,7 @@
                         $('input[name="SearchQuery"]').val($('#search').val());
                         $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
 
-                        // Если сменили подразделение - подгружаем новый список исполнителей и принимающих
-                        if (changedElementId === 'divisionSelect') {
+                        if ($(this).attr('id') === 'divisionSelect') {
                             loadExecutors($('#divisionSelect').val());
                             loadApprovers($('#divisionSelect').val());
                         }
@@ -572,7 +561,6 @@
             });
         }
 
-        // Кнопка "Сдаточный чек"
         $('#generatePdfBtn').on('click', function() {
             let rows = document.querySelectorAll("#workItemsTable tbody tr");
             let result = [];
@@ -585,10 +573,8 @@
             $("#SelectedItemsOrder").val(JSON.stringify(result));
         });
 
-        // Открыть модалку "Создание/редактирование заявки"
         function openRequestModal(docNumber, controller, approver, btn) {
             let tr = btn.closest('tr');
-
             let requestId = tr.dataset.requestId || "";
             let reqType = tr.dataset.requestType || "корр1";
             let proposed = tr.dataset.requestDate || "";
@@ -600,11 +586,9 @@
 
             let proposedDateInput = document.getElementById('proposedDate');
             if (requestId) {
-                // Если заявка существующая, берём дату из data-атрибута
                 proposedDateInput.value = proposed;
             }
             else {
-                // Если заявка новая, по умолчанию ставим сегодняшнюю
                 let today = new Date();
                 let yyyy = today.getFullYear();
                 let mm = (today.getMonth() + 1).toString().padStart(2, '0');
@@ -614,7 +598,6 @@
 
             document.getElementById('requestNote').value = note;
 
-            // Заполняем селект "Получатель"
             let receiverSelect = document.getElementById('receiverSelect');
             receiverSelect.innerHTML = "";
 
@@ -628,7 +611,6 @@
             optAppr.textContent = `Принимающий (${approver})`;
             receiverSelect.appendChild(optAppr);
 
-            // Если это существующая заявка => выбираем того, кто уже есть
             if (requestId) {
                 if (optCtrl.value === tr.dataset.receiver) {
                     optCtrl.selected = true;
@@ -637,7 +619,6 @@
                 }
             }
             else {
-                // Если новая заявка — по умолчанию выбираем второй option (Принимающего)
                 optAppr.selected = true;
             }
 
@@ -655,7 +636,6 @@
             modal.show();
         }
 
-        // Создать новую заявку
         function createWorkRequest() {
             let docNumber = $('#hiddenDocNumber').val();
             let requestType = $('#requestTypeSelect').val();
@@ -690,7 +670,7 @@
 
                     let tr = document.querySelector(`tr[data-id="${docNumber}"]`);
                     if (tr) {
-                        tr.dataset.requestId = res.requestId; // <-- теперь у нас есть requestId
+                        tr.dataset.requestId = res.requestId;
                         tr.dataset.requestType = requestType;
                         tr.dataset.requestDate = proposedDate;
                         tr.dataset.requestNote = note;
@@ -709,7 +689,6 @@
             .catch(e => console.error(e));
         }
 
-        // Обновить
         function updateWorkRequest() {
             let requestId = $('#hiddenRequestId').val();
             let docNumber = $('#hiddenDocNumber').val();
@@ -762,7 +741,6 @@
             .catch(e => console.error(e));
         }
 
-        // Удалить
         function deleteWorkRequest() {
             let requestId = $('#hiddenRequestId').val();
             let docNumber = $('#hiddenDocNumber').val();
@@ -801,7 +779,6 @@
             .catch(e => console.error(e));
         }
 
-        // Обновление кэша
         function refreshCache() {
             let btn = document.getElementById('refreshCacheBtn');
             let originalText = btn.innerHTML;
@@ -838,7 +815,6 @@
             });
         }
 
-        // Установка формата и submit
         function setFormat(fmt) {
             const spinner = document.querySelector('#generatePdfBtn .spinner-border');
             spinner.style.display = 'inline-block';

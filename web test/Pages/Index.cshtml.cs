@@ -76,9 +76,13 @@ namespace Monitoring.UI.Pages
         [BindProperty(SupportsGet = true)]
         public bool UseAllDivisions { get; set; }
 
+        // Новые свойства для пагинации
+        public int CurrentPage { get; set; } = 1;
+        public int PageSize { get; set; } = 50;
+        public int TotalPages { get; set; }
+
         public async Task OnGet()
         {
-            // 1) Проверяем куки
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId") ||
                 !HttpContext.Request.Cookies.ContainsKey("userName"))
             {
@@ -86,11 +90,9 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // 2) userName и homeDivisionId
             int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
-            // 3) Находим idUser
             int? userId = await _loginService.GetUserIdByNameAsync(UserName);
             if (userId == null)
             {
@@ -98,7 +100,6 @@ namespace Monitoring.UI.Pages
                 return;
             }
 
-            // 4) Проверяем доступы
             HasSettingsAccess = await _userSettingsService.HasAccessToSettingsAsync(userId.Value);
             HasSendCloseRequestAccess = await _userSettingsService.HasAccessToSendCloseRequestAsync(userId.Value);
             HasCloseWorkAccess = await _userSettingsService.HasAccessToCloseWorkAsync(userId.Value);
@@ -108,7 +109,6 @@ namespace Monitoring.UI.Pages
                 HasPendingRequests = (myPending != null && myPending.Count > 0);
             }
 
-            // 5) Загружаем список отделов
             var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
             if (userDivIds.Count == 0)
             {
@@ -120,13 +120,11 @@ namespace Monitoring.UI.Pages
                 .Where(d => userDivIds.Contains(d.IdDivision))
                 .ToList();
 
-            // Если SelectedDivision == 0, значит выбрано "Выбрать все"
             if (SelectedDivision.HasValue && SelectedDivision.Value == 0)
             {
                 UseAllDivisions = true;
             }
 
-            // 6) Определяем SelectedDivision, если флажок UseAllDivisions==false
             if (!UseAllDivisions)
             {
                 if (!SelectedDivision.HasValue || !AllowedDivisions.Any(d => d.IdDivision == SelectedDivision.Value))
@@ -142,7 +140,6 @@ namespace Monitoring.UI.Pages
                 }
             }
 
-            // 7) Дефолтные даты
             if (!StartDate.HasValue)
                 StartDate = new DateTime(2014, 1, 1);
             if (!EndDate.HasValue)
@@ -151,23 +148,18 @@ namespace Monitoring.UI.Pages
                 EndDate = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
             }
 
-            // 8) Деактивируем старые уведомления
             await _notificationService.DeactivateOldNotificationsAsync(90);
 
-            // 9) Грузим уведомления
             int divForNotes = (UseAllDivisions && AllowedDivisions.Count > 0)
                 ? AllowedDivisions.First().IdDivision
                 : (SelectedDivision ?? homeDivisionId);
             Notifications = await _notificationService.GetActiveNotificationsAsync(divForNotes);
 
-            // 10) Загружаем исполнителей, принимающих и WorkItems:
             if (UseAllDivisions)
             {
-                // Берём все разрешённые отделы
                 Executors = await _loginService.GetAllUsersAsync();
                 Approvers = await _loginService.GetAllUsersAsync();
                 WorkItems = await _workItemService.GetAllWorkItemsAsync(AllowedDivisions.Select(x => x.IdDivision).ToList());
-
                 DepartmentName = "Все отделы";
             }
             else
@@ -188,16 +180,15 @@ namespace Monitoring.UI.Pages
                 }
             }
 
-            // 11) Фильтрация
             ApplyFilters();
-
-            // 13) Подсветка Pending-заявок
             await HighlightRows();
+
+            int totalCount = WorkItems.Count;
+            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+            WorkItems = WorkItems.Take(PageSize).ToList();
+            CurrentPage = 1;
         }
 
-        /// <summary>
-        /// AJAX-фильтр при изменении параметров.
-        /// </summary>
         public async Task<IActionResult> OnGetFilterAsync(
             DateTime? startDate,
             DateTime? endDate,
@@ -217,7 +208,6 @@ namespace Monitoring.UI.Pages
             UserName = HttpContext.Request.Cookies["userName"];
             int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
 
-            // Привязываем свойства
             StartDate = startDate ?? new DateTime(2014, 1, 1);
             EndDate = endDate ?? DateTime.Now;
             Executor = executor;
@@ -226,20 +216,17 @@ namespace Monitoring.UI.Pages
             SelectedDivision = selectedDivision;
             UseAllDivisions = useAllDivisions;
 
-            // Если выбран "Выбрать все" (SelectedDivision==0), устанавливаем UseAllDivisions
             if (SelectedDivision.HasValue && SelectedDivision.Value == 0)
             {
                 UseAllDivisions = true;
             }
 
-            // Проверяем пользователя и т.д.
             int? userId = await _loginService.GetUserIdByNameAsync(UserName);
             if (userId == null)
                 return new JsonResult(new { error = "Пользователь не найден" });
 
             HasSendCloseRequestAccess = await _userSettingsService.HasAccessToSendCloseRequestAsync(userId.Value);
 
-            // Список отделов
             var userDivIds = await _userSettingsService.GetUserAllowedDivisionsAsync(userId.Value);
             if (userDivIds.Count == 0)
             {
@@ -248,7 +235,6 @@ namespace Monitoring.UI.Pages
             var allDivisions = await _userSettingsService.GetAllDivisionsAsync();
             AllowedDivisions = allDivisions.Where(d => userDivIds.Contains(d.IdDivision)).ToList();
 
-            // Если UseAllDivisions == false, определяем текущий отдел
             if (!UseAllDivisions)
             {
                 if (!SelectedDivision.HasValue ||
@@ -265,7 +251,6 @@ namespace Monitoring.UI.Pages
                 }
             }
 
-            // Грузим работы и исполнителей
             if (UseAllDivisions)
             {
                 Executors = await _loginService.GetAllUsersAsync();
@@ -294,20 +279,19 @@ namespace Monitoring.UI.Pages
             ApplyFilters();
             await HighlightRows();
 
+            int totalCount = WorkItems.Count;
+            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+            WorkItems = WorkItems.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList();
+            CurrentPage = currentPage;
+
             return Partial("_WorkItemsTablePartial", this);
         }
 
-        /// <summary>
-        /// AJAX: получить список Approvers для division
-        /// ВАЖНО! Если divisionId == 0 (т.е. "Выбрать все"), возвращаем всех пользователей.
-        /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnGetApproversAsync(int divisionId)
         {
-            // Добавляем проверку:
             if (divisionId == 0)
             {
-                // Возвращаем всех
                 var allUsers = await _loginService.GetAllUsersAsync();
                 return new JsonResult(allUsers);
             }
@@ -316,17 +300,11 @@ namespace Monitoring.UI.Pages
             return new JsonResult(approvers);
         }
 
-        /// <summary>
-        /// AJAX: получить список исполнителей для division
-        /// ВАЖНО! Если divisionId == 0 (т.е. "Выбрать все"), возвращаем всех пользователей.
-        /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnGetExecutorsAsync(int divisionId)
         {
-            // Добавляем проверку:
             if (divisionId == 0)
             {
-                // Возвращаем всех
                 var allUsers = await _loginService.GetAllUsersAsync();
                 return new JsonResult(allUsers);
             }
@@ -335,22 +313,17 @@ namespace Monitoring.UI.Pages
             return new JsonResult(executors);
         }
 
-        // --------------------------------------------------
-        // 1) Создание заявки (POST)
-        // --------------------------------------------------
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostCreateRequestAsync()
         {
             try
             {
-                // Читаем DTO из тела:
                 using var reader = new StreamReader(Request.Body);
                 string body = await reader.ReadToEndAsync();
                 var dto = JsonSerializer.Deserialize<CreateRequestDto>(body);
                 if (dto == null)
                     return new JsonResult(new { success = false, message = "Невалидный JSON" });
 
-                // Проверяем куки
                 if (!HttpContext.Request.Cookies.ContainsKey("divisionId") ||
                     !HttpContext.Request.Cookies.ContainsKey("userName"))
                 {
@@ -363,7 +336,6 @@ namespace Monitoring.UI.Pages
                     ? homeDivisionId
                     : SelectedDivision ?? homeDivisionId;
 
-                // 1) Находим WorkItem
                 var allItems = await _workItemService.GetAllWorkItemsAsync(new List<int> { actualDivisionId });
                 var witem = allItems.FirstOrDefault(x => x.DocumentNumber == dto.DocumentNumber);
                 if (witem == null)
@@ -371,7 +343,6 @@ namespace Monitoring.UI.Pages
                     return new JsonResult(new { success = false, message = "WorkItem не найден" });
                 }
 
-                // 2) Проверяем, что текущий пользователь - исполнитель
                 var execs = witem.Executor
                     .Split(',', StringSplitOptions.RemoveEmptyEntries)
                     .Select(e => e.Trim())
@@ -385,11 +356,10 @@ namespace Monitoring.UI.Pages
                     });
                 }
 
-                // 3) Создаём новую заявку
                 var newRequest = new WorkRequest
                 {
                     WorkDocumentNumber = witem.DocumentNumber,
-                    DocumentName = witem.DocumentName, // "ТипДок + название"
+                    DocumentName = witem.DocumentName,
                     WorkName = witem.WorkName,
                     RequestType = dto.RequestType,
                     Sender = UserName,
@@ -399,7 +369,6 @@ namespace Monitoring.UI.Pages
                     Note = dto.Note,
                     ProposedDate = dto.ProposedDate,
                     Status = "Pending",
-
                     Executor = witem.Executor,
                     Controller = witem.Controller,
                     PlanDate = witem.PlanDate,
@@ -408,7 +377,6 @@ namespace Monitoring.UI.Pages
                     Korrect3 = witem.Korrect3
                 };
 
-                // ВАЖНО: возвращаем ID записи
                 int newRequestId = await _workRequestService.CreateRequestAsync(newRequest);
 
                 return new JsonResult(new { success = true, requestId = newRequestId });
@@ -419,9 +387,6 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        /// <summary>
-        /// Обновление (POST) заявки
-        /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostUpdateRequestAsync()
         {
@@ -439,7 +404,6 @@ namespace Monitoring.UI.Pages
                 }
                 UserName = HttpContext.Request.Cookies["userName"];
 
-                // Ищем заявку
                 var requests = await _workRequestService.GetRequestsByDocumentNumberAsync(dto.DocumentNumber);
                 var req = requests.FirstOrDefault(r => r.Id == dto.Id);
                 if (req == null)
@@ -455,7 +419,6 @@ namespace Monitoring.UI.Pages
                     return new JsonResult(new { success = false, message = "Заявка уже обработана" });
                 }
 
-                // Обновляем
                 req.RequestType = dto.RequestType;
                 req.Receiver = dto.Receiver;
                 req.ProposedDate = dto.ProposedDate;
@@ -470,9 +433,6 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        /// <summary>
-        /// Удаление заявки (POST)
-        /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostDeleteRequestAsync()
         {
@@ -511,9 +471,6 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        /// <summary>
-        /// Принять/отклонить заявку (POST)
-        /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostSetRequestStatusAsync()
         {
@@ -526,13 +483,11 @@ namespace Monitoring.UI.Pages
                 if (data == null)
                     return new JsonResult(new { success = false, message = "Невалидные данные" });
 
-                // Находим заявку
                 var allForDoc = await _workRequestService.GetRequestsByDocumentNumberAsync(data.DocumentNumber);
                 var req = allForDoc.FirstOrDefault(r => r.Id == data.RequestId);
                 if (req == null)
                     return new JsonResult(new { success = false, message = "Заявка не найдена" });
 
-                // Проверяем, что текущий пользователь == Receiver
                 if (req.Receiver != UserName)
                 {
                     return new JsonResult(new
@@ -542,7 +497,6 @@ namespace Monitoring.UI.Pages
                     });
                 }
 
-                // Меняем статус (Accepted/Declined)
                 if (data.NewStatus != "Accepted" && data.NewStatus != "Declined")
                     return new JsonResult(new { success = false, message = "Некорректный статус" });
 
@@ -556,9 +510,6 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        /// <summary>
-        /// Список моих входящих заявок (Pending)
-        /// </summary>
         public async Task<IActionResult> OnGetMyRequestsAsync()
         {
             if (!HttpContext.Request.Cookies.ContainsKey("userName"))
@@ -578,7 +529,6 @@ namespace Monitoring.UI.Pages
                 proposedDate = r.ProposedDate?.ToString("yyyy-MM-dd"),
                 sender = r.Sender,
                 note = r.Note,
-
                 documentName = r.DocumentName,
                 workName = r.WorkName,
                 executor = r.Executor,
@@ -593,9 +543,6 @@ namespace Monitoring.UI.Pages
             return new JsonResult(result);
         }
 
-        /// <summary>
-        /// Сброс кэша
-        /// </summary>
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> OnPostRefreshCacheAsync()
         {
@@ -615,9 +562,6 @@ namespace Monitoring.UI.Pages
             }
         }
 
-        /// <summary>
-        /// Logout
-        /// </summary>
         public IActionResult OnGetLogout()
         {
             HttpContext.Response.Cookies.Delete("userName");
@@ -625,9 +569,6 @@ namespace Monitoring.UI.Pages
             return RedirectToPage("Login");
         }
 
-        /// <summary>
-        /// Экспорт PDF/Excel/Word (Сдаточный чек)
-        /// </summary>
         public async Task<IActionResult> OnPostAsync()
         {
             if (!HttpContext.Request.Cookies.ContainsKey("divisionId") ||
@@ -639,7 +580,6 @@ namespace Monitoring.UI.Pages
             int homeDivisionId = int.Parse(HttpContext.Request.Cookies["divisionId"]);
             UserName = HttpContext.Request.Cookies["userName"];
 
-            // Если выбрано "Выбрать все" (SelectedDivision == 0), загружаем данные по всем разрешённым подразделениям
             if (SelectedDivision.HasValue && SelectedDivision.Value == 0)
             {
                 int? userId = await _loginService.GetUserIdByNameAsync(UserName);
@@ -665,10 +605,8 @@ namespace Monitoring.UI.Pages
 
             string dev = DepartmentName;
 
-            // Фильтр
             ApplyFilters();
 
-            // Выбранные позиции
             if (!string.IsNullOrEmpty(SelectedItemsOrder))
             {
                 var selectedDocs = JsonSerializer.Deserialize<List<string>>(SelectedItemsOrder);
@@ -683,7 +621,6 @@ namespace Monitoring.UI.Pages
                 }
             }
 
-            // Определяем формат
             string format = Request.Form["format"];
             if (format == "pdf")
             {
@@ -752,7 +689,6 @@ namespace Monitoring.UI.Pages
                 );
             }
 
-            // Фильтр по максимальной дате
             if (EndDate.HasValue)
             {
                 query = query.Where(x =>
@@ -761,7 +697,6 @@ namespace Monitoring.UI.Pages
 
             WorkItems = query.ToList();
         }
-
 
         /// <summary>
         /// Подсветка строк, если есть Pending-заявка от текущего пользователя
@@ -772,7 +707,6 @@ namespace Monitoring.UI.Pages
             {
                 var requests = await _workRequestService.GetRequestsByDocumentNumberAsync(item.DocumentNumber);
 
-                // Ищем PENDING запрос от текущего пользователя
                 var pendingFromMe = requests.FirstOrDefault(r =>
                     r.Status == "Pending" && !r.IsDone && r.Sender == UserName);
 
