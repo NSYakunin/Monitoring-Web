@@ -493,42 +493,54 @@
         $(document).ready(function(){
             initSortableTable();
 
-            // AJAX-фильтр – при изменении любого из параметров, включая поиск, сбрасываем текущую страницу в 1
-            $('#startDate, #endDate, #executor, #approver, #search, #divisionSelect').on('change keyup', function() {
-                $.ajax({
-                    url: '@Url.Page("Index", "Filter")',
-                    type: 'GET',
-                    data: {
-                        startDate: $('#startDate').val(),
-                        endDate: $('#endDate').val(),
-                        executor: $('#executor').val(),
-                        approver: $('#approver').val(),
-                        searchQuery: $('#search').val(),
-                        selectedDivision: $('#divisionSelect').val(),
-                        useAllDivisions: $('#useAllDivisions').val(),
-                        currentPage: 1
-                    },
-                    success: function(result) {
-                        $('#workItemsTableContainer').html(result);
-                        initSortableTable();
+            // События для фильтров дат/исполнителя/принимающего/поиска
+            // При любом изменении - делаем AJAX загрузку заново, сбрасываем страницу в 1
+            $('#startDate, #endDate, #executor, #approver, #search').on('change keyup', function() {
+                applyFilterAndRefresh(1);
+            });
 
-                        // Подменяем скрытые поля
-                        $('input[name="StartDate"]').val($('#startDate').val());
-                        $('input[name="EndDate"]').val($('#endDate').val());
-                        $('input[name="Executor"]').val($('#executor').val());
-                        $('input[name="Approver"]').val($('#approver').val());
-                        $('input[name="SearchQuery"]').val($('#search').val());
-                        $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
+            // Смена подразделения - отдельно: сначала подгружаем исполнителей/принимающих, затем делаем фильтр
+            $('#divisionSelect').on('change', function() {
+                var val = $(this).val();
+                loadExecutors(val);
+                loadApprovers(val);
 
-                        if ($(this).attr('id') === 'divisionSelect') {
-                            loadExecutors($('#divisionSelect').val());
-                            loadApprovers($('#divisionSelect').val());
-                        }
-                    }
-                });
+                // После загрузки списков - запускаем фильтр с текущими параметрами, страница = 1
+                applyFilterAndRefresh(1);
             });
         });
 
+        // Общая функция для AJAX-запроса к хендлеру "Filter"
+        function applyFilterAndRefresh(pageNumber) {
+            $.ajax({
+                url: '@Url.Page("Index", "Filter")',
+                type: 'GET',
+                data: {
+                    startDate: $('#startDate').val(),
+                    endDate: $('#endDate').val(),
+                    executor: $('#executor').val(),
+                    approver: $('#approver').val(),
+                    searchQuery: $('#search').val(),
+                    selectedDivision: $('#divisionSelect').val(),
+                    useAllDivisions: $('#useAllDivisions').val(),
+                    currentPage: pageNumber
+                },
+                success: function(result) {
+                    $('#workItemsTableContainer').html(result);
+                    initSortableTable();
+
+                    // Подменяем скрытые поля
+                    $('input[name="StartDate"]').val($('#startDate').val());
+                    $('input[name="EndDate"]').val($('#endDate').val());
+                    $('input[name="Executor"]').val($('#executor').val());
+                    $('input[name="Approver"]').val($('#approver').val());
+                    $('input[name="SearchQuery"]').val($('#search').val());
+                    $('input[name="SelectedDivision"]').val($('#divisionSelect').val());
+                }
+            });
+        }
+
+        // Функция подгрузки исполнителей (если передан 0 => все валидные пользователи)
         function loadExecutors(divisionId) {
             $.ajax({
                 url: '@Url.Page("Index", "Executors")',
@@ -545,6 +557,7 @@
             });
         }
 
+        // Функция подгрузки принимающих (если передан 0 => все валидные пользователи)
         function loadApprovers(divisionId) {
             $.ajax({
                 url: '@Url.Page("Index", "Approvers")',

@@ -160,7 +160,7 @@ namespace Monitoring.UI.Pages
                 Executors = await _loginService.GetAllUsersAsync();
                 Approvers = await _loginService.GetAllUsersAsync();
                 WorkItems = await _workItemService.GetAllWorkItemsAsync(AllowedDivisions.Select(x => x.IdDivision).ToList());
-                DepartmentName = "Все отделы";
+                //DepartmentName = "Все отделы";
             }
             else
             {
