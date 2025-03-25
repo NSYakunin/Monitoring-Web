@@ -7,85 +7,106 @@
 
 <h2>Отчет по всем подразделениям</h2>
 
-<!-- Форма для выбора дат -->
-<form method="get">
-    <div class="row mb-3">
-        <div class="col-auto">
-            <label for="startDate" class="form-label">C даты:</label>
-            <input type="date"
-                   class="form-control"
-                   id="startDate"
-                   name="StartDate"
-                   value="@Model.StartDate.ToString("yyyy-MM-dd")" />
-        </div>
-        <div class="col-auto">
-            <label for="endDate" class="form-label">По дату:</label>
-            <input type="date"
-                   class="form-control"
-                   id="endDate"
-                   name="EndDate"
-                   value="@Model.EndDate.ToString("yyyy-MM-dd")" />
-        </div>
-        <div class="col-auto align-self-end">
-            <button type="submit" class="btn btn-primary">
+<div class="row">
+    <!-- Левая колонка с формой (20%) -->
+    <div class="col-3">
+        <form method="get" class="mb-4 p-3 border rounded shadow-sm">
+            <div class="mb-3">
+                <label for="startDate" class="form-label">C даты:</label>
+                <input type="date"
+                       class="form-control"
+                       id="startDate"
+                       name="StartDate"
+                       value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="mb-3">
+                <label for="endDate" class="form-label">По дату:</label>
+                <input type="date"
+                       class="form-control"
+                       id="endDate"
+                       name="EndDate"
+                       value="@Model.EndDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
                 Показать
             </button>
-        </div>
+        </form>
     </div>
-</form>
 
-<!-- Таблица результатов -->
-@if (Model.Results != null && Model.Results.Count > 0)
-{
-    <table class="table table-bordered table-hover align-middle custom-table">
-        <thead>
-            <tr>
-                <th>Подразделение</th>
-                <th>Плановая</th>
-                <th>Фактическая</th>
-                <th>Процент</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in Model.Results)
-            {
-                <!--
-                    row.Percentage хранит дробь от 0 до 1,
-                    умножаем на 100 и округляем до целого.
-                 -->
-                var percent = Math.Round(row.Percentage * 100, 0);
-                <tr>
-                    <td>@row.DivisionName</td>
-                    <td>@row.PlanCount</td>
-                    <td>@row.FactCount</td>
-                    <td>@(percent + "%")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>Нет данных за указанный период</p>
-}
+    <!-- Правая колонка с таблицей (80%) -->
+    <div class="col-9">
+        @if (Model.Results != null && Model.Results.Count > 0)
+        {
+            var totalPlan = Model.Results.Sum(r => r.PlanCount);
+            var totalFact = Model.Results.Sum(r => r.FactCount);
+            var totalPercent = totalPlan == 0 ? 0 : Math.Round((double)totalFact / totalPlan * 100, 0);
 
-<!--
-    Немного CSS, чтобы сделать таблицу 'круче':
-    - Подсветка заголовка (фон + тень)
-    - Анимация при наведении на строку (приподнимается)
--->
-<style>
-    .custom-table thead {
-        background-color: #f2f2f2;
-        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-    }
-
-    .custom-table tbody tr {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-        .custom-table tbody tr:hover {
-            transform: scale(1.01);
-            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle custom-table">
+                    <thead>
+                        <tr class="table-primary">
+                            <th style="width: 35%">Подразделение</th>
+                            <th style="width: 20%">Плановая</th>
+                            <th style="width: 20%">Фактическая</th>
+                            <th style="width: 25%">Процент</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Results)
+                        {
+                            var percent = Math.Round(row.Percentage * 100, 0);
+                            <tr>
+                                <td>@row.DivisionName</td>
+                                <td>@row.PlanCount</td>
+                                <td>@row.FactCount</td>
+                                <td>@(percent)%</td>
+                            </tr>
+                        }
+                        <!-- Строка с итогами -->
+                        <tr class="table-info fw-bold">
+                            <td>Итого:</td>
+                            <td>@totalPlan</td>
+                            <td>@totalFact</td>
+                            <td>@(totalPercent)%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         }
+        else
+        {
+            <div class="alert alert-warning mt-3">
+                Нет данных за указанный период
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .custom-table {
+        width: 100%;
+        margin-left: auto;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+        .custom-table thead th {
+            background-color: #0d6efd;
+            color: white;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .custom-table tbody tr {
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+            .custom-table tbody tr:hover {
+                transform: translateX(5px);
+                box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            }
+
+    .table-info {
+        background-color: #cfe2ff !important;
+    }
 </style>
