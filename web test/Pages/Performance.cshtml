@@ -1,6 +1,9 @@
 ﻿@page
 @model Monitoring.UI.Pages.PerformanceModel
 
+<!-- Если иконки не подключены в Layout, подключим напрямую -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+
 @{
     ViewData["Title"] = "Отчет по всем подразделениям";
 }
@@ -42,13 +45,40 @@
             var totalPercent = totalPlan == 0 ? 0 : Math.Round((double)totalFact / totalPlan * 100, 0);
 
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle custom-table">
+                <!-- Используем thead, tbody, tfoot, чтобы строка "Итого" всегда была внизу (tfoot) -->
+                <table id="performanceTable" class="table table-bordered table-hover align-middle custom-table">
                     <thead>
                         <tr class="table-primary">
-                            <th style="width: 35%">Подразделение</th>
-                            <th style="width: 20%">Плановая</th>
-                            <th style="width: 20%">Фактическая</th>
-                            <th style="width: 25%">Процент</th>
+                            <!--
+                                data-sort-type="string" => текстовая сортировка
+                                data-sort-type="number" => числовая
+                                data-sort-type="percent" => процентная
+                                i.sort-icon => иконка сортировки
+                             -->
+                            <th class="sortable"
+                                data-sort-type="string"
+                                data-column-index="0">
+                                Подразделение
+                                <i class="sort-icon bi bi-arrow-down-up"></i>
+                            </th>
+                            <th class="sortable"
+                                data-sort-type="number"
+                                data-column-index="1">
+                                Плановая
+                                <i class="sort-icon bi bi-arrow-down-up"></i>
+                            </th>
+                            <th class="sortable"
+                                data-sort-type="number"
+                                data-column-index="2">
+                                Фактическая
+                                <i class="sort-icon bi bi-arrow-down-up"></i>
+                            </th>
+                            <th class="sortable"
+                                data-sort-type="percent"
+                                data-column-index="3">
+                                Процент
+                                <i class="sort-icon bi bi-arrow-down-up"></i>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -62,14 +92,15 @@
                                 <td>@(percent)%</td>
                             </tr>
                         }
-                        <!-- Строка с итогами -->
+                    </tbody>
+                    <tfoot>
                         <tr class="table-info fw-bold">
                             <td>Итого:</td>
                             <td>@totalPlan</td>
                             <td>@totalFact</td>
                             <td>@(totalPercent)%</td>
                         </tr>
-                    </tbody>
+                    </tfoot>
                 </table>
             </div>
         }
@@ -85,28 +116,158 @@
 <style>
     .custom-table {
         width: 100%;
-        margin-left: auto;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        margin-left: 0;
     }
 
+        /* Все заголовки по центру */
         .custom-table thead th {
             background-color: #0d6efd;
             color: white;
             vertical-align: middle;
-            text-align: center;
+            text-align: center; /* Заголовки по центру */
+            user-select: none; /* Запрещаем выделение текста при клике */
+            cursor: pointer; /* Покажем, что заголовок кликабелен */
+            white-space: nowrap;
+            transition: background-color 0.3s ease, transform 0.3s ease;
         }
+
+            /* Анимация при наведении на заголовок */
+            .custom-table thead th:hover {
+                background-color: #0b78e2;
+                transform: scale(1.02);
+                position: relative;
+                z-index: 2;
+            }
+
+        /* Тело таблицы, первая колонка - выравнивание по левому краю */
+        .custom-table tbody td:nth-child(1) {
+            text-align: left;
+        }
+
+        /* Остальные ячейки тBODY (если требуется, можно оставить как есть,
+           по умолчанию они идут .table-hover align-middle,
+           в данном коде нет явного text-align для остальных столбцов в tbody,
+           значит оставляем всё как было) */
 
         .custom-table tbody tr {
-            transition: all 0.2s ease;
-            text-align: center;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            text-align: center; /* Общее выравнивание по центру для всех ячеек... */
         }
 
+            /* При наведении на строку - не увеличиваем, чтобы не было горизонтального скролла */
             .custom-table tbody tr:hover {
-                transform: translateX(5px);
-                box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+                background-color: #f8f8f8;
+                box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+                position: relative;
+                z-index: 1;
             }
 
     .table-info {
         background-color: #cfe2ff !important;
     }
+
+    /* Иконки сортировки (Bootstrap Icons):
+           по умолчанию "bi-arrow-down-up" (нет направления).
+           При sortDirections[columnIndex] = 'asc' => bi-caret-up-fill,
+           при sortDirections[columnIndex] = 'desc' => bi-caret-down-fill.
+           Подкрашиваем белым, чтобы были видны на синем фоне заголовка.
+        */
+    .sort-icon {
+        margin-left: 5px;
+        transition: transform 0.2s ease;
+        color: #fff;
+    }
 </style>
+
+<script>
+    // Объект для хранения текущего состояния сортировки. Пример: {0: 'asc', 1: 'desc', ...}
+    const sortDirections = {};
+
+    // Переводим текст в подходящий тип (строка, число или процент)
+    function parseCellValue(sortType, textValue) {
+        textValue = textValue.trim();
+        switch (sortType) {
+            case "number":
+                return parseFloat(textValue.replace(/\s+/g, '')) || 0;
+            case "percent":
+                return parseFloat(textValue.replace('%', '')) || 0;
+            case "string":
+            default:
+                return textValue.toLowerCase();
+        }
+    }
+
+    // Функция сортировки
+    function sortTable(columnIndex, sortType, currentDirection) {
+        const table = document.getElementById("performanceTable");
+        const tbody = table.querySelector("tbody");
+
+        // Все строки из tbody
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+
+        // Определяем новое направление
+        let newDirection = "asc";
+        if (currentDirection === "asc") {
+            newDirection = "desc";
+        } else if (currentDirection === "desc") {
+            newDirection = "asc";
+        }
+        sortDirections[columnIndex] = newDirection;
+
+        // Лёгкая анимация (прозрачность) на время сортировки
+        table.style.transition = "opacity 0.2s";
+        table.style.opacity = "0.4";
+
+        setTimeout(() => {
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.querySelectorAll("td")[columnIndex].innerText;
+                const cellB = rowB.querySelectorAll("td")[columnIndex].innerText;
+
+                const valueA = parseCellValue(sortType, cellA);
+                const valueB = parseCellValue(sortType, cellB);
+
+                if (valueA < valueB) {
+                    return newDirection === "asc" ? -1 : 1;
+                }
+                if (valueA > valueB) {
+                    return newDirection === "asc" ? 1 : -1;
+                }
+                return 0;
+            });
+
+            // Применяем отсортированные строки
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Возвращаем непрозрачность
+            table.style.opacity = "1";
+
+            // Сбрасываем иконки сортировки на всех заголовках
+            document.querySelectorAll("th.sortable .sort-icon").forEach(icon => {
+                icon.className = "sort-icon bi bi-arrow-down-up";
+            });
+
+            // Присваиваем новую иконку активному столбцу (либо "caret-up-fill", либо "caret-down-fill")
+            const activeTh = table.querySelectorAll("th.sortable")[columnIndex];
+            const activeIcon = activeTh.querySelector(".sort-icon");
+            if (newDirection === "asc") {
+                activeIcon.className = "sort-icon bi bi-caret-up-fill";
+            } else {
+                activeIcon.className = "sort-icon bi bi-caret-down-fill";
+            }
+        }, 200);
+    }
+
+    // Навешиваем обработчик клика на каждый заголовок
+    document.addEventListener("DOMContentLoaded", () => {
+        const sortableHeaders = document.querySelectorAll("th.sortable");
+        sortableHeaders.forEach(header => {
+            header.addEventListener("click", () => {
+                const colIndex = parseInt(header.getAttribute("data-column-index"));
+                const sortType = header.getAttribute("data-sort-type");
+                const currentDirection = sortDirections[colIndex] || null;
+                sortTable(colIndex, sortType, currentDirection);
+            });
+        });
+    });
+</script>
